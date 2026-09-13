@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en-SG">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="An illustrative projection of how CPF balances evolve over a working lifetime, and what a housing decision costs in retirement terms. Not financial advice."
+    />
+    <title>CPF Projection Tool</title>
+    <script>
+      // Resolve the theme before first paint so there is no flash of the wrong theme.
+      // Mirrors the logic in src/theme/theme.ts — keep the storage key in sync.
+      (function () {
+        try {
+          var stored = localStorage.getItem('cpf-theme');
+          var mode = stored === 'light' || stored === 'dark' ? stored : null;
+          if (!mode) {
+            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.classList.toggle('dark', mode === 'dark');
+          document.documentElement.style.colorScheme = mode;
+        } catch (e) {
+          /* storage unavailable — fall through to the light default */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

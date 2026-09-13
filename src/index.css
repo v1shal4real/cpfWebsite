@@ -1,0 +1,309 @@
+@import 'tailwindcss';
+
+/* Dark mode is driven by a class on <html>, set before first paint by the
+   inline script in index.html and thereafter by ThemeProvider. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens
+   ---------------------------------------------------------------------------
+   Two layers:
+     1. Raw semantic variables, redefined for light and dark below.
+     2. An `@theme inline` block mapping Tailwind utilities onto those
+        variables by reference, so `bg-surface` resolves per-theme at runtime.
+
+   Colour policy for this product:
+     - The interface is neutral. Chrome, buttons and links use ink and line
+       tokens. Hue is reserved almost entirely for data.
+     - The five data hues are validated categorical slots 1, 2, 3, 7 and 8 of
+       the reference palette, re-validated as a set against both surfaces.
+       See docs/design-system.md for the validator output.
+     - Status colours are fixed across themes and never double as series
+       colours. They always ship with an icon or a label, never colour alone.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces — warm neutral, low chroma, so data hues stay dominant */
+  --canvas: #f5f5f3;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --surface-3: #e6e5e1;
+  --surface-inverse: #1a1a19;
+
+  /* Ink */
+  --ink: #0b0b0b;
+  --ink-muted: #52514e;
+  --ink-subtle: #78766f;
+  --ink-inverse: #fcfcfb;
+
+  /* Lines */
+  --line: #e2e1dc;
+  --line-strong: #c8c6c0;
+
+  /* Interactive accent — a text/link hue, deliberately a different step from
+     the Ordinary Account series blue so a link never reads as a data mark. */
+  --accent: #1c5cab;
+  --accent-hover: #184f95;
+  --accent-soft: #e8f0fb;
+  --focus: #1c5cab;
+
+  /* Status — fixed, never themed. Icon + label always accompany these. */
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  /* Text-safe companions for status wording on a light surface */
+  --good-ink: #0a6b1f;
+  --warning-ink: #7a5200;
+  --serious-ink: #9a4420;
+  --critical-ink: #a32626;
+
+  /* Data series — validated for the light surface */
+  --series-oa: #2a78d6;       /* slot 1, blue   */
+  --series-sa: #eb6834;       /* slot 2, orange */
+  --series-ma: #1baf7a;       /* slot 3, aqua   */
+  --series-ra: #4a3aa7;       /* slot 7, violet */
+  --series-accrued: #e34948;  /* slot 8, red    */
+  /* Soft fills for area charts and swatched backgrounds */
+  --series-oa-soft: #e3eefc;
+  --series-sa-soft: #fdeade;
+  --series-ma-soft: #ddf5ec;
+  --series-ra-soft: #e6e3f6;
+  --series-accrued-soft: #fce4e4;
+
+  /* Chart furniture */
+  --grid: #e8e7e3;
+  --axis: #b4b2aa;
+
+  /* Elevation. Shadows are shallow: this is an instrument, not a card stack. */
+  --shadow-sm: 0 1px 2px 0 rgb(11 11 11 / 0.05);
+  --shadow-md: 0 1px 3px 0 rgb(11 11 11 / 0.08), 0 4px 12px -2px rgb(11 11 11 / 0.06);
+  --shadow-lg: 0 2px 4px 0 rgb(11 11 11 / 0.06), 0 12px 32px -8px rgb(11 11 11 / 0.12);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --canvas: #131312;
+  --surface: #1a1a19;
+  --surface-2: #232322;
+  --surface-3: #2d2d2b;
+  --surface-inverse: #fcfcfb;
+
+  --ink: #ffffff;
+  --ink-muted: #c3c2b7;
+  --ink-subtle: #918f85;
+  --ink-inverse: #131312;
+
+  --line: #2f2f2c;
+  --line-strong: #4a4945;
+
+  --accent: #86b6ef;
+  --accent-hover: #b7d3f6;
+  --accent-soft: #17253a;
+  --focus: #86b6ef;
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good-ink: #4cc44c;
+  --warning-ink: #fab219;
+  --serious-ink: #ec835a;
+  --critical-ink: #ef6d6d;
+
+  /* Data series — the same five hues, re-stepped for the dark surface */
+  --series-oa: #3987e5;
+  --series-sa: #d95926;
+  --series-ma: #199e70;
+  --series-ra: #9085e9;
+  --series-accrued: #e66767;
+  --series-oa-soft: #16283f;
+  --series-sa-soft: #3a1d11;
+  --series-ma-soft: #0e2b22;
+  --series-ra-soft: #232043;
+  --series-accrued-soft: #3b1d1d;
+
+  --grid: #262624;
+  --axis: #55544f;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 4px 12px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 2px 4px 0 rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.55);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-inverse: var(--surface-inverse);
+
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-ink-inverse: var(--ink-inverse);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-focus: var(--focus);
+
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-serious: var(--serious);
+  --color-critical: var(--critical);
+  --color-good-ink: var(--good-ink);
+  --color-warning-ink: var(--warning-ink);
+  --color-serious-ink: var(--serious-ink);
+  --color-critical-ink: var(--critical-ink);
+
+  --color-oa: var(--series-oa);
+  --color-sa: var(--series-sa);
+  --color-ma: var(--series-ma);
+  --color-ra: var(--series-ra);
+  --color-accrued: var(--series-accrued);
+  --color-oa-soft: var(--series-oa-soft);
+  --color-sa-soft: var(--series-sa-soft);
+  --color-ma-soft: var(--series-ma-soft);
+  --color-ra-soft: var(--series-ra-soft);
+  --color-accrued-soft: var(--series-accrued-soft);
+
+  --color-grid: var(--grid);
+  --color-axis: var(--axis);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", "Roboto Mono", Menlo, Consolas,
+    monospace;
+
+  /* A tighter, more deliberate radius scale than the Tailwind default */
+  --radius-xs: 0.1875rem;
+  --radius-sm: 0.3125rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Motion. Framer Motion reads equivalent values from src/theme/motion.ts. */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Base layer
+--------------------------------------------------------------------------- */
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Every figure in this tool is meant to be compared down a column. */
+  table,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* A single visible focus treatment, used everywhere, never removed. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  textarea,
+  summary {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background-color: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  /* Range inputs are restyled per-component; strip the UA chrome once here. */
+  input[type="range"] {
+    appearance: none;
+    background: transparent;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer utilities {
+  /* Applied to scrub handles and any long-press target */
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Hides content visually while leaving it in the accessibility tree.
+     Used for the chart's tabular alternative and for live-region prose. */
+  .sr-only-abs {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

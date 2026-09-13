@@ -1,0 +1,576 @@
+Issue Id,Parent,Issue Type,Summary,Epic Name,Description,Priority,Story Points,Labels,Labels
+1,,Epic,Rules data: verification and completion,Rules data: verification and completion,"Bring the dated rule set from 'transcribed from spec' to 'verified against primary sources', and fill the gaps the engine needs. The foundation (types, 2026 rule set, source registry, effective-date resolver, integrity tests) already exists in src/rules.
+
+Spec reference: §2, §2.8, §6",Highest,,v1,cpf-projection
+2,1,Task,Verify 2026 rule set figures against CPF Board sources,,"Open every page in the §6 source table and confirm each figure in src/rules/ruleset-2026.ts.
+
+Spec reference: §6
+
+Acceptance criteria:
+* Every figure checked against its primary source page
+* Any corrected figure updated and noted in the PR
+* retrievedOn dates updated in src/rules/sources.ts
+* RULE_SET_2026.verified set to true only when every group is confirmed; the Unverified badge then disappears",Highest,3,v1,data
+3,1,Task,Add contribution rate bands above age 55,,"The spec states only the 55-and-below contribution band (20% employee / 17% employer). Bands for above 55 to 60, 60 to 65, 65 to 70 and above 70 are missing and must come from the primary source.
+
+Spec reference: §2.2
+
+Acceptance criteria:
+* All age bands encoded in contributionRates.bands
+* Band integrity test still passes
+* Engine guard that blocks projection past 55 is removed once this lands
+
+Notes:
+* Do not estimate these figures. Blocks the engine from projecting past 55.",Highest,2,v1,data
+4,1,Task,Verify and correct source URLs; split BHS source,,"Source URLs in src/rules/sources.ts are plausible but unchecked. The Basic Healthcare Sum currently cites the retirement sums page.
+
+Spec reference: §3.3 per-figure attribution, §6
+
+Acceptance criteria:
+* Every URL opens the page named in its title
+* BHS has its own source entry (CPF Board / MOH announcement) and thresholds reference it correctly",High,1,v1,data
+5,1,Task,Define escalation assumptions for BHS and retirement sums,,"A 30-year-old reaches 55 in a future year. The FRS is fixed for the cohort in the year they turn 55 and the BHS is revised annually below 65, so a single 2026 figure is wrong for most users. Decide and encode a stated assumption (spec notes roughly 3.5% a year for retirement sums).
+
+Spec reference: §2.5, §2.8
+
+Acceptance criteria:
+* Escalation rates stored as dated, sourced parameters, not constants in engine code
+* Cohort FRS derived for the year the user turns 55
+* BHS fixed at the value in force when the user turns 65
+* Assumption shown in the assumptions panel with its basis
+
+Notes:
+* Product decision needed: which escalation rate to assume, and how it is worded as an assumption rather than a forecast.",High,3,v1,data
+6,1,Task,Collect CPF Board worked examples as test fixtures,,"Success criterion §1.4 requires the engine to reproduce CPF Board's own published worked examples exactly. Gather them before the engine is written so tests drive the implementation.
+
+Spec reference: §1.4, §3.4 Correctness, §5
+
+Acceptance criteria:
+* Fixtures for contribution amounts (including OW ceiling cases)
+* Fixtures for allocation split, including rounding
+* Fixtures for base and extra interest, including the $20,000 OA sub-cap
+* Fixture for accrued housing interest
+* Each fixture cites the page it came from and is stored under src/engine/__fixtures__",High,3,v1,testing
+7,1,Task,Source housing loan parameters missing from the spec,,"The v1 inputs cover property price, OA downpayment share and tenure, but the engine also needs the loan-to-value limits and minimum cash downpayment for HDB and bank loans, and a bank loan interest rate assumption. None of these are in the spec.
+
+Spec reference: §2.6, §3.1
+
+Acceptance criteria:
+* LTV and minimum cash downpayment for HDB loan and bank loan sourced and added to the rule set
+* Decision recorded on whether the bank loan rate is a user input or a stated assumption
+* Decision recorded on whether monthly instalments are paid from OA, cash, or a user-chosen split
+
+Notes:
+* Spec gap. Needs a product decision before the housing engine tasks can be finished.",High,2,v1,data
+8,,Epic,Projection engine (v1),Projection engine (v1),"A pure, deterministic, monthly-step projection from current age to 65 that reads every parameter from the dated rule set. No side effects, no reading of the current date inside the calculation.
+
+Spec reference: §2, §3.2",Highest,,v1,cpf-projection
+9,8,Task,"Define engine input, output and monthly state types",,"Types for projection inputs, per-month state (balances per account, contributions, base interest, extra interest, housing withdrawals, accrued interest, events) and the full projection result.
+
+Spec reference: §3.2
+
+Acceptance criteria:
+* Types in src/engine/types.ts
+* Every monthly record carries the rule set id it was computed under
+* Events (age-55 transition, BHS reached, loan cleared) represented as data",Highest,2,v1,engine
+10,8,Task,Implement the monthly time-step loop with effective-date rule resolution,,"Core loop from the current age to 65. Each step resolves its rule set with resolveRuleSet(stepDate). The start date is an explicit input, never Date.now().
+
+Spec reference: §2.8, §3.2
+
+Depends on:
+* Define engine input, output and monthly state types
+
+Acceptance criteria:
+* Pure function: same inputs always produce identical output
+* No access to the clock inside the engine (enforced by test)
+* Salary growth applied at a stated, documented point in the year",Highest,3,v1,engine
+11,8,Task,Contribution calculation with wage ceilings and Annual Limit,,"Monthly contribution from Ordinary Wages by age band, capped at the $8,000 OW ceiling, the $102,000 annual salary ceiling and the $37,740 CPF Annual Limit.
+
+Spec reference: §2.2, §3.2
+
+Depends on:
+* Collect CPF Board worked examples as test fixtures
+* Implement the monthly time-step loop with effective-date rule resolution
+
+Acceptance criteria:
+* Worked-example fixtures for contributions pass exactly
+* Rounding follows CPF Board rules
+* Salaries above the ceiling produce capped contributions",Highest,3,v1,engine
+12,8,Task,Allocation across accounts by age band,,"Split the total contribution: MediSave first, then Special or Retirement, remainder to Ordinary.
+
+Spec reference: §2.3, §3.2
+
+Depends on:
+* Contribution calculation with wage ceilings and Annual Limit
+
+Acceptance criteria:
+* Allocation order is MA, then SA/RA, then OA remainder
+* Cent-level results match worked-example fixtures
+* From 55, the SA share is routed to RA up to the FRS, then to OA",Highest,2,v1,engine
+13,8,Task,Base interest by account,,"Apply base rates (OA 2.5%, SA/MA/RA 4%) as parameters from the rule set, following CPF's computation and crediting convention.
+
+Spec reference: §2.4, §2.9
+
+Acceptance criteria:
+* Computation and crediting convention confirmed against CPF Board and documented in code
+* Rates read from the rule set only
+* Interest fixtures pass",High,3,v1,engine
+14,8,Task,"Extra interest tiers with the $20,000 OA sub-cap",,"Below 55: 1% on the first $60,000 of combined balances. From 55: 2% on the first $30,000 and 1% on the next $30,000. No more than $20,000 may come from the OA. Extra interest earned on OA savings is credited to SA (or RA from 55), not to OA.
+
+Spec reference: §2.4, §3.2
+
+Depends on:
+* Base interest by account
+
+Acceptance criteria:
+* Tier-filling order across accounts confirmed against CPF Board and documented
+* OA sub-cap enforced; OA-derived extra interest routed to SA/RA
+* Test shows that drawing OA below $20,000 reduces extra interest
+* Extra interest fixtures pass
+
+Notes:
+* The spec calls this the product's reason to exist. Highest correctness bar in the engine.",Highest,5,v1,engine
+15,8,Task,Basic Healthcare Sum cap and MediSave overflow routing,,"Cap MediSave at the BHS. Below 55 overflow goes to SA. From 55 overflow goes to RA up to the FRS, then to OA.
+
+Spec reference: §2.5, §3.2
+
+Depends on:
+* Define escalation assumptions for BHS and retirement sums
+* Allocation across accounts by age band
+
+Acceptance criteria:
+* Overflow destination correct on both sides of 55
+* BHS value comes from the escalation assumption for the projection year
+* 'BHS reached' event emitted",High,3,v1,engine
+16,8,Task,Loan amortisation model (HDB concessionary and bank),,"Monthly instalment and outstanding balance for an HDB loan at the concessionary rate (OA rate + 0.1%) or a bank loan, over the input tenure.
+
+Spec reference: §2.6, §3.1
+
+Depends on:
+* Source housing loan parameters missing from the spec
+
+Acceptance criteria:
+* Standard amortisation with monthly instalments
+* HDB rate derived from the OA rate in the rule set
+* 'Loan cleared' event emitted",High,3,v1,engine
+17,8,Task,Housing withdrawals from the Ordinary Account,,"At the purchase age, draw the OA share of the downpayment; then draw monthly instalments per the recorded payment decision. HDB-loan buyers may retain up to $20,000 in OA; bank-loan buyers may retain any amount.
+
+Spec reference: §2.6, §3.2
+
+Depends on:
+* Loan amortisation model (HDB concessionary and bank)
+
+Acceptance criteria:
+* OA never goes negative; shortfall falls to cash and is recorded
+* HDB $20,000 retention option respected
+* Every withdrawal recorded as CPF principal used for housing",Highest,3,v1,engine
+18,8,Task,Accrued interest on CPF used for housing,,"Track principal used for housing plus notional interest at 2.5% compounded annually, giving the amount refundable to CPF on sale at every age.
+
+Spec reference: §2.6, §3.2
+
+Depends on:
+* Housing withdrawals from the Ordinary Account
+
+Acceptance criteria:
+* Accrued interest compounds annually on cumulative principal
+* Rate read from rule set housing.accruedInterestRate
+* Accrued interest fixture passes",Highest,3,v1,engine
+19,8,Task,Age-55 transition as a discrete ordered event,,"At 55: create RA; transfer SA then OA up to the FRS; close SA; mark amounts above the retirement sum as withdrawable; switch contribution rates, allocation ratios and extra-interest tiers. Six rule changes in a defined order.
+
+Spec reference: §2.7, §3.2
+
+Depends on:
+* Add contribution rate bands above age 55
+* Extra interest tiers with the $20,000 OA sub-cap
+* Basic Healthcare Sum cap and MediSave overflow routing
+
+Acceptance criteria:
+* Transition runs once, in the month the member turns 55
+* Order of operations documented and tested
+* Withdrawable amount exposed in output, not auto-withdrawn
+* Balances are conserved across the transition (test)",Highest,5,v1,engine
+20,8,Task,Input validation and engine guards,,"Reject or clamp invalid inputs before they reach the engine, and return typed errors rather than throwing.
+
+Spec reference: §3.1
+
+Acceptance criteria:
+* Age 16 to 70; purchase age not before current age; tenure within allowed bounds
+* Housing fields required only when a housing plan is selected
+* Typed validation result the UI can map to field errors",High,2,v1,engine
+21,8,Task,Property and invariant tests for the engine,,"Property-based tests for invariants in addition to the worked-example fixtures.
+
+Spec reference: §3.4 Correctness, §5
+
+Acceptance criteria:
+* Conservation: opening balance + contributions + interest - withdrawals = closing balance, per account, every month
+* No negative balances
+* Determinism: repeated runs are identical
+* Allocation always sums to the total contribution
+
+Notes:
+* Consider fast-check for property generation.",High,3,v1,testing
+22,8,Task,Engine performance budget under 50ms,,"A full recomputation (age 22 to 65, monthly, two scenarios) must finish under 50ms so the scrub feels continuous.
+
+Spec reference: §3.4 Performance
+
+Acceptance criteria:
+* Vitest benchmark added
+* Budget asserted in CI on a representative input
+* Profiling notes if the budget is missed",Medium,2,v1,performance
+23,,Epic,Inputs and shareable URL state,Inputs and shareable URL state,"The input form and URL-encoded state that make a projection shareable without accounts, storage or cookies.
+
+Spec reference: §3.1, §3.3",High,,v1,cpf-projection
+24,23,Task,Build the projection input panel,,"All §3.1 inputs using the existing Field, MoneyInput, PercentInput, Select, SegmentedControl and Slider components.
+
+Spec reference: §3.1
+
+Depends on:
+* Input validation and engine guards
+
+Acceptance criteria:
+* Current age, salary, salary growth, optional OA/SA/MA balances, housing plan, property price, purchase age, OA downpayment share, loan tenure
+* Salary growth defaults to a stated assumption shown in the hint
+* Housing fields appear only when a housing plan is selected
+* Validation errors from the engine guards shown per field",High,3,v1,frontend
+25,23,Task,Encode and decode projection state in URL parameters,,"Versioned, compact URL schema that includes the pinned rule set id. Malformed or old links degrade gracefully.
+
+Spec reference: §3.3, §3.4 Provenance
+
+Acceptance criteria:
+* Round-trip tests: state -> URL -> state is lossless
+* Link carries the rule set id and renders with those rules
+* Invalid parameters fall back to defaults with a visible notice
+* No localStorage, cookies or server calls for projection state",High,3,v1,frontend
+26,23,Task,Copy share link control,,"A button that copies the current URL with confirmation.
+
+Spec reference: §3.3
+
+Depends on:
+* Encode and decode projection state in URL parameters
+
+Acceptance criteria:
+* Clipboard write with an accessible live-region confirmation
+* Fallback when the Clipboard API is unavailable",Medium,1,v1,frontend
+27,,Epic,Projection results interface,Projection results interface,"The chart, timeline, headline figures and assumptions panel that render a projection. Built on the existing design system and ChartFrame.
+
+Spec reference: §3.3",High,,v1,cpf-projection
+28,27,Task,Projection page layout and routing,,"Replace the design system preview as the default view with the projection page. Keep the preview reachable for development.
+
+Spec reference: §1.4, §3.3
+
+Acceptance criteria:
+* Projection visible on landing without an account (30-second criterion)
+* Design preview reachable in development only
+* Layout usable at 360px: inputs, headline, chart order decided for mobile",High,2,v1,frontend
+29,27,Task,Balance chart with age-55 marker and table view,,"OA, SA, MA and RA balances over age in ChartFrame, with the age-55 transition marked and a yearly table alternative.
+
+Spec reference: §3.3, §3.4 Accessibility
+
+Depends on:
+* Implement the monthly time-step loop with effective-date rule resolution
+
+Acceptance criteria:
+* Series colours from the series registry only
+* Age-55 reference line
+* Table view with one row per year; transition row highlighted
+* Hidden table available to screen readers while the chart shows",High,3,v1,frontend
+30,27,Task,Scrubbable timeline with state readout,,"A timeline control synced with the chart cursor. At the selected age, show account balances, applicable contribution and allocation rates, and the accrued interest position.
+
+Spec reference: §3.3, §3.4 Accessibility
+
+Depends on:
+* Balance chart with age-55 marker and table view
+* Engine performance budget under 50ms
+
+Acceptance criteria:
+* Keyboard: arrows step by month or year, Page Up/Down by 5 years, Home/End
+* Chart crosshair follows the scrubbed age
+* Readout updates without dropped frames on a mid-range phone
+* Age and key figures announced via a polite live region",High,5,v1,frontend
+31,27,Task,Headline figures row,,"Projected balance at 55, position against the applicable retirement sum, and total accrued interest owed if the property were sold.
+
+Spec reference: §3.3
+
+Depends on:
+* Accrued interest on CPF used for housing
+* Age-55 transition as a discrete ordered event
+
+Acceptance criteria:
+* Uses StatTile with source links and rules stamp
+* Retirement sum shown is the cohort sum for the year the user turns 55
+* Neutral wording: no 'good' or 'bad' framing of the gap",High,2,v1,frontend
+32,27,Task,Assumptions panel with effective dates and sources,,"A visible panel listing every parameter the projection used, its effective date and a link to its source.
+
+Spec reference: §3.3
+
+Acceptance criteria:
+* Visible by default, not behind a link
+* Lists every rule-set parameter plus user assumptions (salary growth, escalation rates)
+* Each group links to its source page
+* Shows every rule set used when a projection spans more than one",High,3,v1,frontend
+33,27,Task,"Explain the $20,000 OA retention and extra-interest link in the UI",,"The spec calls out that the HDB $20,000 retention and the extra-interest OA sub-cap coincide on purpose and should be explained at the point of decision.
+
+Spec reference: §2.4, §2.6
+
+Acceptance criteria:
+* Contextual explanation beside the retention option and OA downpayment share
+* Copy reviewed against the framing constraint",Medium,2,v1,content
+34,27,Task,Framing and copy review across all views,,"Check every screen, empty state, error and share preview for projection language.
+
+Spec reference: Framing constraint, §3.4 Framing, §5
+
+Acceptance criteria:
+* No recommendation, advice or suggested course of action anywhere
+* No product comparison or placement
+* Rules-as-at stamp present on every view",High,2,v1,content
+35,,Epic,Scenario comparison,Scenario comparison,"Two housing configurations side by side with one clearly stated difference in retirement position.
+
+Spec reference: §1.4, §3.3",High,,v1,cpf-projection
+36,35,Task,Scenario A/B state model and URL encoding,,"Hold two input sets, duplicate A into B as a starting point, and encode both in the URL.
+
+Spec reference: §3.3
+
+Depends on:
+* Encode and decode projection state in URL parameters
+
+Acceptance criteria:
+* B starts as a copy of A
+* Changed fields in B visibly marked
+* Both scenarios round-trip through the URL",High,3,v1,frontend
+37,35,Task,Define the headline comparison metric,,"Decide the single quantified difference shown (for example combined balance at 55, or position against the retirement sum at 55) and its neutral wording.
+
+Spec reference: §1.4, §3.3
+
+Acceptance criteria:
+* Metric and wording agreed and documented
+* Wording states a difference without implying a better choice
+
+Notes:
+* Product decision needed.",High,1,v1,product
+38,35,Task,Side-by-side comparison layout,,"Desktop side-by-side view; on narrow screens, tabs or a stacked layout.
+
+Spec reference: §3.3, §3.4 Responsiveness
+
+Depends on:
+* Scenario A/B state model and URL encoding
+* Define the headline comparison metric
+
+Acceptance criteria:
+* Single difference statement at the top
+* Usable at 360px
+* Both scenarios carry the rules-as-at stamp",High,3,v1,frontend
+39,35,Task,Comparison chart overlay,,"Overlay both scenarios on one chart while keeping colour tied to the account, not the scenario.
+
+Spec reference: §3.3
+
+Depends on:
+* Balance chart with age-55 marker and table view
+
+Acceptance criteria:
+* Scenario B uses a secondary encoding (dash pattern), not a new hue
+* Legend distinguishes scenario and account
+* Table view shows both scenarios and the difference",Medium,3,v1,frontend
+40,,Epic,"Quality, accessibility and launch","Quality, accessibility and launch","Everything needed to ship v1 at a public URL with confidence.
+
+Spec reference: §3.4, §5",High,,v1,cpf-projection
+41,40,Task,"CI pipeline: typecheck, tests and build",,"Run the engine validation suite on every push, as the risk mitigation in §5 requires.
+
+Spec reference: §5
+
+Acceptance criteria:
+* Pipeline runs typecheck, vitest and production build
+* Pull requests blocked on failure",High,2,v1,devops
+42,40,Task,ESLint and Prettier setup,,"Add linting and formatting, including jsx-a11y and react-hooks rules.
+
+Spec reference: §3.4 Accessibility
+
+Acceptance criteria:
+* Lint runs in CI
+* Existing code passes",Medium,1,v1,devops
+43,40,Task,Component interaction tests,,"Testing Library tests for the interactive primitives already built.
+
+Spec reference: §3.4 Accessibility
+
+Acceptance criteria:
+* SegmentedControl and Tabs keyboard behaviour
+* Tooltip dismisses on Escape
+* NumericInput parse, clamp and arrow-key behaviour
+* Field label, hint and error association",Medium,3,v1,testing
+44,40,Task,WCAG 2.2 AA accessibility audit,,"Automated and manual audit of the projection page in both themes.
+
+Spec reference: §3.4 Accessibility, §4.3 Dark mode
+
+Acceptance criteria:
+* axe run with no violations
+* Full keyboard pass including the timeline
+* Screen reader pass with NVDA and VoiceOver
+* Contrast verified in light and dark themes
+* Findings fixed or ticketed",High,3,v1,accessibility
+45,40,Task,Mobile and performance verification,,"Check the projection page on real mid-range mobile hardware.
+
+Spec reference: §3.4 Performance, Responsiveness
+
+Acceptance criteria:
+* Interaction to next paint under 200ms
+* No horizontal scroll at 360px
+* Lighthouse report recorded",Medium,2,v1,performance
+46,40,Task,Static hosting and deployment,,"Deploy the client-only build to a public URL with no backend, accounts or cookies.
+
+Spec reference: §3, §3.3
+
+Acceptance criteria:
+* Public URL live
+* Deploys on merge to main
+* No cookies or tracking that would need a consent banner",High,2,v1,devops
+47,40,Task,Share link previews carry provenance,,"Page title and social preview metadata include the rules-as-at date.
+
+Spec reference: §3.4 Provenance
+
+Acceptance criteria:
+* Title and description state the rules-as-at date
+* No personal input values leak into preview metadata",Low,1,v1,frontend
+48,40,Task,Launch in Singapore personal finance communities,,"Plan and post the launch where the audience already discusses these questions.
+
+Spec reference: §5
+
+Depends on:
+* Static hosting and deployment
+
+Acceptance criteria:
+* Launch post drafted with projection framing
+* Feedback channel set up to inform v2 prioritisation",Low,1,v1,launch
+49,,Epic,v2: Modelling depth,v2: Modelling depth,"Deeper modelling. Per spec §4, start each item only when post-launch user behaviour justifies it.
+
+Spec reference: §4.1",Low,,v2,cpf-projection
+50,49,Task,Additional Wages and bonus modelling,,"Bonus handling with the AW ceiling computed as the annual ceiling less OW subject to CPF that year.
+
+Spec reference: §4.1
+
+Acceptance criteria:
+* AW ceiling computed per calendar year
+* Edge-case fixtures pass",Low,5,v2,engine
+51,49,Task,Multi-year rule sets including 2027 changes,,"Load historical and scheduled future rule sets, including the 1 January 2027 changes, and apply the right set at each step.
+
+Spec reference: §2.8, §4.1
+
+Acceptance criteria:
+* 2027 rule set added as a new dated set
+* Projection spanning 2026-2027 uses both sets
+* Assumptions panel lists every set used",Low,5,v2,data
+52,49,Task,Property sale and upgrade event,,"Model a sale: loan cleared, CPF principal and accrued interest refunded, grants refunded with interest, cash proceeds derived; then a second purchase.
+
+Spec reference: §2.6, §4.1
+
+Acceptance criteria:
+* Sale waterfall in the documented order
+* Second purchase supported",Low,8,v2,engine
+53,49,Task,Voluntary housing refunds,,"Model cash paid back into CPF to halt accrued interest growth.
+
+Spec reference: §4.1
+
+Acceptance criteria:
+* Refund reduces principal and future accrued interest
+* Shown on the timeline",Low,3,v2,engine
+54,49,Task,CPF LIFE payout estimates,,"Extend the projection past 65 into monthly payout estimates across plan types.
+
+Spec reference: §3.5, §4.1
+
+Acceptance criteria:
+* Plan types modelled from published parameters
+* Framed as estimates",Low,8,v2,engine
+55,49,Task,Real terms (inflation-adjusted) toggle,,"Switch the whole projection between nominal and inflation-adjusted dollars with a stated, adjustable inflation assumption.
+
+Spec reference: §2.9, §4.1
+
+Acceptance criteria:
+* All figures and charts respect the toggle
+* Inflation assumption visible and editable",Low,3,v2,frontend
+56,49,Task,Dual-member households,,"Two earners, one property, shared accrued interest.
+
+Spec reference: §4.1
+
+Acceptance criteria:
+* Two members projected together
+* Housing usage and accrued interest split per member",Low,13,v2,engine
+57,,Epic,v2: Rigour and trust,v2: Rigour and trust,"Make accuracy auditable and rule changes visible.
+
+Spec reference: §4.2",Low,,v2,cpf-projection
+58,57,Task,Sensitivity analysis,,"Show how outcomes move when salary growth, interest floors or property price change.
+
+Spec reference: §4.2
+
+Acceptance criteria:
+* User can see which assumptions materially change the result",Low,5,v2,frontend
+59,57,Task,Rule set version pinning and diff view,,"Let a user pin a projection to a rules version and see a diff when parameters change.
+
+Spec reference: §4.2
+
+Acceptance criteria:
+* Pinned version survives in shared links
+* Diff lists changed parameters with sources",Low,5,v2,frontend
+60,57,Task,Publish the validation suite,,"Open the worked-example test cases and expected values.
+
+Spec reference: §4.2, §5
+
+Acceptance criteria:
+* Test cases browsable publicly with sources",Low,2,v2,testing
+61,57,Task,Rules changelog,,"A dated record of every parameter change and its source.
+
+Spec reference: §4.2, §5
+
+Acceptance criteria:
+* Generated from differences between rule sets
+* Linked from the assumptions panel",Low,2,v2,data
+62,,Epic,v2: Interface and craft,v2: Interface and craft,"Interface refinements that help users read comparisons and discontinuities.
+
+Spec reference: §4.3",Low,,v2,cpf-projection
+63,62,Task,Animated transitions between scenarios,,"Motion that shows which curve moved and by how much.
+
+Spec reference: §4.3
+
+Acceptance criteria:
+* Respects prefers-reduced-motion
+* Interruptible when inputs change quickly",Low,3,v2,frontend
+64,62,Task,Annotated timeline milestones,,"Mark the age-55 transition, BHS reached, retirement sum crossed and loan cleared.
+
+Spec reference: §4.3
+
+Acceptance criteria:
+* Milestones come from engine events
+* Available in the table view as text",Low,3,v2,frontend
+65,62,Task,Explainer overlays for discontinuities,,"Surface the rule behind a visible discontinuity when the user scrubs past it.
+
+Spec reference: §4.3
+
+Acceptance criteria:
+* Triggered by engine events
+* Keyboard and screen-reader accessible",Low,5,v2,frontend
+66,62,Task,Export to PDF or image with provenance,,"A self-contained export carrying assumptions and the rules-as-at date.
+
+Spec reference: §4.3
+
+Acceptance criteria:
+* Export cannot be produced without the assumptions and date",Low,5,v2,frontend
+67,,Epic,v2: Platform,v2: Platform,"Distribution and persistence beyond v1. Accounts change the personal-data posture and need a fresh review.
+
+Spec reference: §4.4",Low,,v2,cpf-projection
+68,67,Task,Optional accounts with a personal data review,,"Saving and comparing scenarios over time.
+
+Spec reference: §3.5, §4.4
+
+Acceptance criteria:
+* Personal data and privacy review completed before build
+* Accounts remain optional",Low,13,v2,platform
+69,67,Task,Embeddable widget for finance writers,,"An embeddable version of the projection for third-party sites.
+
+Spec reference: §4.4
+
+Acceptance criteria:
+* Embed carries the rules-as-at stamp and framing",Low,8,v2,platform
+70,67,Task,"Publish the open, versioned rules dataset",,"Release the rule sets as a standalone versioned artefact.
+
+Spec reference: §4.4
+
+Acceptance criteria:
+* Versioned with sources and changelog
+* Licence chosen",Low,3,v2,data
