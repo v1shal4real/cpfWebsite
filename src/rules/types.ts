@@ -12,19 +12,27 @@
 
 import type { SourceId } from './sources';
 
-/** A group of parameters that came from one published page. */
-export interface Sourced {
-  /** The CPF Board (or MOH) page this group was transcribed from. */
+/**
+ * A group of parameters and the page it was read from.
+ *
+ * `sourceId` is the page for the group as a whole. CPF Board does not always
+ * publish a group on one page, so a field stated somewhere else names its own
+ * page in `fieldSources`. Resolve a single figure's source with `sourceFor`
+ * rather than reading `sourceId` directly, or a figure from another page will
+ * be attributed to the wrong one.
+ */
+export interface Sourced<Field extends string = never> {
   sourceId: SourceId;
+  fieldSources?: Partial<Record<Field, SourceId>>;
 }
 
 /** Wage ceilings and the annual contribution cap. */
-export interface WageCeilings extends Sourced {
+export interface WageCeilings extends Sourced<'annualLimit'> {
   /** Ordinary Wages subject to CPF, per month. */
   ordinaryWageCeiling: number;
   /** Ordinary plus additional wages subject to CPF, per calendar year. */
   annualSalaryCeiling: number;
-  /** Maximum total mandatory contribution per calendar year. */
+  /** Maximum total mandatory and voluntary contributions per calendar year. */
   annualLimit: number;
 }
 
@@ -90,20 +98,33 @@ export interface InterestRules extends Sourced {
   extraInterestOnOrdinaryCreditedTo: 'special-or-retirement';
 }
 
-export interface Thresholds extends Sourced {
+export interface Thresholds
+  extends Sourced<'basicHealthcareSum' | 'basicRetirementSum' | 'enhancedRetirementSum'> {
   /** Cap on MediSave. Revised annually below 65, then fixed for life at 65. */
   basicHealthcareSum: number;
+  /** Fixed for life by the year the member turns 55. */
   basicRetirementSum: number;
+  /** Twice the BRS. Fixed for life by the year the member turns 55. */
   fullRetirementSum: number;
+  /**
+   * Twice the current year's FRS. Unlike the BRS and FRS it is not fixed per
+   * cohort: it applies to every member aged 55 and above in that year.
+   */
   enhancedRetirementSum: number;
 }
 
-export interface HousingRules extends Sourced {
-  /** Rate at which CPF used for property accrues notional interest, compounded annually. */
+export interface HousingRules extends Sourced<'hdbLoanRetentionCap' | 'concessionaryLoanRate'> {
+  /**
+   * Rate at which CPF used for property accrues interest, compounded annually.
+   * CPF Board defines it as what the savings would have earned had they stayed
+   * in the account, so it tracks the prevailing Ordinary Account rate. It is
+   * recorded separately so a rule set can say so explicitly, and a test holds
+   * the two equal.
+   */
   accruedInterestRate: number;
   /** Ordinary Account balance an HDB-loan buyer may elect to retain. */
   hdbLoanRetentionCap: number;
-  /** HDB concessionary loan rate, pegged above the Ordinary Account rate. */
+  /** HDB concessionary loan rate, pegged 0.1 points above the Ordinary Account rate. */
   concessionaryLoanRate: number;
 }
 
@@ -117,8 +138,12 @@ export interface RuleSet {
   /** ISO date after which it no longer applies, or `null` if it is the latest. */
   effectiveTo: string | null;
   /**
-   * Whether every figure in this set has been re-checked against its primary
-   * source. The interface must say so when this is false.
+   * Whether every figure present in this set has been checked against the page
+   * its source names. The interface says so when this is false.
+   *
+   * This is a statement about correctness, not completeness. A set can be
+   * verified and still be missing figures — those gaps are marked TODO in the
+   * set itself, and the engine must refuse to run into them.
    */
   verified: boolean;
   wageCeilings: WageCeilings;

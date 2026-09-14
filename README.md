@@ -41,6 +41,6 @@ docs/
 ## Status
 
 - Design system and app shell: in place.
-- Rule set for 1 January 2026: transcribed from the spec, **not yet verified**
-  against CPF Board sources. The UI shows an "Unverified" badge until it is.
+- Rule set for 1 January 2026: every figure verified against CPF Board sources
+  on 14 September 2026. Contribution rates above age 55 are not yet encoded.
 - Projection engine: not started.

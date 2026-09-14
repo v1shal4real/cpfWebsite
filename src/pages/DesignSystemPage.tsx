@@ -60,7 +60,7 @@ import {
 import { Container } from '@/components/layout/AppShell';
 import { RulesStamp } from '@/components/layout/RulesStamp';
 import { formatMoney, formatMoneyCompact, formatPercent } from '@/lib/format';
-import { CURRENT_RULE_SET, bandForAge } from '@/rules';
+import { CURRENT_RULE_SET, bandForAge, sourceFor } from '@/rules';
 import { ALL_SERIES, BALANCE_SERIES, SERIES, type SeriesKey } from '@/theme/series';
 
 /**
@@ -182,7 +182,7 @@ export function DesignSystemPage() {
                 Full Retirement Sum of <Money value={CURRENT_RULE_SET.thresholds.fullRetirementSum} />
               </>
             }
-            source={<SourceLink sourceId="retirementSums" variant="chip" />}
+            source={<SourceLink sourceId={sourceFor(CURRENT_RULE_SET.thresholds, 'fullRetirementSum')} variant="chip" />}
           />
           <StatTile
             size="lg"
@@ -196,7 +196,7 @@ export function DesignSystemPage() {
                 compounded
               </>
             }
-            source={<SourceLink sourceId="housingRefund" variant="chip" />}
+            source={<SourceLink sourceId={sourceFor(CURRENT_RULE_SET.housing, 'accruedInterestRate')} variant="chip" />}
             className="sm:col-span-2 lg:col-span-1"
           />
         </div>
@@ -493,7 +493,7 @@ export function DesignSystemPage() {
             <CardHeader
               title="Wage ceilings"
               description={`Effective from ${CURRENT_RULE_SET.label}`}
-              actions={<SourceLink sourceId={CURRENT_RULE_SET.wageCeilings.sourceId} variant="chip" />}
+              actions={<SourceLink sourceId={sourceFor(CURRENT_RULE_SET.wageCeilings)} variant="chip" />}
             />
             <CardBody>
               <DefinitionList
@@ -509,7 +509,7 @@ export function DesignSystemPage() {
             <CardHeader
               title="Interest"
               description="Floors, and the extra-interest tier"
-              actions={<SourceLink sourceId={CURRENT_RULE_SET.interest.sourceId} variant="chip" />}
+              actions={<SourceLink sourceId={sourceFor(CURRENT_RULE_SET.interest)} variant="chip" />}
             />
             <CardBody>
               <Disclosure title="Base rates" summary="2.5% – 4%" defaultOpen>
