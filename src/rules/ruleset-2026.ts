@@ -3,30 +3,32 @@ import type { RuleSet } from './types';
 /**
  * CPF rules in force from 1 January 2026.
  *
- * Transcribed from the build specification. UNVERIFIED against the primary
- * sources — `verified` is `false` and the interface says so until each figure
- * has been re-checked on the page named in its `sourceId`.
+ * Verified on 14 September 2026: every figure below was read off the page its
+ * source names and matched. No figure needed correcting. The rates stated for
+ * 1 January 2026 were still in force for the quarter to 30 September 2026.
  *
- * Two gaps are deliberate and marked TODO rather than guessed at, because a
- * plausible-looking wrong number is worse here than an obvious hole:
+ * Verified means correct, not complete. Two gaps remain, deliberately marked
+ * TODO rather than filled from anywhere but a primary source:
  *
- *   - Contribution rates above age 55 step down across four further bands. The
- *     spec only states the 55-and-below band, so only that band is encoded.
- *     The engine must refuse to project past 55 until the rest are filled in.
- *   - The Basic Healthcare Sum is revised annually for members below 65 and the
- *     retirement sums rise for each cohort. A single figure is correct only for
- *     the 2026 cohort; projecting a 30-year-old to 55 needs the escalation
- *     series, which belongs in its own dated sets (spec section 4.1).
+ *   - Contribution rates above age 55. Only the 55-and-below band is encoded.
+ *     The engine must refuse to project past 55 until the rest are added.
+ *   - Escalation. The Basic Healthcare Sum is revised annually for members
+ *     below 65 and the retirement sums rise for each cohort, so these figures
+ *     are correct for 2026 only. Projecting a 30-year-old to 55 needs the
+ *     escalation series, which belongs in its own dated data.
  */
 export const RULE_SET_2026: RuleSet = {
   id: 'sg-cpf-2026-01',
   label: '1 January 2026',
   effectiveFrom: '2026-01-01',
   effectiveTo: null,
-  verified: false,
+  verified: true,
 
   wageCeilings: {
-    sourceId: 'contributionRates',
+    // The OW ceiling page states both the $8,000 monthly ceiling and the
+    // $102,000 annual salary ceiling; the Annual Limit is on its own page.
+    sourceId: 'ordinaryWageCeiling',
+    fieldSources: { annualLimit: 'annualLimit' },
     ordinaryWageCeiling: 8_000,
     annualSalaryCeiling: 102_000,
     annualLimit: 37_740,
@@ -35,23 +37,26 @@ export const RULE_SET_2026: RuleSet = {
   contributionRates: {
     sourceId: 'contributionRates',
     bands: [
-      // TODO(verify): bands above 55 are not stated in the spec. Fill from the
-      // primary source before the engine is allowed to project past age 55.
+      // TODO: the four bands above 55 are published on the source page but are
+      // not yet encoded. Add them before the engine is allowed to project past
+      // age 55.
       { throughAge: 55, employee: 0.2, employer: 0.17 },
     ],
   },
 
   allocation: {
     sourceId: 'allocationRates',
-    // Ratios of the total contribution. MediSave is computed first, then
-    // Special or Retirement; the remainder falls to Ordinary. The `ordinary`
-    // figure is recorded for display and cross-checking, not for the engine to
-    // multiply by directly.
+    // Ratios of the total contribution, exactly as published. MediSave is
+    // computed first, then Special or Retirement; the remainder falls to
+    // Ordinary. The `ordinary` figure is recorded for display and
+    // cross-checking, not for the engine to multiply by directly.
     bands: [
       { throughAge: 35, ordinary: 0.6217, specialOrRetirement: 0.1621, medisave: 0.2162 },
       { throughAge: 45, ordinary: 0.5677, specialOrRetirement: 0.1891, medisave: 0.2432 },
       { throughAge: 50, ordinary: 0.5136, specialOrRetirement: 0.2162, medisave: 0.2702 },
       { throughAge: 55, ordinary: 0.4055, specialOrRetirement: 0.3108, medisave: 0.2837 },
+      // From 55 the second column is the Retirement Account, up to the Full
+      // Retirement Sum; above it, that share goes to the Ordinary Account.
       { throughAge: 60, ordinary: 0.353, specialOrRetirement: 0.3382, medisave: 0.3088 },
       { throughAge: 65, ordinary: 0.14, specialOrRetirement: 0.44, medisave: 0.42 },
       { throughAge: 70, ordinary: 0.0607, specialOrRetirement: 0.303, medisave: 0.6363 },
@@ -61,6 +66,8 @@ export const RULE_SET_2026: RuleSet = {
 
   interest: {
     sourceId: 'interestRates',
+    // Floors. The 4% floor on Special, MediSave and Retirement monies runs to
+    // 31 December 2026 and is extended by decision, not by default.
     ordinary: 0.025,
     special: 0.04,
     medisave: 0.04,
@@ -72,16 +79,23 @@ export const RULE_SET_2026: RuleSet = {
       { amount: 30_000, rate: 0.02 },
       { amount: 30_000, rate: 0.01 },
     ],
-    // No more than $20,000 of the tier may be drawn from the Ordinary Account.
-    // This sub-cap is the mechanism the whole product exists to make visible.
+    // No more than $20,000 of the tier may be drawn from the Ordinary Account,
+    // at any age. This sub-cap is the mechanism the product exists to show.
     ordinaryAccountExtraInterestCap: 20_000,
     extraInterestOnOrdinaryCreditedTo: 'special-or-retirement',
+    // For the engine (see the `interestComputation` source): interest is
+    // computed monthly, then credited and compounded annually. Money received
+    // in a month starts earning from the next month; money withdrawn stops
+    // earning from the month it leaves.
   },
 
   thresholds: {
-    sourceId: 'retirementSums',
-    // TODO(verify): BHS comes from the Ministry of Health announcement, not the
-    // retirement sums page. Split the sourceId when the figures are checked.
+    sourceId: 'fullRetirementSum',
+    fieldSources: {
+      basicHealthcareSum: 'newsRelease2026Q1',
+      basicRetirementSum: 'basicRetirementSum',
+      enhancedRetirementSum: 'enhancedRetirementSum',
+    },
     basicHealthcareSum: 79_000,
     basicRetirementSum: 110_200,
     fullRetirementSum: 220_400,
@@ -89,8 +103,14 @@ export const RULE_SET_2026: RuleSet = {
   },
 
   housing: {
-    sourceId: 'housing',
+    sourceId: 'housingAccruedInterest',
+    fieldSources: {
+      hdbLoanRetentionCap: 'housingLoanRetention',
+      concessionaryLoanRate: 'newsRelease2026Q1',
+    },
+    // The prevailing Ordinary Account rate, compounded annually.
     accruedInterestRate: 0.025,
+    // Bank-loan buyers may retain any amount, so only the HDB cap is a rule.
     hdbLoanRetentionCap: 20_000,
     concessionaryLoanRate: 0.026,
   },

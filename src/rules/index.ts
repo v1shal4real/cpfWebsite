@@ -1,4 +1,5 @@
 import { RULE_SET_2026 } from './ruleset-2026';
+import type { SourceId } from './sources';
 import type { RuleSet } from './types';
 
 export type { RuleSet } from './types';
@@ -44,6 +45,22 @@ export function resolveRuleSet(isoDate: string): RuleSet {
 /** Looks a rule set up by its pinned id, for shared links. */
 export function ruleSetById(id: string): RuleSet | undefined {
   return RULE_SETS.find((set) => set.id === id);
+}
+
+/**
+ * The source page for one figure in a rule-set group.
+ *
+ * Use this instead of reading `group.sourceId`: a group's figures are not
+ * always published on the same page, and a figure with its own entry in
+ * `fieldSources` must link there. With no field, returns the group's page.
+ */
+export function sourceFor<G extends { sourceId: SourceId; fieldSources?: object }>(
+  group: G,
+  field?: Exclude<keyof G, 'sourceId' | 'fieldSources'>,
+): SourceId {
+  if (field === undefined) return group.sourceId;
+  const overrides = group.fieldSources as Partial<Record<PropertyKey, SourceId>> | undefined;
+  return overrides?.[field] ?? group.sourceId;
 }
 
 /**
