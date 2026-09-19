@@ -7,11 +7,12 @@ import type { RuleSet } from './types';
  * source names and matched. No figure needed correcting. The rates stated for
  * 1 January 2026 were still in force for the quarter to 30 September 2026.
  *
- * Verified means correct, not complete. Two gaps remain, deliberately marked
+ * Contribution rates for every age band were read off their source page on
+ * 19 September 2026.
+ *
+ * Verified means correct, not complete. One gap remains, deliberately marked
  * TODO rather than filled from anywhere but a primary source:
  *
- *   - Contribution rates above age 55. Only the 55-and-below band is encoded.
- *     The engine must refuse to project past 55 until the rest are added.
  *   - Escalation. The Basic Healthcare Sum is revised annually for members
  *     below 65 and the retirement sums rise for each cohort, so these figures
  *     are correct for 2026 only. Projecting a 30-year-old to 55 needs the
@@ -36,11 +37,15 @@ export const RULE_SET_2026: RuleSet = {
 
   contributionRates: {
     sourceId: 'contributionRates',
+    // For monthly wages above $750, for Singapore Citizens and for SPRs from
+    // their third year. Each band's total matches the denominator of its
+    // allocation ratios below.
     bands: [
-      // TODO: the four bands above 55 are published on the source page but are
-      // not yet encoded. Add them before the engine is allowed to project past
-      // age 55.
       { throughAge: 55, employee: 0.2, employer: 0.17 },
+      { throughAge: 60, employee: 0.18, employer: 0.16 },
+      { throughAge: 65, employee: 0.125, employer: 0.125 },
+      { throughAge: 70, employee: 0.075, employer: 0.09 },
+      { throughAge: null, employee: 0.05, employer: 0.075 },
     ],
   },
 

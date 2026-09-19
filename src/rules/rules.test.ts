@@ -42,6 +42,25 @@ describe('rule set data integrity', () => {
       expect(bounds.slice(0, -1)).not.toContain(null);
     }
     expect(set.allocation.bands.at(-1)?.throughAge).toBeNull();
+    expect(set.contributionRates.bands.at(-1)?.throughAge).toBeNull();
+  });
+
+  it.each(eachSet)('%s: contribution bands cover the allocation bands from 55', (_id, set) => {
+    // Allocation splits finer below 55 than contribution rates do, but from 55
+    // the two tables change at the same ages.
+    const contribution = set.contributionRates.bands.map((band) => band.throughAge);
+    const allocation = set.allocation.bands
+      .map((band) => band.throughAge)
+      .filter((bound) => bound === null || bound >= 55);
+    expect(contribution).toEqual(allocation);
+  });
+
+  it.each(eachSet)('%s: contribution shares are fractions of wages', (_id, set) => {
+    for (const band of set.contributionRates.bands) {
+      expect(band.employee).toBeGreaterThan(0);
+      expect(band.employer).toBeGreaterThan(0);
+      expect(band.employee + band.employer).toBeLessThan(1);
+    }
   });
 
   it.each(eachSet)('%s: every group and field override cites a registered source', (_id, set) => {
@@ -120,6 +139,24 @@ describe('bandForAge', () => {
   it('falls through to the open-ended final band', () => {
     expect(bandForAge(bands, 71)?.throughAge).toBeNull();
     expect(bandForAge(bands, 95)?.throughAge).toBeNull();
+  });
+});
+
+describe('contribution rates', () => {
+  const bands = CURRENT_RULE_SET.contributionRates.bands;
+
+  it('resolves a band at every age a projection can reach', () => {
+    for (let age = 16; age <= 100; age++) {
+      expect(bandForAge(bands, age), `age ${age}`).toBeDefined();
+    }
+  });
+
+  it('switches bands on the published boundaries', () => {
+    expect(bandForAge(bands, 55)).toMatchObject({ employee: 0.2, employer: 0.17 });
+    expect(bandForAge(bands, 56)).toMatchObject({ employee: 0.18, employer: 0.16 });
+    expect(bandForAge(bands, 65)).toMatchObject({ employee: 0.125, employer: 0.125 });
+    expect(bandForAge(bands, 70)).toMatchObject({ employee: 0.075, employer: 0.09 });
+    expect(bandForAge(bands, 71)).toMatchObject({ employee: 0.05, employer: 0.075 });
   });
 });
 
