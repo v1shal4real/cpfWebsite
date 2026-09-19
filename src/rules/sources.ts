@@ -35,7 +35,7 @@ export const SOURCES = {
     title: 'How much CPF contributions to pay',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/employer/employer-obligations/how-much-cpf-contributions-to-pay',
-    retrievedOn: '2026-09-14',
+    retrievedOn: '2026-09-19',
   },
   ordinaryWageCeiling: {
     id: 'ordinaryWageCeiling',
