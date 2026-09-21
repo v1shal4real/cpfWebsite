@@ -51,6 +51,36 @@ export const SOURCES = {
     url: 'https://www.cpf.gov.sg/service/article/what-is-the-cpf-annual-limit',
     retrievedOn: '2026-09-14',
   },
+  /**
+   * The full rate table behind the summary on `contributionRates`. It states
+   * the rounding steps and the maximum contribution on Ordinary Wages for
+   * each band, which the engine fixtures use as OW ceiling cases.
+   */
+  contributionRateTable2026: {
+    id: 'contributionRateTable2026',
+    title: 'CPF Contribution Rate Table from 1 January 2026',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/content/dam/web/employer/employer-obligations/documents/CPFcontributionratesfrom1Jan2026.pdf',
+    retrievedOn: '2026-09-19',
+  },
+  /**
+   * Superseded rates. Cited only because CPF Board's worked examples on the
+   * Additional Wage ceiling were computed under them.
+   */
+  contributionRateTable2024: {
+    id: 'contributionRateTable2024',
+    title: 'CPF Contribution Rate Table from 1 January to 31 December 2024',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/content/dam/web/employer/employer-obligations/documents/CPFcontributionandallocationratesfrom1Jan2024.pdf',
+    retrievedOn: '2026-09-19',
+  },
+  additionalWageCeilingExamples: {
+    id: 'additionalWageCeilingExamples',
+    title: 'Examples for computation of Additional Wage (AW) Ceiling',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/content/dam/web/employer/employer-obligations/documents/ExamplesonAdditionalWageCeilingComputation.pdf',
+    retrievedOn: '2026-09-19',
+  },
   allocationRates: {
     id: 'allocationRates',
     title: 'CPF Allocation Rates from 1 January 2026',
@@ -67,6 +97,18 @@ export const SOURCES = {
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/member/growing-your-savings/earning-higher-returns/earning-attractive-interest',
     retrievedOn: '2026-09-14',
+  },
+  /**
+   * States the extra-interest tiers, the order accounts count towards them,
+   * and where extra interest earned on the Ordinary Account is credited. The
+   * `interestRates` page gives the tiers but not the order.
+   */
+  extraInterest: {
+    id: 'extraInterest',
+    title: 'How much extra interest can I earn on my CPF savings?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/how-much-extra-interest-can-i-earn-on-my-cpf-savings',
+    retrievedOn: '2026-09-20',
   },
   interestComputation: {
     id: 'interestComputation',
