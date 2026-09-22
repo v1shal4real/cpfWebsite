@@ -8,6 +8,7 @@
  */
 
 import type { SourceId } from '@/rules';
+import type { AccountName } from '../types';
 
 /** Where on a source a fixture was read, precise enough to find it again. */
 export interface FixtureCitation {
@@ -87,15 +88,13 @@ export interface Derived {
   workings: string[];
 }
 
-/** Balances per account. Absent accounts are zero. */
-export interface AccountAmounts {
-  ordinary?: number;
-  special?: number;
-  medisave?: number;
-  retirement?: number;
-}
+/**
+ * Balances per account, in cents. Absent accounts are zero, which keeps a
+ * fixture to the accounts its example actually mentions.
+ */
+export type AccountAmounts = Partial<Record<AccountName, number>>;
 
-export type AccountName = keyof AccountAmounts;
+export type { AccountName };
 
 export interface BaseInterestFixture extends Derived {
   age: number;
