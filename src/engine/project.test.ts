@@ -167,6 +167,46 @@ describe('contributions through the loop', () => {
   });
 });
 
+describe('allocation through the loop', () => {
+  it('credits each month exactly its contribution, split by account', () => {
+    const result = project(input({ startAge: 30, endAge: 32 }));
+    for (const month of result.months) {
+      const { allocation, total } = month.contribution;
+      expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(total);
+      for (const account of ['ordinary', 'special', 'medisave', 'retirement'] as const) {
+        expect(month.closingBalances[account] - month.openingBalances[account]).toBe(allocation[account]);
+      }
+    }
+  });
+
+  it('allocates $1,850 at 30 as MediSave, then Special, then the rest to Ordinary', () => {
+    const [first] = project(input({ startAge: 30, endAge: 31 })).months;
+    // $1,850 x 21.62% = $399.97, x 16.21% = $299.885, which rounds up.
+    expect(first?.contribution.allocation).toEqual({
+      medisave: 39_997,
+      special: 29_989,
+      ordinary: 185_000 - 39_997 - 29_989,
+      retirement: 0,
+    });
+  });
+
+  it('routes the second share to Ordinary once the Retirement Account holds the FRS', () => {
+    const fullRetirementSum = CURRENT_RULE_SET.thresholds.fullRetirementSum * 100;
+    const result = project(
+      input({
+        startAge: 57,
+        endAge: 58,
+        openingBalances: { ordinary: 0, special: 0, medisave: 0, retirement: fullRetirementSum },
+      }),
+    );
+    for (const month of result.months) {
+      expect(month.contribution.allocation.retirement).toBe(0);
+      expect(month.contribution.allocation.special).toBe(0);
+      expect(month.closingBalances.retirement).toBe(fullRetirementSum);
+    }
+  });
+});
+
 describe('summary', () => {
   it('reports the closing position and the figures at 55', () => {
     const result = project(input({ startAge: 30, endAge: 65 }));
