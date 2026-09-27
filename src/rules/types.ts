@@ -46,8 +46,18 @@ export interface ContributionBand {
   employer: number;
 }
 
-export interface ContributionRates extends Sourced {
+export interface ContributionRates extends Sourced<'fullRatesFromMonthlyWage'> {
   bands: ContributionBand[];
+  /**
+   * Monthly total wages above which the rates in `bands` apply in full.
+   *
+   * At or below this figure CPF Board publishes graduated rates instead: no
+   * contribution at all on $50 or less, employer-only below $500, and a
+   * tapering employee share up to this threshold. Those brackets are not
+   * encoded here, so the engine refuses a wage at or below it rather than
+   * applying the full rates to a wage they do not cover.
+   */
+  fullRatesFromMonthlyWage: number;
 }
 
 /**

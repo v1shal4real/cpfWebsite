@@ -37,6 +37,10 @@ export const RULE_SET_2026: RuleSet = {
 
   contributionRates: {
     sourceId: 'contributionRates',
+    // The summary page states the rates; the rate table states the wage
+    // brackets they apply to.
+    fieldSources: { fullRatesFromMonthlyWage: 'contributionRateTable2026' },
+    fullRatesFromMonthlyWage: 750,
     // For monthly wages above $750, for Singapore Citizens and for SPRs from
     // their third year. Each band's total matches the denominator of its
     // allocation ratios below.
