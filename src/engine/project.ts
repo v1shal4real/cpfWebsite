@@ -12,16 +12,21 @@
  * the only one recorded so far, so every month currently resolves to it, and
  * the moment a second dated set is added the loop starts switching on its own.
  *
- * What this loop does not do yet: contributions, allocation, interest,
- * housing and the age-55 transition each have their own ticket, and each fills
- * in the part of `ProjectionMonth` it owns. Until then those fields are zero
- * and balances carry forward unchanged — the shape of a projection without the
- * figures. Anything reading this output should treat a flat line as "not
- * implemented yet" rather than as a result.
+ * What this loop does not do yet: allocation, interest, housing and the
+ * age-55 transition each have their own ticket, and each fills in the part of
+ * `ProjectionMonth` it owns. Contributions are computed, but until allocation
+ * lands there is nowhere to put them, so balances still carry forward
+ * unchanged. Anything reading this output should treat a flat balance line as
+ * "not implemented yet" rather than as a result.
+ *
+ * A wage at or below the rule set's `fullRatesFromMonthlyWage` makes the
+ * contribution step throw, because no rule set encodes CPF's graduated rates
+ * for low wages. Input validation is where that should be caught and explained.
  */
 
 import { resolveRuleSet } from '@/rules';
 import { addMonths, monthToIsoDate, parseMonth } from './calendar';
+import { NO_CONTRIBUTIONS_YET, contributionForMonth, type YearToDate } from './contributions';
 import type {
   AccountAmounts,
   Cents,
@@ -75,20 +80,43 @@ export function project(input: ProjectionInput): ProjectionResult {
 
   let balances = copy(input.openingBalances);
   let ordinaryWage = input.monthlyOrdinaryWage;
+  // The ceilings that count across a year are per calendar year, so this
+  // resets in January rather than on the projection's own anniversary.
+  let yearToDate: YearToDate = { ...NO_CONTRIBUTIONS_YET };
+  let yearInProgress = parseMonth(input.startMonth).year;
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
+    const { year, month: calendarMonth } = parseMonth(month);
     const ageInMonths = input.startAge * MONTHS_PER_YEAR + step;
     const ruleSet = resolveRuleSet(monthToIsoDate(month));
     if (ruleSetIds.at(-1) !== ruleSet.id) ruleSetIds.push(ruleSet.id);
 
-    if (isRaiseMonth(input, step, parseMonth(month).month)) {
+    if (year !== yearInProgress) {
+      yearToDate = { ...NO_CONTRIBUTIONS_YET };
+      yearInProgress = year;
+    }
+
+    if (isRaiseMonth(input, step, calendarMonth)) {
       ordinaryWage = Math.round(ordinaryWage * (1 + input.salaryGrowth.rate));
     }
 
+    const contribution = contributionForMonth({
+      rules: ruleSet,
+      ageInMonths,
+      ordinaryWage,
+      yearToDate,
+    });
+    yearToDate = {
+      ordinaryWagesSubjectToCpf:
+        yearToDate.ordinaryWagesSubjectToCpf + contribution.ordinaryWageSubjectToCpf,
+      contributions: yearToDate.contributions + contribution.total,
+    };
+
     const openingBalances = copy(balances);
-    // TODO: contributions, interest, housing and the age-55 transition are
-    // each another ticket. Until they land, a month changes nothing.
+    // TODO: allocation decides which accounts this month's contribution lands
+    // in, and interest and housing move balances too. Until those tickets
+    // land, a month changes no balance.
     const closingBalances = copy(openingBalances);
 
     months.push({
@@ -99,10 +127,8 @@ export function project(input: ProjectionInput): ProjectionResult {
       closingBalances,
       ordinaryWage,
       contribution: {
-        ordinaryWageSubjectToCpf: 0,
-        total: 0,
-        employee: 0,
-        employer: 0,
+        ...contribution,
+        // TODO: KAN allocation ticket splits this across the accounts.
         allocation: zero(),
       },
       interest: {

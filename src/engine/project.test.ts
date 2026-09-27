@@ -115,6 +115,58 @@ describe('salary growth', () => {
   });
 });
 
+describe('contributions through the loop', () => {
+  it('computes a contribution for every month and totals them', () => {
+    const result = project(input({ startAge: 30, endAge: 31 }));
+    const monthly = result.months.at(0)?.contribution;
+    // $5,000 a month at 37%, of which the employee pays 20%.
+    expect(monthly?.ordinaryWageSubjectToCpf).toBe(500_000);
+    expect(monthly?.total).toBe(185_000);
+    expect(monthly?.employee).toBe(100_000);
+    expect(result.summary.totals.contributions).toBe(185_000 * result.months.length);
+  });
+
+  it('caps a high earner at the Ordinary Wage ceiling every month', () => {
+    const ceiling = CURRENT_RULE_SET.wageCeilings.ordinaryWageCeiling * 100;
+    const result = project(input({ monthlyOrdinaryWage: 2_000_000, startAge: 30, endAge: 31 }));
+    for (const month of result.months) {
+      expect(month.contribution.ordinaryWageSubjectToCpf).toBe(ceiling);
+      expect(month.contribution.total).toBe(296_000);
+    }
+  });
+
+  it('applies the age band from the month after the 55th birthday', () => {
+    const result = project(input({ startMonth: '2026-06', startAge: 55, endAge: 56 }));
+    const [birthdayMonth, monthAfter] = result.months;
+    // 37% in June, 34% from July.
+    expect(birthdayMonth?.contribution.total).toBe(185_000);
+    expect(monthAfter?.contribution.total).toBe(170_000);
+  });
+
+  it('raises contributions with the wage', () => {
+    const result = project(
+      input({ startAge: 30, endAge: 31, salaryGrowth: { rate: 0.1, appliedInMonth: 1 } }),
+    );
+    const before = result.months.find((month) => month.month === '2026-12');
+    const after = result.months.find((month) => month.month === '2027-01');
+    expect(before?.contribution.total).toBe(185_000);
+    // $5,500 a month at 37% = $2,035.
+    expect(after?.contribution.total).toBe(203_500);
+  });
+
+  it('counts the annual ceilings per calendar year, not per projection year', () => {
+    // A wage at the ceiling for a whole year uses $96,000 of the $102,000
+    // annual allowance, so nothing is ever curtailed and January starts fresh.
+    const ceiling = CURRENT_RULE_SET.wageCeilings.ordinaryWageCeiling * 100;
+    const result = project(input({ monthlyOrdinaryWage: ceiling, startAge: 30, endAge: 33 }));
+    const januaries = result.months.filter((month) => month.month.endsWith('-01'));
+    expect(januaries.length).toBeGreaterThan(1);
+    for (const month of result.months) {
+      expect(month.contribution.ordinaryWageSubjectToCpf).toBe(ceiling);
+    }
+  });
+});
+
 describe('summary', () => {
   it('reports the closing position and the figures at 55', () => {
     const result = project(input({ startAge: 30, endAge: 65 }));
