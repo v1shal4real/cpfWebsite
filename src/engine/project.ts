@@ -12,12 +12,12 @@
  * the only one recorded so far, so every month currently resolves to it, and
  * the moment a second dated set is added the loop starts switching on its own.
  *
- * What this loop does not do yet: allocation, interest, housing and the
- * age-55 transition each have their own ticket, and each fills in the part of
- * `ProjectionMonth` it owns. Contributions are computed, but until allocation
- * lands there is nowhere to put them, so balances still carry forward
- * unchanged. Anything reading this output should treat a flat balance line as
- * "not implemented yet" rather than as a result.
+ * What this loop does not do yet: interest, housing, the Basic Healthcare Sum
+ * cap and the age-55 transition each have their own ticket, and each fills in
+ * the part of `ProjectionMonth` it owns. Contributions are computed and
+ * allocated, so balances grow by contributions alone. Anything reading this
+ * output should treat the missing interest as "not implemented yet" rather
+ * than as a result.
  *
  * A wage at or below the rule set's `fullRatesFromMonthlyWage` makes the
  * contribution step throw, because no rule set encodes CPF's graduated rates
@@ -25,6 +25,7 @@
  */
 
 import { resolveRuleSet } from '@/rules';
+import { allocateContribution } from './allocation';
 import { addMonths, monthToIsoDate, parseMonth } from './calendar';
 import { NO_CONTRIBUTIONS_YET, contributionForMonth, type YearToDate } from './contributions';
 import type {
@@ -47,6 +48,25 @@ function zero(): AccountAmounts {
 
 function copy(balances: AccountAmounts): AccountAmounts {
   return { ...balances };
+}
+
+function add(a: AccountAmounts, b: AccountAmounts): AccountAmounts {
+  return {
+    ordinary: a.ordinary + b.ordinary,
+    special: a.special + b.special,
+    medisave: a.medisave + b.medisave,
+    retirement: a.retirement + b.retirement,
+  };
+}
+
+/**
+ * The month this member turns 55, which may fall before the projection starts.
+ *
+ * The retirement sums that fix for a cohort are the ones in force in that
+ * month, so both the loop and the summary read them from its rule set.
+ */
+function monthTurning55(input: ProjectionInput): string {
+  return addMonths(input.startMonth, AGE_55_IN_MONTHS - input.startAge * MONTHS_PER_YEAR);
 }
 
 /** Rule-set thresholds are published in dollars; the engine works in cents. */
@@ -84,6 +104,11 @@ export function project(input: ProjectionInput): ProjectionResult {
   // resets in January rather than on the projection's own anniversary.
   let yearToDate: YearToDate = { ...NO_CONTRIBUTIONS_YET };
   let yearInProgress = parseMonth(input.startMonth).year;
+  // TODO: the age-55 transition ticket owns this figure and records it on its
+  // event. Until then it is read here from the cohort's rule set.
+  const fullRetirementSum = toCents(
+    resolveRuleSet(monthToIsoDate(monthTurning55(input))).thresholds.fullRetirementSum,
+  );
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
@@ -114,10 +139,16 @@ export function project(input: ProjectionInput): ProjectionResult {
     };
 
     const openingBalances = copy(balances);
-    // TODO: allocation decides which accounts this month's contribution lands
-    // in, and interest and housing move balances too. Until those tickets
-    // land, a month changes no balance.
-    const closingBalances = copy(openingBalances);
+    const allocation = allocateContribution({
+      rules: ruleSet,
+      ageInMonths,
+      total: contribution.total,
+      retirementBalance: openingBalances.retirement,
+      fullRetirementSum,
+    });
+    // TODO: interest, housing and the Basic Healthcare Sum cap move balances
+    // too, each in its own ticket.
+    const closingBalances = add(openingBalances, allocation);
 
     months.push({
       month,
@@ -128,8 +159,7 @@ export function project(input: ProjectionInput): ProjectionResult {
       ordinaryWage,
       contribution: {
         ...contribution,
-        // TODO: KAN allocation ticket splits this across the accounts.
-        allocation: zero(),
+        allocation,
       },
       interest: {
         baseAccrued: zero(),
