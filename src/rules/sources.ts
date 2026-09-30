@@ -108,7 +108,7 @@ export const SOURCES = {
     title: 'How much extra interest can I earn on my CPF savings?',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/service/article/how-much-extra-interest-can-i-earn-on-my-cpf-savings',
-    retrievedOn: '2026-09-20',
+    retrievedOn: '2026-09-30',
   },
   interestComputation: {
     id: 'interestComputation',

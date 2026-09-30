@@ -13,14 +13,16 @@
  * the moment a second dated set is added the loop starts switching on its own.
  *
  * Each month, in order: the wage is raised if it is the raise month, the
- * contribution is computed and allocated, base interest is accrued on the
- * month's opening balances, and in December the year's interest is credited.
+ * contribution is computed and allocated, base and extra interest are accrued
+ * on the month's opening balances, and in December the year's interest is
+ * credited, with extra interest earned on the Ordinary Account landing in the
+ * Special or Retirement Account.
  * Interest is accrued before this month's contribution lands, which is how a
  * contribution comes to earn only from the following month.
  *
- * What this loop does not do yet: extra interest, housing, the Basic
- * Healthcare Sum cap and the age-55 transition each have their own ticket, and
- * each fills in the part of `ProjectionMonth` it owns. Anything reading this
+ * What this loop does not do yet: housing, the Basic Healthcare Sum cap and
+ * the age-55 transition each have their own ticket, and each fills in the part
+ * of `ProjectionMonth` it owns. Anything reading this
  * output should treat the missing parts as "not implemented yet" rather than
  * as a result.
  *
@@ -42,7 +44,7 @@ import { NO_CONTRIBUTIONS_YET, contributionForMonth, type YearToDate } from './c
 import {
   CREDITING_MONTH,
   NOTHING_ACCRUED,
-  accrueBaseInterest,
+  accrueInterest,
   creditInterest,
   earningBalances,
   type AccruedThisYear,
@@ -173,12 +175,13 @@ export function project(input: ProjectionInput): ProjectionResult {
     // from next month. TODO: housing withdrawals are subtracted here once the
     // housing ticket records them, since they stop earning in the month they
     // leave.
-    const base = accrueBaseInterest({
+    const interest = accrueInterest({
       rules: ruleSet,
+      ageInMonths,
       earning: earningBalances(openingBalances),
       accruedThisYear,
     });
-    accruedThisYear = base.accruedThisYear;
+    accruedThisYear = interest.accruedThisYear;
     let credited = zero();
     if (calendarMonth === CREDITING_MONTH) {
       credited = creditInterest(accruedThisYear);
@@ -201,10 +204,9 @@ export function project(input: ProjectionInput): ProjectionResult {
         allocation,
       },
       interest: {
-        baseAccrued: base.baseAccrued,
-        // TODO: extra interest has its own ticket.
-        extraAccruedOn: zero(),
-        extraAccruedTo: zero(),
+        baseAccrued: interest.baseAccrued,
+        extraAccruedOn: interest.extraAccruedOn,
+        extraAccruedTo: interest.extraAccruedTo,
         credited,
       },
       events: [],

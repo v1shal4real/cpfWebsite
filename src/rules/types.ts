@@ -88,7 +88,10 @@ export interface ExtraInterestTier {
   rate: number;
 }
 
-export interface InterestRules extends Sourced {
+/** The accounts the extra-interest tiers count, by the names CPF Board uses. */
+export type ExtraInterestAccount = 'retirement' | 'ordinary' | 'special' | 'medisave';
+
+export interface InterestRules extends Sourced<'extraInterestCountingOrder'> {
   /** Base floors, as fractions per annum. */
   ordinary: number;
   special: number;
@@ -98,6 +101,13 @@ export interface InterestRules extends Sourced {
   extraTiersBelow55: ExtraInterestTier[];
   /** Tiers at age 55 and above. */
   extraTiersFrom55: ExtraInterestTier[];
+  /**
+   * The order accounts are counted towards the combined balance that fills the
+   * tiers, first to last. It decides which account's balance earns the higher
+   * tier from 55, and which accounts miss out when the tiers run out, so it is
+   * a rule rather than an implementation detail.
+   */
+  extraInterestCountingOrder: readonly ExtraInterestAccount[];
   /** How much of the extra-interest tier may be drawn from the Ordinary Account. */
   ordinaryAccountExtraInterestCap: number;
   /**

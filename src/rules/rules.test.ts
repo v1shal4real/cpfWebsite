@@ -89,6 +89,22 @@ describe('rule set data integrity', () => {
   it.each(eachSet)('%s: accrued housing interest tracks the OA rate', (_id, set) => {
     expect(set.housing.accruedInterestRate).toBe(set.interest.ordinary);
   });
+
+  it.each(eachSet)('%s: extra-interest tiers cover the same combined balance at every age', (_id, set) => {
+    // $60,000 either way: one 1% tier below 55, a 2% and a 1% tier from 55.
+    const size = (tiers: readonly { amount: number }[]) => tiers.reduce((sum, tier) => sum + tier.amount, 0);
+    expect(size(set.interest.extraTiersFrom55)).toBe(size(set.interest.extraTiersBelow55));
+    for (const tier of [...set.interest.extraTiersBelow55, ...set.interest.extraTiersFrom55]) {
+      expect(tier.amount).toBeGreaterThan(0);
+      expect(tier.rate).toBeGreaterThan(0);
+    }
+    expect(set.interest.ordinaryAccountExtraInterestCap).toBeLessThan(size(set.interest.extraTiersBelow55));
+  });
+
+  it.each(eachSet)('%s: the extra-interest counting order names every account once', (_id, set) => {
+    const order = set.interest.extraInterestCountingOrder;
+    expect([...order].sort()).toEqual(['medisave', 'ordinary', 'retirement', 'special']);
+  });
 });
 
 describe('source registry', () => {
@@ -112,6 +128,7 @@ describe('sourceFor', () => {
     expect(sourceFor(thresholds, 'basicHealthcareSum')).toBe('newsRelease2026Q1');
     expect(sourceFor(housing, 'hdbLoanRetentionCap')).toBe('housingLoanRetention');
     expect(sourceFor(wageCeilings, 'annualLimit')).toBe('annualLimit');
+    expect(sourceFor(CURRENT_RULE_SET.interest, 'extraInterestCountingOrder')).toBe('extraInterest');
   });
 
   it("falls back to the group's page", () => {
