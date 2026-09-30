@@ -115,7 +115,7 @@ export const SOURCES = {
     title: 'How is my CPF interest computed and credited into my accounts?',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/service/article/how-is-my-cpf-interest-computed-and-credited-into-my-accounts',
-    retrievedOn: '2026-09-14',
+    retrievedOn: '2026-09-30',
   },
   /**
    * The dated release for the first quarter of 2026. It is the only page that

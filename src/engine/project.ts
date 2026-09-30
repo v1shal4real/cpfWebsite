@@ -12,12 +12,23 @@
  * the only one recorded so far, so every month currently resolves to it, and
  * the moment a second dated set is added the loop starts switching on its own.
  *
- * What this loop does not do yet: interest, housing, the Basic Healthcare Sum
- * cap and the age-55 transition each have their own ticket, and each fills in
- * the part of `ProjectionMonth` it owns. Contributions are computed and
- * allocated, so balances grow by contributions alone. Anything reading this
- * output should treat the missing interest as "not implemented yet" rather
- * than as a result.
+ * Each month, in order: the wage is raised if it is the raise month, the
+ * contribution is computed and allocated, base interest is accrued on the
+ * month's opening balances, and in December the year's interest is credited.
+ * Interest is accrued before this month's contribution lands, which is how a
+ * contribution comes to earn only from the following month.
+ *
+ * What this loop does not do yet: extra interest, housing, the Basic
+ * Healthcare Sum cap and the age-55 transition each have their own ticket, and
+ * each fills in the part of `ProjectionMonth` it owns. Anything reading this
+ * output should treat the missing parts as "not implemented yet" rather than
+ * as a result.
+ *
+ * Interest accrued in a year the projection ends partway through is not
+ * credited, because CPF would not have credited it yet either. Opening
+ * balances are taken to have had any earlier interest already credited, so a
+ * projection starting mid-year credits only the months it covers in its first
+ * December.
  *
  * A wage at or below the rule set's `fullRatesFromMonthlyWage` makes the
  * contribution step throw, because no rule set encodes CPF's graduated rates
@@ -28,6 +39,14 @@ import { resolveRuleSet } from '@/rules';
 import { allocateContribution } from './allocation';
 import { addMonths, monthToIsoDate, parseMonth } from './calendar';
 import { NO_CONTRIBUTIONS_YET, contributionForMonth, type YearToDate } from './contributions';
+import {
+  CREDITING_MONTH,
+  NOTHING_ACCRUED,
+  accrueBaseInterest,
+  creditInterest,
+  earningBalances,
+  type AccruedThisYear,
+} from './interest';
 import type {
   AccountAmounts,
   Cents,
@@ -104,6 +123,9 @@ export function project(input: ProjectionInput): ProjectionResult {
   // resets in January rather than on the projection's own anniversary.
   let yearToDate: YearToDate = { ...NO_CONTRIBUTIONS_YET };
   let yearInProgress = parseMonth(input.startMonth).year;
+  // Interest earned this year and not yet credited. Reset when it is credited
+  // in December, so it never carries across a year.
+  let accruedThisYear: AccruedThisYear = { ...NOTHING_ACCRUED };
   // TODO: the age-55 transition ticket owns this figure and records it on its
   // event. Until then it is read here from the cohort's rule set.
   const fullRetirementSum = toCents(
@@ -146,9 +168,26 @@ export function project(input: ProjectionInput): ProjectionResult {
       retirementBalance: openingBalances.retirement,
       fullRetirementSum,
     });
-    // TODO: interest, housing and the Basic Healthcare Sum cap move balances
-    // too, each in its own ticket.
-    const closingBalances = add(openingBalances, allocation);
+
+    // Accrued on the opening balances, so this month's contribution earns
+    // from next month. TODO: housing withdrawals are subtracted here once the
+    // housing ticket records them, since they stop earning in the month they
+    // leave.
+    const base = accrueBaseInterest({
+      rules: ruleSet,
+      earning: earningBalances(openingBalances),
+      accruedThisYear,
+    });
+    accruedThisYear = base.accruedThisYear;
+    let credited = zero();
+    if (calendarMonth === CREDITING_MONTH) {
+      credited = creditInterest(accruedThisYear);
+      accruedThisYear = { ...NOTHING_ACCRUED };
+    }
+
+    // TODO: housing and the Basic Healthcare Sum cap move balances too, each
+    // in its own ticket.
+    const closingBalances = add(add(openingBalances, allocation), credited);
 
     months.push({
       month,
@@ -162,10 +201,11 @@ export function project(input: ProjectionInput): ProjectionResult {
         allocation,
       },
       interest: {
-        baseAccrued: zero(),
+        baseAccrued: base.baseAccrued,
+        // TODO: extra interest has its own ticket.
         extraAccruedOn: zero(),
         extraAccruedTo: zero(),
-        credited: zero(),
+        credited,
       },
       events: [],
     });
