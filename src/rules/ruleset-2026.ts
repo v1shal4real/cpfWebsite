@@ -75,6 +75,8 @@ export const RULE_SET_2026: RuleSet = {
 
   interest: {
     sourceId: 'interestRates',
+    // The counting order is stated only on the extra-interest page.
+    fieldSources: { extraInterestCountingOrder: 'extraInterest' },
     // Floors. The 4% floor on Special, MediSave and Retirement monies runs to
     // 31 December 2026 and is extended by decision, not by default.
     ordinary: 0.025,
@@ -88,6 +90,9 @@ export const RULE_SET_2026: RuleSet = {
       { amount: 30_000, rate: 0.02 },
       { amount: 30_000, rate: 0.01 },
     ],
+    // RA first (including any CPF LIFE premium balance), then OA up to its
+    // cap, then SA, then MA.
+    extraInterestCountingOrder: ['retirement', 'ordinary', 'special', 'medisave'],
     // No more than $20,000 of the tier may be drawn from the Ordinary Account,
     // at any age. This sub-cap is the mechanism the product exists to show.
     ordinaryAccountExtraInterestCap: 20_000,

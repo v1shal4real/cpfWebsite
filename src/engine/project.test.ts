@@ -213,7 +213,7 @@ describe('allocation through the loop', () => {
   });
 });
 
-describe('base interest through the loop', () => {
+describe('interest through the loop', () => {
   const ACCOUNTS = ['ordinary', 'special', 'medisave', 'retirement'] as const;
   const { interest: rates } = CURRENT_RULE_SET;
 
@@ -239,9 +239,18 @@ describe('base interest through the loop', () => {
         expect(credited, month.month).toBe(0);
         continue;
       }
+      // Base interest on each account plus extra interest by where it lands.
       const accrued = result.months
         .filter((each) => each.month.startsWith(year))
-        .reduce((sum, each) => sum + ACCOUNTS.reduce((s, a) => s + each.interest.baseAccrued[a], 0), 0);
+        .reduce(
+          (sum, each) =>
+            sum +
+            ACCOUNTS.reduce(
+              (s, a) => s + each.interest.baseAccrued[a] + each.interest.extraAccruedTo[a],
+              0,
+            ),
+          0,
+        );
       expect(credited, month.month).toBe(accrued);
       byYear.set(year, credited);
     }
@@ -253,14 +262,25 @@ describe('base interest through the loop', () => {
   });
 
   it('matches a hand computation for the first year of a projection', () => {
-    // Opening SA $10,000 at 4%, plus a $299.89 Special share landing each month.
+    // Opening OA $20,000, SA $10,000 and MA $5,000, each receiving its share of
+    // $1,850 every month. Combined balances stay under the $60,000 tier all
+    // year, and OA stays at or above its $20,000 cap, so the tier counts
+    // $20,000 of OA plus all of SA and MA.
     const result = project(input({ startMonth: '2026-01', startAge: 30, endAge: 31 }));
     const december = result.months.find((month) => month.month === '2026-12')!;
     const share = result.months[0]!.contribution.allocation.special;
-    // Month m (1-12) earns on $10,000 plus (m - 1) shares.
-    let exact = 0;
-    for (let m = 1; m <= 12; m++) exact += ((1_000_000 + (m - 1) * share) * rates.special) / 12;
-    expect(december.interest.credited.special).toBe(Math.round(exact));
+    const [tier] = rates.extraTiersBelow55;
+    const cap = rates.ordinaryAccountExtraInterestCap * 100;
+    // Month m (1-12) earns on the opening balance plus (m - 1) shares.
+    let base = 0;
+    let extraToSpecial = 0;
+    for (let m = 1; m <= 12; m++) {
+      const special = 1_000_000 + (m - 1) * share;
+      base += (special * rates.special) / 12;
+      // SA keeps its own extra interest and receives the OA's.
+      extraToSpecial += ((special + cap) * tier!.rate) / 12;
+    }
+    expect(december.interest.credited.special).toBe(Math.round(base) + Math.round(extraToSpecial));
   });
 
   it('credits only the months covered when the projection starts mid-year', () => {
@@ -268,16 +288,55 @@ describe('base interest through the loop', () => {
     const december = result.months.find((month) => month.month === '2026-12')!;
     const covered = result.months.filter((month) => month.month <= '2026-12');
     expect(covered).toHaveLength(3);
+    // OA is credited only its own base interest; its extra interest goes to SA.
     expect(december.interest.credited.ordinary).toBe(
       covered.reduce((sum, month) => sum + month.interest.baseAccrued.ordinary, 0),
     );
   });
 
-  it('leaves extra interest for its own ticket', () => {
-    for (const month of project(input({ startAge: 30, endAge: 31 })).months) {
-      expect(month.interest.extraAccruedOn).toEqual({ ordinary: 0, special: 0, medisave: 0, retirement: 0 });
-      expect(month.interest.extraAccruedTo).toEqual({ ordinary: 0, special: 0, medisave: 0, retirement: 0 });
+  it('never credits extra interest to the Ordinary Account', () => {
+    for (const startAge of [30, 57]) {
+      for (const month of project(input({ startAge, endAge: startAge + 2 })).months) {
+        expect(month.interest.extraAccruedOn.ordinary).toBeGreaterThan(0);
+        expect(month.interest.extraAccruedTo.ordinary).toBe(0);
+      }
     }
+  });
+
+  it('routes the Ordinary Account’s extra interest to SA below 55 and RA from 55', () => {
+    const below = project(input({ startAge: 30, endAge: 31 })).months[0]!;
+    // OA is at its $20,000 cap: 1% a year on it, a twelfth a month.
+    expect(below.interest.extraAccruedOn.ordinary).toBe(1_667);
+    expect(below.interest.extraAccruedTo.special).toBe(
+      below.interest.extraAccruedOn.special + below.interest.extraAccruedOn.ordinary,
+    );
+
+    const above = project(
+      input({
+        startAge: 57,
+        endAge: 58,
+        openingBalances: { ordinary: 2_000_000, special: 0, medisave: 500_000, retirement: 1_000_000 },
+      }),
+    ).months[0]!;
+    expect(above.interest.extraAccruedTo.retirement).toBe(
+      above.interest.extraAccruedOn.retirement + above.interest.extraAccruedOn.ordinary,
+    );
+    expect(above.interest.extraAccruedTo.special).toBe(0);
+  });
+
+  it('earns less extra interest when the Ordinary Account holds under $20,000', () => {
+    const firstYearExtra = (ordinary: number) => {
+      const openingBalances = { ordinary, special: 1_000_000, medisave: 500_000, retirement: 0 };
+      return project(input({ startAge: 30, endAge: 31, openingBalances }))
+        .months.filter((month) => month.month.startsWith('2026'))
+        .reduce(
+          (sum, month) => sum + ACCOUNTS.reduce((s, a) => s + month.interest.extraAccruedOn[a], 0),
+          0,
+        );
+    };
+    // Above the cap, more OA earns no more extra interest; below it, less OA earns less.
+    expect(firstYearExtra(3_000_000)).toBe(firstYearExtra(2_000_000));
+    expect(firstYearExtra(500_000)).toBeLessThan(firstYearExtra(2_000_000));
   });
 
   it('totals the interest credited in the summary', () => {
