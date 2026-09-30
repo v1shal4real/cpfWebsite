@@ -174,7 +174,10 @@ describe('allocation through the loop', () => {
       const { allocation, total } = month.contribution;
       expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(total);
       for (const account of ['ordinary', 'special', 'medisave', 'retirement'] as const) {
-        expect(month.closingBalances[account] - month.openingBalances[account]).toBe(allocation[account]);
+        // Interest is the only other movement so far, and lands in December.
+        expect(month.closingBalances[account] - month.openingBalances[account]).toBe(
+          allocation[account] + month.interest.credited[account],
+        );
       }
     }
   });
@@ -202,8 +205,89 @@ describe('allocation through the loop', () => {
     for (const month of result.months) {
       expect(month.contribution.allocation.retirement).toBe(0);
       expect(month.contribution.allocation.special).toBe(0);
-      expect(month.closingBalances.retirement).toBe(fullRetirementSum);
+      // Interest may take the Retirement Account past the sum; contributions may not.
+      expect(month.closingBalances.retirement - month.openingBalances.retirement).toBe(
+        month.interest.credited.retirement,
+      );
     }
+  });
+});
+
+describe('base interest through the loop', () => {
+  const ACCOUNTS = ['ordinary', 'special', 'medisave', 'retirement'] as const;
+  const { interest: rates } = CURRENT_RULE_SET;
+
+  it('accrues on each month’s opening balance, so a contribution earns from the next month', () => {
+    const result = project(input({ startAge: 30, endAge: 31 }));
+    for (const month of result.months) {
+      for (const account of ACCOUNTS) {
+        // A month reports the change in the rounded year-to-date figure, so it
+        // is within a cent of the exact twelfth of the annual rate.
+        const exact = (month.openingBalances[account] * rates[account]) / 12;
+        expect(Math.abs(month.interest.baseAccrued[account] - exact)).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('credits the year’s interest in December only, and it compounds from January', () => {
+    const result = project(input({ startMonth: '2026-01', startAge: 30, endAge: 32 }));
+    const byYear = new Map<string, number>();
+    for (const month of result.months) {
+      const year = month.month.slice(0, 4);
+      const credited = ACCOUNTS.reduce((sum, account) => sum + month.interest.credited[account], 0);
+      if (!month.month.endsWith('-12')) {
+        expect(credited, month.month).toBe(0);
+        continue;
+      }
+      const accrued = result.months
+        .filter((each) => each.month.startsWith(year))
+        .reduce((sum, each) => sum + ACCOUNTS.reduce((s, a) => s + each.interest.baseAccrued[a], 0), 0);
+      expect(credited, month.month).toBe(accrued);
+      byYear.set(year, credited);
+    }
+    expect(byYear.size).toBe(2);
+    // January's opening balance includes December's credit, so it earns on it.
+    const january = result.months.find((month) => month.month === '2027-01');
+    const december = result.months.find((month) => month.month === '2026-12');
+    expect(january?.openingBalances).toEqual(december?.closingBalances);
+  });
+
+  it('matches a hand computation for the first year of a projection', () => {
+    // Opening SA $10,000 at 4%, plus a $299.89 Special share landing each month.
+    const result = project(input({ startMonth: '2026-01', startAge: 30, endAge: 31 }));
+    const december = result.months.find((month) => month.month === '2026-12')!;
+    const share = result.months[0]!.contribution.allocation.special;
+    // Month m (1-12) earns on $10,000 plus (m - 1) shares.
+    let exact = 0;
+    for (let m = 1; m <= 12; m++) exact += ((1_000_000 + (m - 1) * share) * rates.special) / 12;
+    expect(december.interest.credited.special).toBe(Math.round(exact));
+  });
+
+  it('credits only the months covered when the projection starts mid-year', () => {
+    const result = project(input({ startMonth: '2026-10', startAge: 30, endAge: 31 }));
+    const december = result.months.find((month) => month.month === '2026-12')!;
+    const covered = result.months.filter((month) => month.month <= '2026-12');
+    expect(covered).toHaveLength(3);
+    expect(december.interest.credited.ordinary).toBe(
+      covered.reduce((sum, month) => sum + month.interest.baseAccrued.ordinary, 0),
+    );
+  });
+
+  it('leaves extra interest for its own ticket', () => {
+    for (const month of project(input({ startAge: 30, endAge: 31 })).months) {
+      expect(month.interest.extraAccruedOn).toEqual({ ordinary: 0, special: 0, medisave: 0, retirement: 0 });
+      expect(month.interest.extraAccruedTo).toEqual({ ordinary: 0, special: 0, medisave: 0, retirement: 0 });
+    }
+  });
+
+  it('totals the interest credited in the summary', () => {
+    const result = project(input({ startAge: 30, endAge: 40 }));
+    const credited = result.months.reduce(
+      (sum, month) => sum + ACCOUNTS.reduce((s, a) => s + month.interest.credited[a], 0),
+      0,
+    );
+    expect(credited).toBeGreaterThan(0);
+    expect(result.summary.totals.interest).toBe(credited);
   });
 });
 
