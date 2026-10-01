@@ -37,7 +37,7 @@
  * for low wages. Input validation is where that should be caught and explained.
  */
 
-import { resolveRuleSet } from '@/rules';
+import { resolveRuleSet, retirementSumsForCohort, type CohortRetirementSums } from '@/rules';
 import { allocateContribution } from './allocation';
 import { addMonths, monthToIsoDate, parseMonth } from './calendar';
 import { NO_CONTRIBUTIONS_YET, contributionForMonth, type YearToDate } from './contributions';
@@ -90,6 +90,19 @@ function monthTurning55(input: ProjectionInput): string {
   return addMonths(input.startMonth, AGE_55_IN_MONTHS - input.startAge * MONTHS_PER_YEAR);
 }
 
+/**
+ * The Basic and Full Retirement Sums fixed for this member's cohort.
+ *
+ * Read for the year the member turns 55, from the rule set in force then. For
+ * a year past the last published cohort that rule set is the newest one, and
+ * the sums are carried forward by its stated escalation assumption, so a
+ * 30-year-old is held to a sum for the 2050s rather than to today's.
+ */
+function cohortRetirementSums(input: ProjectionInput): CohortRetirementSums {
+  const month = monthTurning55(input);
+  return retirementSumsForCohort(resolveRuleSet(monthToIsoDate(month)), parseMonth(month).year);
+}
+
 /** Rule-set thresholds are published in dollars; the engine works in cents. */
 function toCents(dollars: number): Cents {
   return Math.round(dollars * 100);
@@ -128,11 +141,9 @@ export function project(input: ProjectionInput): ProjectionResult {
   // Interest earned this year and not yet credited. Reset when it is credited
   // in December, so it never carries across a year.
   let accruedThisYear: AccruedThisYear = { ...NOTHING_ACCRUED };
-  // TODO: the age-55 transition ticket owns this figure and records it on its
-  // event. Until then it is read here from the cohort's rule set.
-  const fullRetirementSum = toCents(
-    resolveRuleSet(monthToIsoDate(monthTurning55(input))).thresholds.fullRetirementSum,
-  );
+  // TODO: the age-55 transition ticket records these on its event.
+  const retirementSums = cohortRetirementSums(input);
+  const fullRetirementSum = toCents(retirementSums.fullRetirementSum);
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
@@ -218,12 +229,15 @@ export function project(input: ProjectionInput): ProjectionResult {
   return {
     input,
     months,
-    summary: summarise(months),
+    summary: summarise(months, retirementSums),
     ruleSetIds,
   };
 }
 
-function summarise(months: readonly ProjectionMonth[]): ProjectionSummary {
+function summarise(
+  months: readonly ProjectionMonth[],
+  retirementSums: CohortRetirementSums,
+): ProjectionSummary {
   const last = months.at(-1);
   if (!last) {
     // A projection of no months is possible only from an input the validation
@@ -249,15 +263,13 @@ function summarise(months: readonly ProjectionMonth[]): ProjectionSummary {
 
   const atAge55 = months.find((month) => month.ageInMonths === AGE_55_IN_MONTHS);
   if (atAge55) {
-    // The sums that fix for this cohort are the ones in force in the year the
-    // member turns 55, so they are read from that month's rule set rather than
-    // from the current one.
-    const { thresholds } = resolveRuleSet(monthToIsoDate(atAge55.month));
+    // The sums fixed for this cohort in the year it turns 55, not today's.
     summary.atAge55 = {
       balances: copy(atAge55.closingBalances),
       retirementAccount: atAge55.closingBalances.retirement,
-      basicRetirementSum: toCents(thresholds.basicRetirementSum),
-      fullRetirementSum: toCents(thresholds.fullRetirementSum),
+      basicRetirementSum: toCents(retirementSums.basicRetirementSum),
+      fullRetirementSum: toCents(retirementSums.fullRetirementSum),
+      retirementSumsBasis: retirementSums.basis,
       // TODO: set by the age-55 transition, which decides how much sits above
       // the retirement sum. Zero until that ticket lands.
       withdrawable: 0,

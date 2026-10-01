@@ -132,12 +132,25 @@ export const SOURCES = {
 
   /* Retirement sums ----------------------------------------------------- */
 
+  /**
+   * The cohort BHS for every year from 2016, which is the history the BHS
+   * escalation assumption is computed from. The 2026 figure itself is cited
+   * to the dated news release above.
+   */
+  basicHealthcareSum: {
+    id: 'basicHealthcareSum',
+    title: 'What is the Basic Healthcare Sum?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/what-is-the-basic-healthcare-sum',
+    retrievedOn: '2026-10-01',
+  },
+  /** States the BRS for every cohort from 2015, including 2027. */
   basicRetirementSum: {
     id: 'basicRetirementSum',
     title: 'How much is my Basic Retirement Sum?',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/service/article/how-much-is-my-basic-retirement-sum',
-    retrievedOn: '2026-09-14',
+    retrievedOn: '2026-10-01',
   },
   fullRetirementSum: {
     id: 'fullRetirementSum',

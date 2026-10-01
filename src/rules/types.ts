@@ -133,6 +133,54 @@ export interface Thresholds
   enhancedRetirementSum: number;
 }
 
+/**
+ * A figure CPF Board publishes year by year, carried past its last published
+ * year by a stated assumption.
+ *
+ * Every year that has a published figure uses it. After the last one, each
+ * year's figure is the previous year's raised by `assumedAnnualRise` and
+ * rounded to the nearest `roundTo` dollars, compounding year on year. Rounding
+ * each year rather than once is how CPF Board's own figures step: the retirement
+ * sums from 2023 to 2027 are each the previous year's raised 3.5% and rounded
+ * to the nearest $100.
+ */
+export interface EscalatingSeries {
+  /** Published figures in dollars, by calendar year, for consecutive years. */
+  published: Readonly<Record<number, number>>;
+  /** Annual rise assumed after the last published year, as a fraction. */
+  assumedAnnualRise: number;
+  /** Each escalated year is rounded to the nearest multiple of this, in dollars. */
+  roundTo: number;
+  /**
+   * Why this rate, in the words the assumptions panel shows. It must read as
+   * an assumption for illustration, never as a forecast of what CPF Board or
+   * the Ministry of Health will decide.
+   */
+  basis: string;
+}
+
+/**
+ * How the cohort sums are carried into the years a projection reaches.
+ *
+ * A 30-year-old turns 55 a quarter of a century after the figures in
+ * `thresholds` were published, and the sum fixed for them then will not be
+ * today's. These series hold every figure CPF Board has published, and the
+ * assumption used beyond them.
+ */
+export interface Escalation extends Sourced<'basicHealthcareSum'> {
+  /**
+   * Basic Retirement Sum by the year a cohort turns 55. The Full and Enhanced
+   * Retirement Sums follow from it by the ratios in `thresholds`: CPF Board
+   * escalates the BRS and sets the FRS at twice it.
+   */
+  basicRetirementSum: EscalatingSeries;
+  /**
+   * Basic Healthcare Sum in force in each year. It is also the sum fixed for
+   * the cohort turning 65 that year, which is how CPF Board publishes it.
+   */
+  basicHealthcareSum: EscalatingSeries;
+}
+
 export interface HousingRules extends Sourced<'hdbLoanRetentionCap' | 'concessionaryLoanRate'> {
   /**
    * Rate at which CPF used for property accrues interest, compounded annually.
@@ -171,5 +219,6 @@ export interface RuleSet {
   allocation: Allocation;
   interest: InterestRules;
   thresholds: Thresholds;
+  escalation: Escalation;
   housing: HousingRules;
 }

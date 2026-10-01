@@ -21,6 +21,8 @@
  * fractional cents would drift away from CPF Board's worked examples.
  */
 
+import type { FigureBasis } from '@/rules';
+
 /** A whole number of cents. `123_45` is $123.45. */
 export type Cents = number;
 
@@ -269,6 +271,12 @@ export interface ProjectionSummary {
     retirementAccount: Cents;
     basicRetirementSum: Cents;
     fullRetirementSum: Cents;
+    /**
+     * Whether the sums above are CPF Board's published figures for this
+     * cohort or carried forward by the rule set's escalation assumption. The
+     * interface must say which, since an assumed sum is not a CPF figure.
+     */
+    retirementSumsBasis: FigureBasis;
     withdrawable: Cents;
   };
   atEnd: {

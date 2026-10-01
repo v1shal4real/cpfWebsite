@@ -60,7 +60,7 @@ import {
 import { Container } from '@/components/layout/AppShell';
 import { RulesStamp } from '@/components/layout/RulesStamp';
 import { formatMoney, formatMoneyCompact, formatPercent } from '@/lib/format';
-import { CURRENT_RULE_SET, bandForAge, sourceFor } from '@/rules';
+import { CURRENT_RULE_SET, bandForAge, escalationAssumptions, sourceFor } from '@/rules';
 import { ALL_SERIES, BALANCE_SERIES, SERIES, type SeriesKey } from '@/theme/series';
 
 /**
@@ -530,6 +530,27 @@ export function DesignSystemPage() {
                   credited to the Special Account.
                 </p>
               </Disclosure>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardHeader
+              title="Escalation"
+              description="How the cohort sums are carried past the last published year"
+            />
+            <CardBody>
+              {escalationAssumptions(CURRENT_RULE_SET).map((assumption, index) => (
+                <Disclosure
+                  key={assumption.id}
+                  title={assumption.label}
+                  summary={`+${formatPercent(assumption.assumedAnnualRise, 1)} a year from ${assumption.appliesFrom}`}
+                  defaultOpen={index === 0}
+                >
+                  <p>{assumption.basis}</p>
+                  <p className="mt-2">
+                    <SourceLink sourceId={assumption.sourceId} variant="chip" />
+                  </p>
+                </Disclosure>
+              ))}
             </CardBody>
           </Card>
         </div>

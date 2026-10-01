@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CURRENT_RULE_SET } from '@/rules';
+import { CURRENT_RULE_SET, retirementSumsForCohort } from '@/rules';
 import { addMonths, monthsBetween, parseMonth } from './calendar';
 import { project } from './project';
 import type { ProjectionInput } from './types';
@@ -194,7 +194,9 @@ describe('allocation through the loop', () => {
   });
 
   it('routes the second share to Ordinary once the Retirement Account holds the FRS', () => {
-    const fullRetirementSum = CURRENT_RULE_SET.thresholds.fullRetirementSum * 100;
+    // 57 in January 2026: this member turned 55 in 2024, and that cohort's
+    // FRS is the one that applies, not 2026's.
+    const fullRetirementSum = retirementSumsForCohort(CURRENT_RULE_SET, 2024).fullRetirementSum * 100;
     const result = project(
       input({
         startAge: 57,
@@ -354,12 +356,42 @@ describe('summary', () => {
   it('reports the closing position and the figures at 55', () => {
     const result = project(input({ startAge: 30, endAge: 65 }));
     expect(result.summary.atEnd.balances).toEqual(result.months.at(-1)?.closingBalances);
-    expect(result.summary.atAge55?.basicRetirementSum).toBe(
-      CURRENT_RULE_SET.thresholds.basicRetirementSum * 100,
-    );
-    expect(result.summary.atAge55?.fullRetirementSum).toBe(
+  });
+
+  it('reports the retirement sums fixed for the year the member turns 55', () => {
+    // 30 in January 2026 turns 55 in January 2051, past the last published
+    // cohort, so the sums are carried forward by the stated assumption.
+    const result = project(input({ startMonth: '2026-01', startAge: 30, endAge: 65 }));
+    const cohort = retirementSumsForCohort(CURRENT_RULE_SET, 2051);
+    expect(result.summary.atAge55?.basicRetirementSum).toBe(cohort.basicRetirementSum * 100);
+    expect(result.summary.atAge55?.fullRetirementSum).toBe(cohort.fullRetirementSum * 100);
+    expect(result.summary.atAge55?.retirementSumsBasis).toBe('assumed');
+    expect(result.summary.atAge55!.fullRetirementSum).toBeGreaterThan(
       CURRENT_RULE_SET.thresholds.fullRetirementSum * 100,
     );
+  });
+
+  it('uses the published sums for a cohort CPF Board has announced', () => {
+    // 54 in January 2026 turns 55 in January 2027: FRS $228,200, as published.
+    const result = project(input({ startMonth: '2026-01', startAge: 54, endAge: 56 }));
+    expect(result.summary.atAge55?.fullRetirementSum).toBe(22_820_000);
+    expect(result.summary.atAge55?.basicRetirementSum).toBe(11_410_000);
+    expect(result.summary.atAge55?.retirementSumsBasis).toBe('published');
+  });
+
+  it('caps the Retirement Account at the cohort FRS, not the 2026 one', () => {
+    // Turning 55 in 2024, FRS $205,800. With $205,000 in RA there is $800 of
+    // room, which the first month's Retirement share fills and no more.
+    const result = project(
+      input({
+        startMonth: '2026-01',
+        startAge: 57,
+        endAge: 58,
+        openingBalances: { ordinary: 0, special: 0, medisave: 0, retirement: 20_500_000 },
+      }),
+    );
+    const contributed = result.months.reduce((sum, month) => sum + month.contribution.allocation.retirement, 0);
+    expect(contributed).toBe(80_000);
   });
 
   it('omits the figures at 55 when the projection never reaches it', () => {
@@ -391,6 +423,22 @@ describe('engine purity', () => {
       }
     };
     walk(root);
+    expect(offenders).toEqual([]);
+  });
+
+  it('holds no rate of its own anywhere', () => {
+    // Rates, escalation assumptions and ratios are parameters in the rule set.
+    // A fractional literal in the calculation path is one that would silently
+    // survive a change to the rules, so none is allowed outside comments.
+    const stripComments = (source: string) =>
+      source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/.*/g, ' ');
+    const root = join(process.cwd(), 'src', 'engine');
+    const offenders: string[] = [];
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.ts') || entry.name.endsWith('.test.ts')) continue;
+      const source = stripComments(readFileSync(join(root, entry.name), 'utf8'));
+      if (/\b0?\.\d+\b/.test(source)) offenders.push(entry.name);
+    }
     expect(offenders).toEqual([]);
   });
 });
