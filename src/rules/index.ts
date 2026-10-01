@@ -5,6 +5,7 @@ import type { RuleSet } from './types';
 export type { RuleSet } from './types';
 export * from './types';
 export { SOURCES, source, type Source, type SourceId } from './sources';
+export * from './escalation';
 
 /**
  * Every rule set known to the tool, oldest first.

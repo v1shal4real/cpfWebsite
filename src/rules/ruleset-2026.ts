@@ -10,13 +10,10 @@ import type { RuleSet } from './types';
  * Contribution rates for every age band were read off their source page on
  * 19 September 2026.
  *
- * Verified means correct, not complete. One gap remains, deliberately marked
- * TODO rather than filled from anywhere but a primary source:
- *
- *   - Escalation. The Basic Healthcare Sum is revised annually for members
- *     below 65 and the retirement sums rise for each cohort, so these figures
- *     are correct for 2026 only. Projecting a 30-year-old to 55 needs the
- *     escalation series, which belongs in its own dated data.
+ * Escalation series for the Basic Retirement Sum and the Basic Healthcare Sum
+ * were read off their source pages on 1 October 2026. The rates assumed beyond
+ * the last published year were decided on that date and are assumptions, not
+ * CPF Board figures; `escalation` says so in its own words.
  */
 export const RULE_SET_2026: RuleSet = {
   id: 'sg-cpf-2026-01',
@@ -114,6 +111,59 @@ export const RULE_SET_2026: RuleSet = {
     basicRetirementSum: 110_200,
     fullRetirementSum: 220_400,
     enhancedRetirementSum: 440_800,
+  },
+
+  escalation: {
+    sourceId: 'basicRetirementSum',
+    fieldSources: { basicHealthcareSum: 'basicHealthcareSum' },
+    basicRetirementSum: {
+      // By the year a cohort turns 55, as published. The 2015 figure applies
+      // from 1 July 2015. CPF Board raised the BRS 3.5% a year for the cohorts
+      // from 2023 to 2027, rounding to the nearest $100, and has published
+      // the 2027 figure.
+      published: {
+        2015: 80_500,
+        2016: 80_500,
+        2017: 83_000,
+        2018: 85_500,
+        2019: 88_000,
+        2020: 90_500,
+        2021: 93_000,
+        2022: 96_000,
+        2023: 99_400,
+        2024: 102_900,
+        2025: 106_500,
+        2026: 110_200,
+        2027: 114_100,
+      },
+      assumedAnnualRise: 0.035,
+      roundTo: 100,
+      basis:
+        'After 2027, the latest cohort CPF Board has published, retirement sums are assumed to keep rising 3.5% a year, the rate CPF Board applied to the cohorts turning 55 from 2023 to 2027. This is an assumption for illustration, not a forecast: future sums are set by the Government.',
+    },
+    basicHealthcareSum: {
+      // The BHS in force each year, which is the sum fixed for the cohort
+      // turning 65 in that year.
+      published: {
+        2016: 49_800,
+        2017: 52_000,
+        2018: 54_500,
+        2019: 57_200,
+        2020: 60_000,
+        2021: 63_000,
+        2022: 66_000,
+        2023: 68_500,
+        2024: 71_500,
+        2025: 75_500,
+        2026: 79_000,
+      },
+      // (79,000 / 49,800) ^ (1 / 10) - 1 = 4.72%, the average annual rise
+      // over the ten years published. A test recomputes it.
+      assumedAnnualRise: 0.047,
+      roundTo: 100,
+      basis:
+        'After 2026, the Basic Healthcare Sum is assumed to rise 4.7% a year, its average annual rise from 2016 to 2026. The Ministry of Health reviews it each year to keep pace with healthcare use, and publishes no rate in advance. This is an assumption for illustration, not a forecast.',
+    },
   },
 
   housing: {

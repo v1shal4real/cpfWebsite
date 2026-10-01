@@ -18,6 +18,7 @@ function groupsOf(set: RuleSet) {
     allocation: set.allocation,
     interest: set.interest,
     thresholds: set.thresholds,
+    escalation: set.escalation,
     housing: set.housing,
   };
 }
