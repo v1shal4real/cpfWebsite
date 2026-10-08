@@ -144,6 +144,20 @@ export const SOURCES = {
     url: 'https://www.cpf.gov.sg/service/article/what-is-the-basic-healthcare-sum',
     retrievedOn: '2026-10-01',
   },
+  /**
+   * States where MediSave savings above the BHS go: "first transferred to your
+   * Special Account (SA) or Retirement Account (RA) to help you set aside
+   * your Full Retirement Sum (FRS)", then, once the FRS is set aside, to the
+   * Ordinary Account.
+   */
+  medisaveOverflow: {
+    id: 'medisaveOverflow',
+    title:
+      'After I have met the Basic Healthcare Sum, why do the excess MediSave Account savings overflow to my Special Account or Retirement Account instead of my Ordinary Account?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/member/infohub/cpf-clarifies/policy-faqs/after-i-have-met-the-basic-healthcare-sum-why-do-the-excess-medisave-account',
+    retrievedOn: '2026-10-08',
+  },
   /** States the BRS for every cohort from 2015, including 2027. */
   basicRetirementSum: {
     id: 'basicRetirementSum',
