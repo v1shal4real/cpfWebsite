@@ -19,13 +19,19 @@
  * Special or Retirement Account, and finally MediSave is held to the Basic
  * Healthcare Sum and anything above it moved on. Interest is accrued before
  * this month's contribution lands, which is how a contribution comes to earn
- * only from the following month. The cap comes last so that it catches
- * whatever took MediSave over, contribution or interest.
+ * only from the following month. The cap comes after the credit so that it
+ * catches whatever took MediSave over, contribution or interest.
  *
- * What this loop does not do yet: housing and the age-55 transition each have
- * their own ticket, and each fills in the part of `ProjectionMonth` it owns.
- * Anything reading this output should treat the missing parts as "not
- * implemented yet" rather than as a result.
+ * In the month the member turns 55, the age-55 transition runs last of all:
+ * the Retirement Account is formed from the Special Account, then the
+ * Ordinary Account, up to the cohort FRS, and the Special Account closes. The
+ * from-55 rates, ratios and tiers apply from the month after. In every later
+ * month, anything credited to the closed Special Account is moved on the same
+ * way. See `transition.ts` for the order and its sources.
+ *
+ * What this loop does not do yet: housing has its own ticket, and fills in the
+ * part of `ProjectionMonth` it owns. Anything reading this output should treat
+ * it as "not implemented yet" rather than as a result.
  *
  * Interest accrued in a year the projection ends partway through is not
  * credited, because CPF would not have credited it yet either. Opening
@@ -62,6 +68,7 @@ import {
   type AccruedThisYear,
 } from './interest';
 import { capMedisave } from './medisave';
+import { closeSpecialAccount, formRetirementAccount } from './transition';
 import type {
   AccountAmounts,
   Cents,
@@ -86,6 +93,16 @@ function zero(): AccountAmounts {
 
 function copy(balances: AccountAmounts): AccountAmounts {
   return { ...balances };
+}
+
+/** Per account, what moved from `before` to `after`. */
+function difference(after: AccountAmounts, before: AccountAmounts): AccountAmounts {
+  return {
+    ordinary: after.ordinary - before.ordinary,
+    special: after.special - before.special,
+    medisave: after.medisave - before.medisave,
+    retirement: after.retirement - before.retirement,
+  };
 }
 
 function add(a: AccountAmounts, b: AccountAmounts): AccountAmounts {
@@ -186,7 +203,8 @@ export function project(input: ProjectionInput): ProjectionResult {
   // Interest earned this year and not yet credited. Reset when it is credited
   // in December, so it never carries across a year.
   let accruedThisYear: AccruedThisYear = { ...NOTHING_ACCRUED };
-  // TODO: the age-55 transition ticket records these on its event.
+  // Fixed for the cohort in the year it turns 55: the transition fills the
+  // Retirement Account to this, and the summary reports it.
   const retirementSums = cohortRetirementSums(input);
   const fullRetirementSum = toCents(retirementSums.fullRetirementSum);
   const fixesBasicHealthcareSumIn = yearTurning65(input);
@@ -261,8 +279,10 @@ export function project(input: ProjectionInput): ProjectionResult {
     });
 
     // TODO: housing moves balances too, in its own ticket.
-    const closingBalances = capped.balances;
+    let closingBalances = capped.balances;
 
+    // Events in the order they happen within the month: the MediSave cap,
+    // then the age-55 transition.
     const events: ProjectionEvent[] = [];
     if (!basicHealthcareSumReached && closingBalances.medisave >= caps.basicHealthcareSum) {
       basicHealthcareSumReached = true;
@@ -272,6 +292,38 @@ export function project(input: ProjectionInput): ProjectionResult {
         overflow: capped.overflow.amount,
         overflowTo: capped.overflow.to,
       });
+    }
+
+    // Once, at the end of the 55th birthday month. A projection that starts
+    // after it never sees the transition; its opening balances are taken as
+    // already formed, and any Special Account balance in them is moved on by
+    // the branch below in the first month.
+    let retirementTransfers = zero();
+    if (ageInMonths === AGE_55_IN_MONTHS) {
+      const transition = formRetirementAccount({
+        rules: ruleSet,
+        balances: closingBalances,
+        fullRetirementSum,
+      });
+      retirementTransfers = difference(transition.balances, closingBalances);
+      closingBalances = transition.balances;
+      events.push({
+        kind: 'age-55-transition',
+        transferredFromSpecial: transition.transferredFromSpecial,
+        transferredFromOrdinary: transition.transferredFromOrdinary,
+        specialAccountRemainderToOrdinary: transition.specialAccountRemainderToOrdinary,
+        retirementAccount: closingBalances.retirement,
+        fullRetirementSum,
+        fullRetirementSumSetAside: transition.fullRetirementSumSetAside,
+        withdrawable: transition.withdrawable,
+        from55RulesApplyFrom: addMonths(month, 1),
+      });
+    } else if (ageInMonths > AGE_55_IN_MONTHS && closingBalances.special > 0) {
+      // The Special Account is closed. Interest it earned before closing is
+      // credited the following December, and goes where its savings went.
+      const closure = closeSpecialAccount(ruleSet, closingBalances, fullRetirementSum);
+      retirementTransfers = difference(closure.balances, closingBalances);
+      closingBalances = closure.balances;
     }
 
     months.push({
@@ -292,6 +344,7 @@ export function project(input: ProjectionInput): ProjectionResult {
         credited,
       },
       medisaveOverflow: capped.overflow,
+      retirementTransfers,
       events,
     });
 
@@ -336,15 +389,15 @@ function summarise(
   const atAge55 = months.find((month) => month.ageInMonths === AGE_55_IN_MONTHS);
   if (atAge55) {
     // The sums fixed for this cohort in the year it turns 55, not today's.
+    const transition = atAge55.events.find((event) => event.kind === 'age-55-transition');
     summary.atAge55 = {
       balances: copy(atAge55.closingBalances),
       retirementAccount: atAge55.closingBalances.retirement,
       basicRetirementSum: toCents(retirementSums.basicRetirementSum),
       fullRetirementSum: toCents(retirementSums.fullRetirementSum),
       retirementSumsBasis: retirementSums.basis,
-      // TODO: set by the age-55 transition, which decides how much sits above
-      // the retirement sum. Zero until that ticket lands.
-      withdrawable: 0,
+      // Reported, never withdrawn.
+      withdrawable: transition?.withdrawable ?? 0,
     };
   }
 

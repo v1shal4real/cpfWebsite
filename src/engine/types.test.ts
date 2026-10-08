@@ -37,6 +37,7 @@ const emptyMonth: ProjectionMonth = {
     amount: 0,
     to: nothing,
   },
+  retirementTransfers: nothing,
   events: [],
 };
 
@@ -62,8 +63,12 @@ describe('ProjectionEvent', () => {
       kind: 'age-55-transition',
       transferredFromSpecial: 0,
       transferredFromOrdinary: 0,
+      specialAccountRemainderToOrdinary: 0,
+      retirementAccount: 0,
       fullRetirementSum: CURRENT_RULE_SET.thresholds.fullRetirementSum * 100,
+      fullRetirementSumSetAside: false,
       withdrawable: 0,
+      from55RulesApplyFrom: '2026-02',
     },
     {
       kind: 'basic-healthcare-sum-reached',

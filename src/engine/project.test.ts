@@ -169,18 +169,22 @@ describe('contributions through the loop', () => {
 
 describe('allocation through the loop', () => {
   it('credits each month exactly its contribution, split by account', () => {
-    const result = project(input({ startAge: 30, endAge: 32 }));
-    for (const month of result.months) {
-      const { allocation, total } = month.contribution;
-      expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(total);
-      for (const account of ['ordinary', 'special', 'medisave', 'retirement'] as const) {
-        // Interest lands in December; the MediSave overflow moves money out of
-        // MediSave into the account it is routed to.
-        const overflow = month.medisaveOverflow;
-        const moved = account === 'medisave' ? -overflow.amount : overflow.to[account];
-        expect(month.closingBalances[account] - month.openingBalances[account]).toBe(
-          allocation[account] + month.interest.credited[account] + moved,
-        );
+    // From 30, and across the age-55 transition from 54.
+    for (const startAge of [30, 54]) {
+      const result = project(input({ startAge, endAge: startAge + 2 }));
+      for (const month of result.months) {
+        const { allocation, total } = month.contribution;
+        expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(total);
+        for (const account of ['ordinary', 'special', 'medisave', 'retirement'] as const) {
+          // Interest lands in December; the MediSave overflow moves money out of
+          // MediSave into the account it is routed to; the age-55 rules move
+          // money between accounts.
+          const overflow = month.medisaveOverflow;
+          const moved = account === 'medisave' ? -overflow.amount : overflow.to[account];
+          expect(month.closingBalances[account] - month.openingBalances[account], `${month.month} ${account}`).toBe(
+            allocation[account] + month.interest.credited[account] + moved + month.retirementTransfers[account],
+          );
+        }
       }
     }
   });
@@ -477,6 +481,116 @@ describe('Basic Healthcare Sum through the loop', () => {
       expect(month.events).toEqual([]);
       expect(month.medisaveOverflow.amount).toBe(0);
     }
+  });
+});
+
+describe('age-55 transition through the loop', () => {
+  // 54 in January 2026 turns 55 in January 2027: cohort FRS $228,200.
+  const COHORT_FRS = 22_820_000;
+  const turning55 = input({
+    startMonth: '2026-01',
+    startAge: 54,
+    endAge: 57,
+    openingBalances: { ordinary: 10_000_000, special: 15_000_000, medisave: 5_000_000, retirement: 0 },
+  });
+  const result = project(turning55);
+  const at = (stamp: string) => result.months.find((month) => month.month === stamp)!;
+  const transitions = result.months.flatMap((month) =>
+    month.events.filter((event) => event.kind === 'age-55-transition').map((event) => ({ month, event })),
+  );
+
+  it('runs once, in the month the member turns 55', () => {
+    expect(transitions).toHaveLength(1);
+    expect(transitions[0]!.month.month).toBe('2027-01');
+    expect(transitions[0]!.month.ageInMonths).toBe(55 * 12);
+  });
+
+  it('fills the Retirement Account from SA, then OA, up to the cohort FRS', () => {
+    const { month, event } = transitions[0]!;
+    expect(event).toMatchObject({
+      kind: 'age-55-transition',
+      fullRetirementSum: COHORT_FRS,
+      fullRetirementSumSetAside: true,
+      retirementAccount: COHORT_FRS,
+      specialAccountRemainderToOrdinary: 0,
+      from55RulesApplyFrom: '2027-02',
+    });
+    // Everything the SA held at the end of the month went in first, and the OA made up the rest.
+    expect(event.kind === 'age-55-transition' && event.transferredFromSpecial).toBe(-month.retirementTransfers.special);
+    expect(event.kind === 'age-55-transition' && event.transferredFromOrdinary).toBe(-month.retirementTransfers.ordinary);
+    expect(month.retirementTransfers.retirement).toBe(COHORT_FRS);
+    expect(month.closingBalances.retirement).toBe(COHORT_FRS);
+  });
+
+  it('conserves balances across the transition', () => {
+    const { month } = transitions[0]!;
+    const { ordinary, special, medisave, retirement } = month.retirementTransfers;
+    expect(ordinary + special + medisave + retirement).toBe(0);
+    expect(medisave).toBe(0);
+  });
+
+  it('closes the Special Account from that month on', () => {
+    for (const month of result.months.filter((each) => each.month >= '2027-01')) {
+      expect(month.closingBalances.special, month.month).toBe(0);
+      // The birthday month's own share still lands in SA before it closes.
+      if (month.month > '2027-01') expect(month.contribution.allocation.special, month.month).toBe(0);
+    }
+  });
+
+  it('keeps the 55-and-below rules in the birthday month and switches the month after', () => {
+    // The birthday month's contribution is still on the 55-and-below band, lands in SA, and moves with it.
+    expect(at('2027-01').contribution.allocation.special).toBeGreaterThan(0);
+    expect(at('2027-01').contribution.total).toBe(185_000);
+    // From February: the above-55 rates (34%), and the second share goes to RA, or to OA with RA full.
+    expect(at('2027-02').contribution.total).toBe(170_000);
+    expect(at('2027-02').contribution.allocation.special).toBe(0);
+  });
+
+  it('moves the SA’s December interest on, since the account is closed', () => {
+    // The SA earned interest in January 2027 before it closed. It is credited
+    // in December 2027 and, with the RA at the FRS, goes to the OA.
+    const december = at('2027-12');
+    expect(december.interest.credited.special).toBeGreaterThan(0);
+    expect(december.retirementTransfers.special).toBe(-december.interest.credited.special);
+    expect(december.retirementTransfers.ordinary).toBe(december.interest.credited.special);
+    expect(december.closingBalances.special).toBe(0);
+  });
+
+  it('exposes the withdrawable amount without withdrawing it', () => {
+    const { month, event } = transitions[0]!;
+    const withdrawable = event.kind === 'age-55-transition' ? event.withdrawable : -1;
+    // FRS set aside, so the whole OA may be withdrawn, and it is still there.
+    expect(withdrawable).toBe(month.closingBalances.ordinary);
+    expect(withdrawable).toBeGreaterThan(0);
+    expect(at('2027-02').openingBalances.ordinary).toBe(month.closingBalances.ordinary);
+    expect(result.summary.atAge55?.withdrawable).toBe(withdrawable);
+    expect(result.summary.atAge55?.retirementAccount).toBe(COHORT_FRS);
+  });
+
+  it('keeps $5,000 withdrawable in the OA when the FRS is out of reach', () => {
+    const short = project(
+      input({
+        ...turning55,
+        openingBalances: { ordinary: 1_000_000, special: 5_000_000, medisave: 5_000_000, retirement: 0 },
+      }),
+    );
+    const month = short.months.find((each) => each.ageInMonths === 55 * 12)!;
+    const event = month.events.find((each) => each.kind === 'age-55-transition');
+    expect(event).toMatchObject({ fullRetirementSumSetAside: false, withdrawable: 500_000 });
+    expect(month.closingBalances.ordinary).toBe(500_000);
+  });
+
+  it('runs in the first month when the projection starts in the birthday month', () => {
+    const fromFiftyFive = project(input({ startMonth: '2026-01', startAge: 55, endAge: 56 }));
+    expect(fromFiftyFive.months[0]!.events.map((event) => event.kind)).toContain('age-55-transition');
+  });
+
+  it('does not run when the projection starts after 55', () => {
+    const later = project(input({ startMonth: '2026-01', startAge: 57, endAge: 60 }));
+    for (const month of later.months) {
+      expect(month.events.map((event) => event.kind)).not.toContain('age-55-transition');
+    }
+    expect(later.summary.atAge55).toBeUndefined();
   });
 });
 

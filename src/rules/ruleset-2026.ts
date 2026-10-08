@@ -115,6 +115,20 @@ export const RULE_SET_2026: RuleSet = {
     enhancedRetirementSum: 440_800,
   },
 
+  retirementAccount: {
+    sourceId: 'retirementAccountFormation',
+    fieldSources: {
+      specialAccountRemainderTo: 'specialAccountClosure',
+      withdrawableWithoutFullRetirementSum: 'withdrawalsFrom55',
+    },
+    // SA first, then OA, up to the cohort FRS.
+    fundedFrom: ['special', 'ordinary'],
+    // The SA closes at 55; what the RA has no room for goes to the OA, where
+    // it can be withdrawn on demand.
+    specialAccountRemainderTo: 'ordinary',
+    withdrawableWithoutFullRetirementSum: 5_000,
+  },
+
   escalation: {
     sourceId: 'basicRetirementSum',
     fieldSources: { basicHealthcareSum: 'basicHealthcareSum' },
