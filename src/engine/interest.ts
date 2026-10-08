@@ -72,7 +72,7 @@
  */
 
 import type { ExtraInterestTier, RuleSet } from '@/rules';
-import { bandAge } from './contributions';
+import { onFrom55Rules } from './contributions';
 import type { AccountAmounts, AccountName, Cents } from './types';
 
 const BASIS_POINTS = 10_000;
@@ -149,14 +149,6 @@ export function earningBalances(
     earning[account] = Math.max(0, opening[account] - (withdrawn[account] ?? 0));
   }
   return earning;
-}
-
-/**
- * Whether the from-55 tiers and routing apply: from the month after the 55th
- * birthday month, the boundary the contribution and allocation bands use.
- */
-function onFrom55Rules(ageInMonths: number): boolean {
-  return bandAge(ageInMonths) > 55;
 }
 
 /** The extra-interest tiers in force for a member of this age, from the rule set. */

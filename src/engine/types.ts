@@ -162,6 +162,26 @@ export interface MonthlyInterest {
   credited: AccountAmounts;
 }
 
+/**
+ * MediSave held to the Basic Healthcare Sum for one month.
+ *
+ * Applied after the month's contribution and any interest credit have landed,
+ * so whatever took MediSave over the cap, contribution or interest, is moved
+ * on. Recorded every month, overflow or not, so the cap in force is always
+ * visible and the move between accounts can be accounted for.
+ */
+export interface MedisaveOverflow {
+  /**
+   * The cap that applied: the BHS for the year while the member is below 65,
+   * then the one in force in the year they turned 65.
+   */
+  basicHealthcareSum: Cents;
+  /** Moved out of MediSave this month. Zero in most months. */
+  amount: Cents;
+  /** Where it went, by account. Adds up to `amount`. */
+  to: AccountAmounts;
+}
+
 /** Housing position for one month. */
 export interface MonthlyHousing {
   /** Taken from the Ordinary Account this month, for downpayment or instalment. */
@@ -218,11 +238,22 @@ export type ProjectionEvent =
       withdrawable: Cents;
     }
   | {
+      /**
+       * The first month MediSave reaches the Basic Healthcare Sum. Recorded
+       * once, as a milestone: the BHS rises every January below 65, so the
+       * account dips under it and refills each year, and marking every refill
+       * would bury the moment it first happened.
+       */
       kind: 'basic-healthcare-sum-reached';
       basicHealthcareSum: Cents;
+      /** Moved out of MediSave that month. Zero if it landed exactly on the BHS. */
       overflow: Cents;
-      /** Special Account below 55, Retirement Account from 55, then Ordinary. */
-      overflowTo: AccountName;
+      /**
+       * Where it went: the Special Account below 55 or the Retirement Account
+       * from 55 until it holds the Full Retirement Sum, then the Ordinary
+       * Account. A month can split between the two.
+       */
+      overflowTo: AccountAmounts;
     }
   | {
       kind: 'housing-loan-cleared';
@@ -255,6 +286,7 @@ export interface ProjectionMonth {
   ordinaryWage: Cents;
   contribution: MonthlyContribution;
   interest: MonthlyInterest;
+  medisaveOverflow: MedisaveOverflow;
   housing?: MonthlyHousing;
   /** Empty in most months. Ordered as they occurred within the month. */
   events: readonly ProjectionEvent[];

@@ -32,6 +32,11 @@ const emptyMonth: ProjectionMonth = {
     extraAccruedTo: nothing,
     credited: nothing,
   },
+  medisaveOverflow: {
+    basicHealthcareSum: CURRENT_RULE_SET.thresholds.basicHealthcareSum * 100,
+    amount: 0,
+    to: nothing,
+  },
   events: [],
 };
 
@@ -64,7 +69,7 @@ describe('ProjectionEvent', () => {
       kind: 'basic-healthcare-sum-reached',
       basicHealthcareSum: CURRENT_RULE_SET.thresholds.basicHealthcareSum * 100,
       overflow: 0,
-      overflowTo: 'special',
+      overflowTo: nothing,
     },
     { kind: 'housing-loan-cleared', totalInterestPaid: 0 },
   ];

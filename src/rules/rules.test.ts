@@ -130,6 +130,7 @@ describe('sourceFor', () => {
     expect(sourceFor(housing, 'hdbLoanRetentionCap')).toBe('housingLoanRetention');
     expect(sourceFor(wageCeilings, 'annualLimit')).toBe('annualLimit');
     expect(sourceFor(CURRENT_RULE_SET.interest, 'extraInterestCountingOrder')).toBe('extraInterest');
+    expect(sourceFor(thresholds, 'medisaveOverflowTo')).toBe('medisaveOverflow');
   });
 
   it("falls back to the group's page", () => {

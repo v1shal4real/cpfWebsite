@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CURRENT_RULE_SET, retirementSumsForCohort } from '@/rules';
+import { CURRENT_RULE_SET, basicHealthcareSumInYear, retirementSumsForCohort } from '@/rules';
 import { addMonths, monthsBetween, parseMonth } from './calendar';
 import { project } from './project';
 import type { ProjectionInput } from './types';
@@ -174,9 +174,12 @@ describe('allocation through the loop', () => {
       const { allocation, total } = month.contribution;
       expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(total);
       for (const account of ['ordinary', 'special', 'medisave', 'retirement'] as const) {
-        // Interest is the only other movement so far, and lands in December.
+        // Interest lands in December; the MediSave overflow moves money out of
+        // MediSave into the account it is routed to.
+        const overflow = month.medisaveOverflow;
+        const moved = account === 'medisave' ? -overflow.amount : overflow.to[account];
         expect(month.closingBalances[account] - month.openingBalances[account]).toBe(
-          allocation[account] + month.interest.credited[account],
+          allocation[account] + month.interest.credited[account] + moved,
         );
       }
     }
@@ -349,6 +352,131 @@ describe('interest through the loop', () => {
     );
     expect(credited).toBeGreaterThan(0);
     expect(result.summary.totals.interest).toBe(credited);
+  });
+});
+
+describe('Basic Healthcare Sum through the loop', () => {
+  const BHS_2026 = 7_900_000;
+  const nothing = { ordinary: 0, special: 0, medisave: 0, retirement: 0 };
+  /** A 40-year-old a little under the 2026 BHS, whose first contribution tips MediSave over. */
+  const nearTheCap = input({
+    startMonth: '2026-01',
+    startAge: 40,
+    endAge: 45,
+    openingBalances: { ordinary: 2_000_000, special: 1_000_000, medisave: 7_890_000, retirement: 0 },
+  });
+
+  it('moves the excess to the Special Account below 55', () => {
+    const [first] = project(nearTheCap).months;
+    // $1,850 x 24.32% = $449.92 to MediSave, taking it to $79,349.92: $349.92 over.
+    expect(first?.medisaveOverflow).toEqual({
+      basicHealthcareSum: BHS_2026,
+      amount: 34_992,
+      to: { ...nothing, special: 34_992 },
+    });
+    expect(first?.closingBalances.medisave).toBe(BHS_2026);
+  });
+
+  it('moves it to the Ordinary Account below 55 once SA holds this year’s FRS', () => {
+    const [first] = project(
+      input({
+        ...nearTheCap,
+        openingBalances: { ordinary: 0, special: 22_040_000, medisave: 7_890_000, retirement: 0 },
+      }),
+    ).months;
+    expect(first?.medisaveOverflow.to).toEqual({ ...nothing, ordinary: 34_992 });
+  });
+
+  it('moves it to the Retirement Account from 55, up to the cohort FRS', () => {
+    // 57 in 2026: turned 55 in 2024, FRS $205,800. $1,700 x 30.88% = $524.96 to MediSave.
+    const [first] = project(
+      input({
+        startMonth: '2026-01',
+        startAge: 57,
+        endAge: 58,
+        openingBalances: { ordinary: 0, special: 0, medisave: BHS_2026, retirement: 10_000_000 },
+      }),
+    ).months;
+    expect(first?.medisaveOverflow.to).toEqual({ ...nothing, retirement: 52_496 });
+  });
+
+  it('moves it to the Ordinary Account from 55 once RA holds the cohort FRS', () => {
+    const [first] = project(
+      input({
+        startMonth: '2026-01',
+        startAge: 57,
+        endAge: 58,
+        openingBalances: { ordinary: 0, special: 0, medisave: BHS_2026, retirement: 20_580_000 },
+      }),
+    ).months;
+    expect(first?.medisaveOverflow.to).toEqual({ ...nothing, ordinary: 52_496 });
+    expect(first?.closingBalances.retirement).toBe(20_580_000);
+  });
+
+  it('never lets MediSave close a month above the cap, interest included', () => {
+    const result = project(nearTheCap);
+    for (const month of result.months) {
+      expect(month.closingBalances.medisave, month.month).toBeLessThanOrEqual(
+        month.medisaveOverflow.basicHealthcareSum,
+      );
+    }
+    // December's credit takes MediSave over as well, and is moved on with the contribution.
+    const december = result.months.find((month) => month.month === '2026-12')!;
+    expect(december.interest.credited.medisave).toBeGreaterThan(0);
+    expect(december.medisaveOverflow.amount).toBeGreaterThan(
+      december.contribution.allocation.medisave,
+    );
+  });
+
+  it('takes the BHS for each year from the escalation assumption', () => {
+    const result = project(nearTheCap);
+    const capIn = (stamp: string) =>
+      result.months.find((month) => month.month === stamp)!.medisaveOverflow.basicHealthcareSum;
+    expect(capIn('2026-12')).toBe(BHS_2026);
+    // $79,000 x 1.047, to the nearest $100.
+    expect(capIn('2027-01')).toBe(8_270_000);
+    expect(capIn('2030-06')).toBe(basicHealthcareSumInYear(CURRENT_RULE_SET, 2030).amount * 100);
+  });
+
+  it('fixes the BHS at the value in force in the year the member turns 65', () => {
+    // 64 in January 2026 turns 65 in January 2027, so the 2027 BHS holds from then on.
+    const result = project(input({ startMonth: '2026-01', startAge: 64, endAge: 66 }));
+    const capIn = (stamp: string) =>
+      result.months.find((month) => month.month === stamp)!.medisaveOverflow.basicHealthcareSum;
+    expect(capIn('2026-06')).toBe(BHS_2026);
+    expect(capIn('2027-06')).toBe(8_270_000);
+    expect(capIn('2028-01')).toBe(8_270_000);
+    expect(basicHealthcareSumInYear(CURRENT_RULE_SET, 2028).amount * 100).toBeGreaterThan(8_270_000);
+  });
+
+  it('emits the BHS reached event once, the first month MediSave reaches it', () => {
+    const result = project(nearTheCap);
+    const reached = result.months.flatMap((month) =>
+      month.events
+        .filter((event) => event.kind === 'basic-healthcare-sum-reached')
+        .map((event) => ({ month: month.month, event })),
+    );
+    // The BHS rises every January, so MediSave dips under it and refills each
+    // year; only the first time is a milestone.
+    expect(reached).toEqual([
+      {
+        month: '2026-01',
+        event: {
+          kind: 'basic-healthcare-sum-reached',
+          basicHealthcareSum: BHS_2026,
+          overflow: 34_992,
+          overflowTo: { ...nothing, special: 34_992 },
+        },
+      },
+    ]);
+  });
+
+  it('emits no event when MediSave never reaches the BHS', () => {
+    const result = project(input({ startAge: 30, endAge: 32 }));
+    for (const month of result.months) {
+      expect(month.events).toEqual([]);
+      expect(month.medisaveOverflow.amount).toBe(0);
+    }
   });
 });
 

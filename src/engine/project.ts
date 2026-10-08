@@ -14,17 +14,18 @@
  *
  * Each month, in order: the wage is raised if it is the raise month, the
  * contribution is computed and allocated, base and extra interest are accrued
- * on the month's opening balances, and in December the year's interest is
+ * on the month's opening balances, in December the year's interest is
  * credited, with extra interest earned on the Ordinary Account landing in the
- * Special or Retirement Account.
- * Interest is accrued before this month's contribution lands, which is how a
- * contribution comes to earn only from the following month.
+ * Special or Retirement Account, and finally MediSave is held to the Basic
+ * Healthcare Sum and anything above it moved on. Interest is accrued before
+ * this month's contribution lands, which is how a contribution comes to earn
+ * only from the following month. The cap comes last so that it catches
+ * whatever took MediSave over, contribution or interest.
  *
- * What this loop does not do yet: housing, the Basic Healthcare Sum cap and
- * the age-55 transition each have their own ticket, and each fills in the part
- * of `ProjectionMonth` it owns. Anything reading this
- * output should treat the missing parts as "not implemented yet" rather than
- * as a result.
+ * What this loop does not do yet: housing and the age-55 transition each have
+ * their own ticket, and each fills in the part of `ProjectionMonth` it owns.
+ * Anything reading this output should treat the missing parts as "not
+ * implemented yet" rather than as a result.
  *
  * Interest accrued in a year the projection ends partway through is not
  * credited, because CPF would not have credited it yet either. Opening
@@ -37,10 +38,21 @@
  * for low wages. Input validation is where that should be caught and explained.
  */
 
-import { resolveRuleSet, retirementSumsForCohort, type CohortRetirementSums } from '@/rules';
+import {
+  basicHealthcareSumForMember,
+  resolveRuleSet,
+  retirementSumsForCohort,
+  type CohortRetirementSums,
+  type RuleSet,
+} from '@/rules';
 import { allocateContribution } from './allocation';
 import { addMonths, monthToIsoDate, parseMonth } from './calendar';
-import { NO_CONTRIBUTIONS_YET, contributionForMonth, type YearToDate } from './contributions';
+import {
+  NO_CONTRIBUTIONS_YET,
+  contributionForMonth,
+  onFrom55Rules,
+  type YearToDate,
+} from './contributions';
 import {
   CREDITING_MONTH,
   NOTHING_ACCRUED,
@@ -49,9 +61,11 @@ import {
   earningBalances,
   type AccruedThisYear,
 } from './interest';
+import { capMedisave } from './medisave';
 import type {
   AccountAmounts,
   Cents,
+  ProjectionEvent,
   ProjectionInput,
   ProjectionMonth,
   ProjectionResult,
@@ -62,6 +76,9 @@ const MONTHS_PER_YEAR = 12;
 
 /** Age in months at which the retirement rules change. */
 const AGE_55_IN_MONTHS = 55 * MONTHS_PER_YEAR;
+
+/** Age in months at which the Basic Healthcare Sum fixes for life. */
+const AGE_65_IN_MONTHS = 65 * MONTHS_PER_YEAR;
 
 function zero(): AccountAmounts {
   return { ordinary: 0, special: 0, medisave: 0, retirement: 0 };
@@ -103,9 +120,37 @@ function cohortRetirementSums(input: ProjectionInput): CohortRetirementSums {
   return retirementSumsForCohort(resolveRuleSet(monthToIsoDate(month)), parseMonth(month).year);
 }
 
+/** The calendar year this member turns 65, when their Basic Healthcare Sum fixes. */
+function yearTurning65(input: ProjectionInput): number {
+  const month = addMonths(input.startMonth, AGE_65_IN_MONTHS - input.startAge * MONTHS_PER_YEAR);
+  return parseMonth(month).year;
+}
+
 /** Rule-set thresholds are published in dollars; the engine works in cents. */
 function toCents(dollars: number): Cents {
   return Math.round(dollars * 100);
+}
+
+/** The year-dependent caps the MediSave overflow works to, in cents. */
+interface YearCaps {
+  /** This year's BHS below 65, then the one fixed in the year the member turned 65. */
+  basicHealthcareSum: Cents;
+  /**
+   * The FRS in force this year: the sum for the cohort turning 55 in it. Below
+   * 55 the overflow fills the Special Account towards it.
+   */
+  currentFullRetirementSum: Cents;
+}
+
+/**
+ * Both change only on 1 January, so the loop resolves them once a year, from
+ * the rule set in force for the year's first month it steps through.
+ */
+function capsForYear(rules: RuleSet, year: number, fixesBasicHealthcareSumIn: number): YearCaps {
+  return {
+    basicHealthcareSum: toCents(basicHealthcareSumForMember(rules, year, fixesBasicHealthcareSumIn).amount),
+    currentFullRetirementSum: toCents(retirementSumsForCohort(rules, year).fullRetirementSum),
+  };
 }
 
 /**
@@ -144,6 +189,10 @@ export function project(input: ProjectionInput): ProjectionResult {
   // TODO: the age-55 transition ticket records these on its event.
   const retirementSums = cohortRetirementSums(input);
   const fullRetirementSum = toCents(retirementSums.fullRetirementSum);
+  const fixesBasicHealthcareSumIn = yearTurning65(input);
+  let caps: YearCaps | undefined;
+  // Recorded once, the first month MediSave reaches the Basic Healthcare Sum.
+  let basicHealthcareSumReached = false;
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
@@ -155,7 +204,9 @@ export function project(input: ProjectionInput): ProjectionResult {
     if (year !== yearInProgress) {
       yearToDate = { ...NO_CONTRIBUTIONS_YET };
       yearInProgress = year;
+      caps = undefined;
     }
+    caps ??= capsForYear(ruleSet, year, fixesBasicHealthcareSumIn);
 
     if (isRaiseMonth(input, step, calendarMonth)) {
       ordinaryWage = Math.round(ordinaryWage * (1 + input.salaryGrowth.rate));
@@ -199,9 +250,29 @@ export function project(input: ProjectionInput): ProjectionResult {
       accruedThisYear = { ...NOTHING_ACCRUED };
     }
 
-    // TODO: housing and the Basic Healthcare Sum cap move balances too, each
-    // in its own ticket.
-    const closingBalances = add(add(openingBalances, allocation), credited);
+    // Below 55 the overflow fills SA towards this year's FRS; from 55 it
+    // fills RA towards the member's own cohort FRS.
+    const capped = capMedisave({
+      rules: ruleSet,
+      ageInMonths,
+      balances: add(add(openingBalances, allocation), credited),
+      basicHealthcareSum: caps.basicHealthcareSum,
+      fullRetirementSum: onFrom55Rules(ageInMonths) ? fullRetirementSum : caps.currentFullRetirementSum,
+    });
+
+    // TODO: housing moves balances too, in its own ticket.
+    const closingBalances = capped.balances;
+
+    const events: ProjectionEvent[] = [];
+    if (!basicHealthcareSumReached && closingBalances.medisave >= caps.basicHealthcareSum) {
+      basicHealthcareSumReached = true;
+      events.push({
+        kind: 'basic-healthcare-sum-reached',
+        basicHealthcareSum: caps.basicHealthcareSum,
+        overflow: capped.overflow.amount,
+        overflowTo: capped.overflow.to,
+      });
+    }
 
     months.push({
       month,
@@ -220,7 +291,8 @@ export function project(input: ProjectionInput): ProjectionResult {
         extraAccruedTo: interest.extraAccruedTo,
         credited,
       },
-      events: [],
+      medisaveOverflow: capped.overflow,
+      events,
     });
 
     balances = closingBalances;

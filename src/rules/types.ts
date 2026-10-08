@@ -119,9 +119,19 @@ export interface InterestRules extends Sourced<'extraInterestCountingOrder'> {
 }
 
 export interface Thresholds
-  extends Sourced<'basicHealthcareSum' | 'basicRetirementSum' | 'enhancedRetirementSum'> {
+  extends Sourced<
+    'basicHealthcareSum' | 'basicRetirementSum' | 'enhancedRetirementSum' | 'medisaveOverflowTo'
+  > {
   /** Cap on MediSave. Revised annually below 65, then fixed for life at 65. */
   basicHealthcareSum: number;
+  /**
+   * Where MediSave savings above the Basic Healthcare Sum go. CPF Board sends
+   * them to the Special Account (below 55) or the Retirement Account (from 55)
+   * until the Full Retirement Sum is set aside there, and to the Ordinary
+   * Account after that. Recorded here so the routing is data, as the extra
+   * interest routing is.
+   */
+  medisaveOverflowTo: 'special-or-retirement-until-full-retirement-sum-then-ordinary';
   /** Fixed for life by the year the member turns 55. */
   basicRetirementSum: number;
   /** Twice the BRS. Fixed for life by the year the member turns 55. */

@@ -62,6 +62,20 @@ export function bandAge(ageInMonths: number): number {
   return Math.ceil(ageInMonths / 12);
 }
 
+/** The age in years from which the retirement rules apply. */
+const RETIREMENT_RULES_AGE = 55;
+
+/**
+ * Whether the from-55 rules apply: from the month after the 55th birthday
+ * month, the boundary every age band uses. The allocation routing, the extra
+ * interest tiers and the MediSave overflow all switch here, so they read it
+ * from one place rather than each deciding for itself. The age-55 transition
+ * ticket owns this boundary.
+ */
+export function onFrom55Rules(ageInMonths: number): boolean {
+  return bandAge(ageInMonths) > RETIREMENT_RULES_AGE;
+}
+
 /** The contribution band in force for a member of this age, from the rule set. */
 export function bandForMonth(rules: RuleSet, ageInMonths: number): ContributionBand {
   const band = bandForAge(rules.contributionRates.bands, bandAge(ageInMonths));

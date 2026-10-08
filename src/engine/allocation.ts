@@ -21,13 +21,10 @@
 
 import { bandForAge } from '@/rules';
 import type { AllocationBand, RuleSet } from '@/rules';
-import { bandAge } from './contributions';
+import { bandAge, onFrom55Rules } from './contributions';
 import type { AccountAmounts, Cents } from './types';
 
 const BASIS_POINTS = 10_000;
-
-/** Age in whole months after which the second share goes to the Retirement Account. */
-const AGE_55_IN_MONTHS = 55 * 12;
 
 /** The allocation band in force for a member of this age, from the rule set. */
 export function allocationBandForMonth(rules: RuleSet, ageInMonths: number): AllocationBand {
@@ -102,7 +99,7 @@ export function allocateContribution({
 }: AllocationRequest): AccountAmounts {
   const shares = splitContribution(total, allocationBandForMonth(rules, ageInMonths));
 
-  if (ageInMonths <= AGE_55_IN_MONTHS) {
+  if (!onFrom55Rules(ageInMonths)) {
     return {
       ordinary: shares.ordinary,
       special: shares.specialOrRetirement,
