@@ -226,10 +226,26 @@ export type ProjectionEvent =
        * the contribution rates, allocation ratios and interest tiers change.
        */
       kind: 'age-55-transition';
+      /** Special Account savings moved into the Retirement Account. */
       transferredFromSpecial: Cents;
+      /** Ordinary Account savings moved into the Retirement Account, after the SA's. */
       transferredFromOrdinary: Cents;
+      /**
+       * Special Account savings the Retirement Account had no room for, moved
+       * to the Ordinary Account when the Special Account closed.
+       */
+      specialAccountRemainderToOrdinary: Cents;
+      /** The Retirement Account once formed: what it held before plus both transfers. */
+      retirementAccount: Cents;
       /** The Full Retirement Sum for this member's cohort, which fixes at 55. */
       fullRetirementSum: Cents;
+      /** Whether the Retirement Account holds the FRS once formed. */
+      fullRetirementSumSetAside: boolean;
+      /**
+       * The first month the from-55 contribution rates, allocation ratios and
+       * extra-interest tiers apply: the month after this one.
+       */
+      from55RulesApplyFrom: MonthStamp;
       /**
        * Savings above the retirement sum the member may withdraw. Reported,
        * never withdrawn: whether to take it is the member's decision, and a
@@ -287,6 +303,15 @@ export interface ProjectionMonth {
   contribution: MonthlyContribution;
   interest: MonthlyInterest;
   medisaveOverflow: MedisaveOverflow;
+  /**
+   * Moves between accounts made by the age-55 rules this month, per account:
+   * negative where money left, positive where it arrived, adding up to zero.
+   * In the 55th birthday month this is the Retirement Account being formed.
+   * After it, it is anything credited to the closed Special Account, such as
+   * the December interest it earned before closing, being moved on. Zero in
+   * every other month.
+   */
+  retirementTransfers: AccountAmounts;
   housing?: MonthlyHousing;
   /** Empty in most months. Ordered as they occurred within the month. */
   events: readonly ProjectionEvent[];

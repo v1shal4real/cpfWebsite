@@ -191,6 +191,29 @@ export interface Escalation extends Sourced<'basicHealthcareSum'> {
   basicHealthcareSum: EscalatingSeries;
 }
 
+/**
+ * What happens at 55, when the Retirement Account is created.
+ *
+ * The RA is filled from the Special Account first, then the Ordinary Account,
+ * up to the member's cohort Full Retirement Sum. The Special Account is then
+ * closed, and whatever the RA had no room for goes to the Ordinary Account.
+ * From then on, the Ordinary Account is withdrawable in full if the FRS has
+ * been set aside, and up to a fixed amount if it has not.
+ */
+export interface RetirementAccountRules
+  extends Sourced<'specialAccountRemainderTo' | 'withdrawableWithoutFullRetirementSum'> {
+  /** The accounts the RA is filled from, first to last. */
+  fundedFrom: readonly ('special' | 'ordinary')[];
+  /** Where Special Account savings the RA has no room for go when it closes. */
+  specialAccountRemainderTo: 'ordinary';
+  /**
+   * How much of the Ordinary Account a member may withdraw from 55 without
+   * having set aside the FRS, in dollars. With the FRS set aside, all of it.
+   * Forming the RA leaves this much in the OA rather than taking it.
+   */
+  withdrawableWithoutFullRetirementSum: number;
+}
+
 export interface HousingRules extends Sourced<'hdbLoanRetentionCap' | 'concessionaryLoanRate'> {
   /**
    * Rate at which CPF used for property accrues interest, compounded annually.
@@ -230,5 +253,6 @@ export interface RuleSet {
   interest: InterestRules;
   thresholds: Thresholds;
   escalation: Escalation;
+  retirementAccount: RetirementAccountRules;
   housing: HousingRules;
 }

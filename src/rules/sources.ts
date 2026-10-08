@@ -181,6 +181,40 @@ export const SOURCES = {
     retrievedOn: '2026-09-14',
   },
 
+  /* Age 55 -------------------------------------------------------------- */
+
+  /** States that SA savings go to the RA first at 55, before OA savings. */
+  retirementAccountFormation: {
+    id: 'retirementAccountFormation',
+    title: 'Why are Special Account savings transferred first to Retirement Account at 55?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/member/infohub/cpf-clarifies/policy-faqs/why-are-special-account-savings-transferred-first-to-retirement-account-at-55',
+    retrievedOn: '2026-10-08',
+  },
+  /**
+   * States that SA savings go to the RA up to the FRS, that any remaining SA
+   * savings go to the OA, and that a member's SA closes when they turn 55 and
+   * their RA is created.
+   */
+  specialAccountClosure: {
+    id: 'specialAccountClosure',
+    title: 'Closure of Special Account for members aged 55 and above in the second half of January 2025',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/member/infohub/educational-resources/closure-of-special-account-for-members-aged-55-and-above-in-early-2025',
+    retrievedOn: '2026-10-08',
+  },
+  /**
+   * States that from 55 a member who has set aside the FRS may withdraw any
+   * amount from the OA, and one who has not may withdraw $5,000 from it.
+   */
+  withdrawalsFrom55: {
+    id: 'withdrawalsFrom55',
+    title: 'How much CPF savings can I withdraw from age 55 to 64?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/how-much-cpf-savings-can-i-withdraw-from-age-55-to-64',
+    retrievedOn: '2026-10-08',
+  },
+
   /* Housing ------------------------------------------------------------- */
 
   housing: {

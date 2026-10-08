@@ -19,6 +19,7 @@ function groupsOf(set: RuleSet) {
     interest: set.interest,
     thresholds: set.thresholds,
     escalation: set.escalation,
+    retirementAccount: set.retirementAccount,
     housing: set.housing,
   };
 }
@@ -102,6 +103,11 @@ describe('rule set data integrity', () => {
     expect(set.interest.ordinaryAccountExtraInterestCap).toBeLessThan(size(set.interest.extraTiersBelow55));
   });
 
+  it.each(eachSet)('%s: the Retirement Account is funded from SA, then OA', (_id, set) => {
+    expect(set.retirementAccount.fundedFrom).toEqual(['special', 'ordinary']);
+    expect(set.retirementAccount.withdrawableWithoutFullRetirementSum).toBeGreaterThan(0);
+  });
+
   it.each(eachSet)('%s: the extra-interest counting order names every account once', (_id, set) => {
     const order = set.interest.extraInterestCountingOrder;
     expect([...order].sort()).toEqual(['medisave', 'ordinary', 'retirement', 'special']);
@@ -131,6 +137,10 @@ describe('sourceFor', () => {
     expect(sourceFor(wageCeilings, 'annualLimit')).toBe('annualLimit');
     expect(sourceFor(CURRENT_RULE_SET.interest, 'extraInterestCountingOrder')).toBe('extraInterest');
     expect(sourceFor(thresholds, 'medisaveOverflowTo')).toBe('medisaveOverflow');
+    const { retirementAccount } = CURRENT_RULE_SET;
+    expect(sourceFor(retirementAccount, 'fundedFrom')).toBe('retirementAccountFormation');
+    expect(sourceFor(retirementAccount, 'specialAccountRemainderTo')).toBe('specialAccountClosure');
+    expect(sourceFor(retirementAccount, 'withdrawableWithoutFullRetirementSum')).toBe('withdrawalsFrom55');
   });
 
   it("falls back to the group's page", () => {
