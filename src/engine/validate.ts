@@ -29,6 +29,7 @@
  */
 
 import { resolveRuleSet, type RuleSet } from '@/rules';
+import { lowestWage } from './salary';
 import type { Cents, Fraction, HousingPlan, LoanTerms, MonthStamp, ProjectionInput } from './types';
 
 const CENTS_PER_DOLLAR = 100;
@@ -284,6 +285,20 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     salaryGrowth: { rate: growth!, appliedInMonth: raiseMonth! },
     ...(housing && { housing }),
   };
+
+  // A pay cut each year can take the wage down to the graduated-rate
+  // threshold partway through, where the engine would refuse it. Checked on
+  // the engine's own wage path, so the two cannot disagree.
+  const lowest = lowestWage(input);
+  if (lowest <= graduatedUpTo) {
+    check.fail(
+      'salaryGrowthRate',
+      'graduated-rates-not-modelled',
+      `With this salary growth, the monthly salary falls to ${dollars(graduatedUpTo)} or less during the projection, where graduated CPF rates apply, which this projection does not model.`,
+      graduatedUpTo,
+    );
+    return { ok: false, errors: check.errors };
+  }
   return { ok: true, input, adjustments: check.adjustments };
 }
 
