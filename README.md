@@ -19,6 +19,7 @@ all computation runs client-side.
 | `npm run preview` | Serve the production build |
 | `npm test` | Run the test suite once |
 | `npm run typecheck` | Type-check only |
+| `npm run bench` | Engine benchmarks (timings only; the budget is asserted by `npm test`) |
 
 ## Layout
 
@@ -62,7 +63,9 @@ docs/
     passes (see below).
   - Property and invariant tests (`invariants.test.ts`, fast-check): see
     "Engine invariants" below.
-  - Not yet: the performance budget.
+  - Performance budget: a full recomputation under 50ms, asserted in the test
+    suite (see "Performance" below).
+  - The v1 engine tickets are complete.
 - Projection page: not started. The app still renders the design system preview.
 
 ## Engine conventions
@@ -160,6 +163,37 @@ On a failure, fast-check shrinks the input to the smallest failing case and
 prints it with a seed to replay. Its first run found a real gap: a pay cut each
 year could take a low salary down to the graduated-rate threshold partway
 through a projection, where the engine throws. Validation now rejects that.
+
+## Performance
+
+Spec §3.4: a full recomputation, age 22 to 65, monthly, two scenarios, must
+finish under 50ms so the timeline scrub feels continuous. The representative
+input (`src/engine/__fixtures__/scenarios.ts`) is the heaviest realistic
+comparison: a 22-year-old buying at 30, one scenario on an HDB loan paid from
+OA and one on a bank loan paid in cash, both validated and projected through
+`projectDraft` exactly as the interface will.
+
+- `src/engine/performance.test.ts` asserts the budget with the rest of the
+  suite, so CI fails if it is missed. It warms up first, then asserts on the
+  median of 25 runs, so a single slow run on a busy machine cannot fail it.
+- `src/engine/project.bench.ts` (`npm run bench`) reports timings for the full
+  recomputation and its parts.
+
+Measured on 12 October 2026 on the development machine (Windows, Node 22):
+
+| Measurement | Result |
+|---|---|
+| Full recomputation, benchmark | mean 7.6ms, p99 17.5ms |
+| One projection, already validated | mean 2.6ms |
+| Validation of one scenario | mean 0.3ms |
+| Full recomputation, median in the test suite (other test files running in parallel) | 15 to 21ms |
+
+The budget is met with headroom, so no profiling was needed. The margin to
+watch is mobile: a mid-range phone can run JavaScript several times slower
+than a desktop, so the on-device check in the mobile verification ticket
+should confirm the scrub still holds. If it does not, the places to look first
+are per-month object allocation in the loop and the escalation series, which
+is recomputed from its last published year on each call.
 
 ## Escalation assumptions
 
