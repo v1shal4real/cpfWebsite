@@ -55,9 +55,9 @@ docs/
     MediSave overflow routing; the age-55 transition; the housing loan
     (HDB concessionary and bank) with its monthly instalments; housing
     withdrawals from the Ordinary Account, with the retention option and
-    shortfalls falling to cash.
-  - Not yet: the accrued interest on CPF used for housing. Until then each
-    month's `accruedInterest` is zero and `refundable` is the principal alone.
+    shortfalls falling to cash; accrued interest on CPF used for housing, and
+    the refund due on sale at every age.
+  - Not yet: input validation, invariant tests and the performance budget.
 - Projection page: not started. The app still renders the design system preview.
 
 ## Engine conventions
@@ -77,6 +77,7 @@ clock.
 | Age-55 transition | Runs once, at the end of the month the member turns 55, after that month's contribution, interest credit and MediSave cap. In order: (1) the RA is created; (2) SA savings move into it up to the cohort FRS; (3) OA savings top it up, keeping back the $5,000 a member short of the FRS may withdraw; (4) the SA closes and any remainder goes to OA; (5) the withdrawable amount is reported (all of OA with the FRS set aside, otherwise up to $5,000) and left in OA, never withdrawn; (6) the from-55 contribution rates, allocation ratios and extra-interest tiers apply from the following month. Interest the SA earned before closing is credited in December and moved on the same way. |
 | Housing loan | Drawn in the month the member reaches the purchase age; `tenureYears x 12` level monthly instalments from the month after. Monthly rest: each month's interest is a twelfth of the annual rate on the opening balance, rounded to the nearest cent; the instalment is rounded up to the cent and the last one clears the balance exactly (provisional: no published rule). HDB concessionary rate = the rule set's OA rate + the 0.1-point peg, resolved each month, with the instalment recomputed if the rate changes; a bank loan uses its own rate for the whole tenure. A "loan cleared" event marks the last instalment. |
 | Housing withdrawals | In the purchase month the member's chosen OA share of the downpayment comes from the OA and the rest is paid in cash; each later month the instalment comes from the OA or cash, as chosen. Payments draw on the OA after this month's contribution lands, never take it below the retained amount (up to $20,000 for an HDB loan, any amount for a bank loan) or below zero, and whatever the OA cannot cover is paid in cash and recorded as a shortfall. Withdrawals stop earning interest from the month they leave. Every OA withdrawal adds to the CPF principal used for housing. The loan is not resized to use all OA above the retention, as HDB does for its own loans; the OA share and the loan are inputs. |
+| Accrued housing interest | The CPF principal used for housing earns what it would have in the OA: a twelfth of the rule set's `housing.accruedInterestRate` each month on the cumulative principal plus interest credited in earlier years, credited each December, so it compounds annually. A withdrawal accrues from the month it is made, the month it stops earning OA interest. It keeps accruing after the loan is repaid. Each month records the accrued interest to date, including the year so far, and the refund due on a sale that month (principal plus accrued interest). Rounded to the cent once a year, on crediting (provisional). |
 
 Sources for the interest conventions: CPF Board, [How is my CPF interest computed
 and credited into my accounts?](https://www.cpf.gov.sg/service/article/how-is-my-cpf-interest-computed-and-credited-into-my-accounts)
@@ -89,6 +90,8 @@ transferred first to Retirement Account at 55?](https://www.cpf.gov.sg/member/in
 [Closure of Special Account for members aged 55 and above](https://www.cpf.gov.sg/member/infohub/educational-resources/closure-of-special-account-for-members-aged-55-and-above-in-early-2025)
 and [How much CPF savings can I withdraw from age 55 to 64?](https://www.cpf.gov.sg/service/article/how-much-cpf-savings-can-i-withdraw-from-age-55-to-64)
 
+Source for accrued housing interest: CPF Board, [Why do I need to refund the
+accrued interest on the amount of CPF savings used for my property?](https://www.cpf.gov.sg/service/article/why-do-i-need-to-refund-the-accrued-interest-on-the-amount-of-cpf-savings-used-for-my-property)
 Source for the OA retention: CPF Board, [Retain $20,000 in your Ordinary
 Account if you are taking a housing loan](https://www.cpf.gov.sg/member/home-ownership/using-your-cpf-to-buy-a-home/retain-20000-in-your-oa-if-you-are-taking-a-housing-loan).
 Source for the HDB rate peg: CPF Board, [CPF interest rates from 1 January to

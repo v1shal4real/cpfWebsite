@@ -792,8 +792,9 @@ describe('housing withdrawals through the loop', () => {
       expect(month.housing!.principalUsed, month.month).toBe(running);
     }
     expect(result.summary.totals.housingWithdrawals).toBe(running);
-    // Until the accrued interest ticket, the refund due is the principal alone.
-    expect(owning.at(-1)!.housing!.refundable).toBe(running);
+    // The refund due is the principal plus the interest it has accrued.
+    const last = owning.at(-1)!.housing!;
+    expect(last.refundable).toBe(running + last.accruedInterest);
   });
 
   it('keeps recording the principal used after the loan is cleared', () => {
@@ -803,6 +804,39 @@ describe('housing withdrawals through the loop', () => {
       expect(month.housing!.withdrawnFromOrdinaryAccount).toBe(0);
       expect(month.housing!.principalUsed).toBe(at('2053-01').housing!.principalUsed);
     }
+  });
+
+  it('accrues interest on the principal from the purchase month', () => {
+    // A month of 2.5% on the $30,000 downpayment from OA: $62.50.
+    expect(at('2028-01').housing).toMatchObject({ principalUsed: 3_000_000, accruedInterest: 6_250 });
+  });
+
+  it('compounds the accrued interest annually, at the rule set’s rate', () => {
+    // At each December, the year's accrued interest is within rounding of a
+    // year of the rate on the principal and the interest credited before it.
+    const decembers = owning.filter((month) => month.month.endsWith('-12'));
+    for (let index = 1; index < decembers.length; index++) {
+      const previous = decembers[index - 1]!.housing!;
+      const current = decembers[index]!.housing!;
+      const yearOnPrevious = previous.refundable * CURRENT_RULE_SET.housing.accruedInterestRate;
+      const accruedThisYear = current.accruedInterest - previous.accruedInterest;
+      // The year's withdrawals also earn for the months they were out, so the
+      // year earns at least a full year on what was already refundable.
+      expect(accruedThisYear, current.principalUsed.toString()).toBeGreaterThanOrEqual(Math.floor(yearOnPrevious));
+    }
+  });
+
+  it('keeps accruing after the loan is cleared', () => {
+    const afterLoan = owning.filter((month) => month.month > '2053-01');
+    for (let index = 1; index < afterLoan.length; index++) {
+      expect(afterLoan[index]!.housing!.accruedInterest).toBeGreaterThan(afterLoan[index - 1]!.housing!.accruedInterest);
+    }
+  });
+
+  it('reports the refund due on a sale in the last month in the summary', () => {
+    const last = owning.at(-1)!.housing!;
+    expect(result.summary.atEnd.housingRefundable).toBe(last.refundable);
+    expect(last.accruedInterest).toBeGreaterThan(0);
   });
 
   it('stops money withdrawn earning interest from the month it leaves', () => {
