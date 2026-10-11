@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CURRENT_RULE_SET, basicHealthcareSumInYear, retirementSumsForCohort } from '@/rules';
 import { addMonths, monthsBetween, parseMonth } from './calendar';
 import { project } from './project';
-import type { ProjectionInput } from './types';
+import { levelInstalment } from './loan';
+import type { HousingPlan, LoanTerms, ProjectionInput } from './types';
 
 const BASE_INPUT: ProjectionInput = {
   startMonth: '2026-01',
@@ -591,6 +592,89 @@ describe('age-55 transition through the loop', () => {
       expect(month.events.map((event) => event.kind)).not.toContain('age-55-transition');
     }
     expect(later.summary.atAge55).toBeUndefined();
+  });
+});
+
+describe('housing loan through the loop', () => {
+  /** Bought at 32 for $500,000, $100,000 down and $400,000 borrowed. */
+  const housing = (loan: LoanTerms): HousingPlan => ({
+    purchaseAge: 32,
+    price: 50_000_000,
+    downpaymentFromOrdinaryAccount: 5_000_000,
+    downpaymentFromCash: 5_000_000,
+    loan,
+    instalmentsPaidFrom: 'ordinary-account',
+  });
+  const hdbLoan: LoanTerms = { kind: 'hdb-concessionary', principal: 40_000_000, tenureYears: 25 };
+  // 30 in January 2026: buys in January 2028, clears 25 years later in January 2053, at 57.
+  const withLoan = input({ startMonth: '2026-01', startAge: 30, endAge: 65, housing: housing(hdbLoan) });
+  const result = project(withLoan);
+  const at = (stamp: string) => result.months.find((month) => month.month === stamp)!;
+
+  it('draws the loan in the purchase month and starts instalments the month after', () => {
+    expect(at('2027-12').loan).toBeUndefined();
+    expect(at('2028-01').loan).toMatchObject({ drawn: 40_000_000, instalment: 0, closingBalance: 40_000_000 });
+    expect(at('2028-02').loan).toMatchObject({ openingBalance: 40_000_000, instalment: 181_468 });
+  });
+
+  it('charges the HDB rate derived from the OA rate in the rule set', () => {
+    const expected = CURRENT_RULE_SET.interest.ordinary + CURRENT_RULE_SET.housing.concessionaryLoanSpread;
+    for (const month of result.months.filter((each) => each.loan)) {
+      expect(month.loan!.rate).toBeCloseTo(expected, 10);
+    }
+  });
+
+  it('carries the balance month to month until it is cleared', () => {
+    const loanMonths = result.months.filter((month) => month.loan);
+    for (let index = 1; index < loanMonths.length; index++) {
+      expect(loanMonths[index]!.loan!.openingBalance).toBe(loanMonths[index - 1]!.loan!.closingBalance);
+    }
+    // The purchase month and 300 instalments.
+    expect(loanMonths).toHaveLength(301);
+    expect(loanMonths.at(-1)!.month).toBe('2053-01');
+    expect(loanMonths.at(-1)!.loan!.closingBalance).toBe(0);
+    expect(at('2053-02').loan).toBeUndefined();
+  });
+
+  it('emits the loan cleared event once, with the last instalment', () => {
+    const cleared = result.months.flatMap((month) =>
+      month.events.filter((event) => event.kind === 'housing-loan-cleared').map((event) => ({ month, event })),
+    );
+    expect(cleared).toHaveLength(1);
+    expect(cleared[0]!.month.month).toBe('2053-01');
+    const totalInterest = result.months.reduce((sum, month) => sum + (month.loan?.interest ?? 0), 0);
+    expect(cleared[0]!.event).toEqual({
+      kind: 'housing-loan-cleared',
+      principal: 40_000_000,
+      instalmentsPaid: 300,
+      totalInterestPaid: totalInterest,
+    });
+  });
+
+  it('charges a bank loan its own rate', () => {
+    const bankLoan: LoanTerms = { kind: 'bank', principal: 40_000_000, tenureYears: 25, interestRate: 0.03 };
+    const months = project(input({ ...withLoan, housing: housing(bankLoan) })).months;
+    const first = months.find((month) => month.month === '2028-02')!;
+    expect(first.loan!.rate).toBe(0.03);
+    expect(first.loan!.instalment).toBe(levelInstalment(40_000_000, 0.03, 300));
+  });
+
+  it('emits no event when the loan outlives the projection', () => {
+    const short = project(input({ ...withLoan, endAge: 40 }));
+    expect(short.months.at(-1)!.loan!.closingBalance).toBeGreaterThan(0);
+    for (const month of short.months) {
+      expect(month.events.map((event) => event.kind)).not.toContain('housing-loan-cleared');
+    }
+  });
+
+  it('draws no loan for a purchase without one', () => {
+    const cash = project(input({ ...withLoan, housing: housing({ ...hdbLoan, principal: 0 }) }));
+    expect(cash.months.some((month) => month.loan)).toBe(false);
+  });
+
+  it('leaves the CPF balances alone until the housing withdrawal ticket decides who pays', () => {
+    const without = project(input({ ...withLoan, housing: undefined }));
+    expect(result.summary.atEnd.balances).toEqual(without.summary.atEnd.balances);
   });
 });
 

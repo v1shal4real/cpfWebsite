@@ -214,7 +214,8 @@ export interface RetirementAccountRules
   withdrawableWithoutFullRetirementSum: number;
 }
 
-export interface HousingRules extends Sourced<'hdbLoanRetentionCap' | 'concessionaryLoanRate'> {
+export interface HousingRules
+  extends Sourced<'hdbLoanRetentionCap' | 'concessionaryLoanRate' | 'concessionaryLoanSpread'> {
   /**
    * Rate at which CPF used for property accrues interest, compounded annually.
    * CPF Board defines it as what the savings would have earned had they stayed
@@ -225,8 +226,19 @@ export interface HousingRules extends Sourced<'hdbLoanRetentionCap' | 'concessio
   accruedInterestRate: number;
   /** Ordinary Account balance an HDB-loan buyer may elect to retain. */
   hdbLoanRetentionCap: number;
-  /** HDB concessionary loan rate, pegged 0.1 points above the Ordinary Account rate. */
+  /**
+   * HDB concessionary loan rate as published for this rule set's quarter.
+   * Recorded for display and as a cross-check: the engine derives the rate
+   * from the peg below, so a rule set whose OA rate moves carries the loan
+   * rate with it, and a test holds the two equal.
+   */
   concessionaryLoanRate: number;
+  /**
+   * The peg: how far above the Ordinary Account rate the HDB concessionary
+   * loan rate sits, as a fraction. The engine's HDB rate is the OA rate plus
+   * this.
+   */
+  concessionaryLoanSpread: number;
 }
 
 export interface RuleSet {

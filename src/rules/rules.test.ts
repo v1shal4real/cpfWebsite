@@ -86,6 +86,11 @@ describe('rule set data integrity', () => {
 
   it.each(eachSet)('%s: the HDB concessionary rate sits 0.1 points above the OA rate', (_id, set) => {
     expect(set.housing.concessionaryLoanRate - set.interest.ordinary).toBeCloseTo(0.001, 6);
+    // The engine derives the rate from the peg, so the published rate must agree with it.
+    expect(set.interest.ordinary + set.housing.concessionaryLoanSpread).toBeCloseTo(
+      set.housing.concessionaryLoanRate,
+      6,
+    );
   });
 
   it.each(eachSet)('%s: accrued housing interest tracks the OA rate', (_id, set) => {

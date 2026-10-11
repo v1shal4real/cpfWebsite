@@ -76,7 +76,7 @@ describe('ProjectionEvent', () => {
       overflow: 0,
       overflowTo: nothing,
     },
-    { kind: 'housing-loan-cleared', totalInterestPaid: 0 },
+    { kind: 'housing-loan-cleared', principal: 0, instalmentsPaid: 0, totalInterestPaid: 0 },
   ];
 
   it('covers the events the spec names', () => {

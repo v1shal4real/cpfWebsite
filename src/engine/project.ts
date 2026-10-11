@@ -29,9 +29,17 @@
  * month, anything credited to the closed Special Account is moved on the same
  * way. See `transition.ts` for the order and its sources.
  *
- * What this loop does not do yet: housing has its own ticket, and fills in the
- * part of `ProjectionMonth` it owns. Anything reading this output should treat
- * it as "not implemented yet" rather than as a result.
+ * With a housing plan, the loan is drawn in the month the member reaches the
+ * purchase age and repaid in monthly instalments from the month after, at the
+ * rate the rules in force give each month; see `loan.ts`. The month records
+ * the debt, and a "loan cleared" event marks the last instalment.
+ *
+ * What this loop does not do yet: who pays for the property, the Ordinary
+ * Account or cash, and the accrued interest on CPF used for it. The housing
+ * withdrawal and accrued interest tickets fill in `MonthlyHousing`. Until
+ * then the loan runs without touching any CPF balance, and anything reading
+ * this output should treat that as "not implemented yet" rather than as a
+ * result.
  *
  * Interest accrued in a year the projection ends partway through is not
  * credited, because CPF would not have credited it yet either. Opening
@@ -67,6 +75,7 @@ import {
   earningBalances,
   type AccruedThisYear,
 } from './interest';
+import { drawLoan, repayLoan, type LoanMonth, type LoanState } from './loan';
 import { capMedisave } from './medisave';
 import { closeSpecialAccount, formRetirementAccount } from './transition';
 import type {
@@ -211,6 +220,15 @@ export function project(input: ProjectionInput): ProjectionResult {
   let caps: YearCaps | undefined;
   // Recorded once, the first month MediSave reaches the Basic Healthcare Sum.
   let basicHealthcareSumReached = false;
+  // The housing loan, drawn in the month the member reaches the purchase age.
+  // A purchase with no loan, or none in the projection, never draws one.
+  // TODO: a purchase age before the start age is for input validation to
+  // reject; the loop would simply never reach the month to draw it.
+  const loanTerms = input.housing && input.housing.loan.principal > 0 ? input.housing.loan : undefined;
+  const purchaseStep = input.housing
+    ? (input.housing.purchaseAge - input.startAge) * MONTHS_PER_YEAR
+    : undefined;
+  let loan: LoanState | undefined;
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
@@ -281,9 +299,24 @@ export function project(input: ProjectionInput): ProjectionResult {
     // TODO: housing moves balances too, in its own ticket.
     let closingBalances = capped.balances;
 
-    // Events in the order they happen within the month: the MediSave cap,
-    // then the age-55 transition.
+    // Events in the order they happen within the month: the loan instalment,
+    // then the MediSave cap, then the age-55 transition.
     const events: ProjectionEvent[] = [];
+
+    // The loan, independent of the CPF balances until the housing withdrawal
+    // ticket decides who pays each instalment.
+    let loanMonth: LoanMonth | undefined;
+    if (loanTerms && step === purchaseStep) loanMonth = drawLoan(loanTerms, ruleSet);
+    else if (loan) loanMonth = repayLoan(loan, ruleSet);
+    loan = loanMonth && !loanMonth.cleared ? loanMonth.state : undefined;
+    if (loanMonth?.cleared) {
+      events.push({
+        kind: 'housing-loan-cleared',
+        principal: loanMonth.state.terms.principal,
+        instalmentsPaid: loanMonth.state.instalmentsPaid,
+        totalInterestPaid: loanMonth.state.totalInterestPaid,
+      });
+    }
     if (!basicHealthcareSumReached && closingBalances.medisave >= caps.basicHealthcareSum) {
       basicHealthcareSumReached = true;
       events.push({
@@ -345,6 +378,7 @@ export function project(input: ProjectionInput): ProjectionResult {
       },
       medisaveOverflow: capped.overflow,
       retirementTransfers,
+      ...(loanMonth && { loan: loanMonth.record }),
       events,
     });
 
