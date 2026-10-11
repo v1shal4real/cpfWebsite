@@ -114,6 +114,17 @@ describe('salary', () => {
     expect(validateProjectionInput({ ...NO_HOUSING, monthlySalary: threshold + 1 }).ok).toBe(true);
   });
 
+  it('rejects salary growth that takes the wage down to the graduated-rate threshold during the projection', () => {
+    // Found by the property tests: $760 a month falling 1% a year passes the
+    // threshold within two years, where the engine would refuse the wage.
+    const result = validateProjectionInput({ ...NO_HOUSING, monthlySalary: 76_000, salaryGrowthRate: -0.01 });
+    expect(errorsOf(result)).toEqual([
+      expect.objectContaining({ field: 'salaryGrowthRate', code: 'graduated-rates-not-modelled' }),
+    ]);
+    // The same cut from a salary that stays above the threshold to 65 is fine.
+    expect(validateProjectionInput({ ...NO_HOUSING, monthlySalary: 500_000, salaryGrowthRate: -0.01 }).ok).toBe(true);
+  });
+
   it('rejects a negative or missing salary', () => {
     expect(codeFor(validateProjectionInput({ ...NO_HOUSING, monthlySalary: -1 }), 'monthlySalary')).toBe('below-minimum');
     expect(codeFor(validateProjectionInput({ ...NO_HOUSING, monthlySalary: undefined }), 'monthlySalary')).toBe('required');

@@ -80,6 +80,7 @@ import { NO_HOUSING_USE, accrueHousingInterest, type AccruedInterestState } from
 import { housingPayments } from './housing';
 import { drawLoan, repayLoan, type LoanMonth, type LoanState } from './loan';
 import { capMedisave } from './medisave';
+import { isRaiseMonth, raiseWage } from './salary';
 import { closeSpecialAccount, formRetirementAccount } from './transition';
 import type {
   AccountAmounts,
@@ -188,19 +189,6 @@ function capsForYear(rules: RuleSet, year: number, fixesBasicHealthcareSumIn: nu
   };
 }
 
-/**
- * Whether the annual raise lands at the start of this month.
- *
- * Salary growth is applied once a year, in `salaryGrowth.appliedInMonth`, and
- * never in the first month: the wage given as input is the wage being earned
- * now, so raising it immediately would credit a raise that has not happened.
- * A projection starting in the raise month therefore gets its first raise a
- * year later.
- */
-function isRaiseMonth(input: ProjectionInput, step: number, calendarMonth: number): boolean {
-  return step > 0 && calendarMonth === input.salaryGrowth.appliedInMonth;
-}
-
 export type DraftProjection =
   | { ok: true; result: ProjectionResult; adjustments: FieldAdjustment[] }
   | { ok: false; errors: FieldError[] };
@@ -278,7 +266,7 @@ export function project(input: ProjectionInput): ProjectionResult {
     caps ??= capsForYear(ruleSet, year, fixesBasicHealthcareSumIn);
 
     if (isRaiseMonth(input, step, calendarMonth)) {
-      ordinaryWage = Math.round(ordinaryWage * (1 + input.salaryGrowth.rate));
+      ordinaryWage = raiseWage(ordinaryWage, input.salaryGrowth.rate);
     }
 
     const contribution = contributionForMonth({

@@ -60,7 +60,9 @@ docs/
   - Input validation (`validate.ts`): `projectDraft` takes the form's draft,
     returns typed field errors instead of throwing, and projects only what
     passes (see below).
-  - Not yet: invariant tests and the performance budget.
+  - Property and invariant tests (`invariants.test.ts`, fast-check): see
+    "Engine invariants" below.
+  - Not yet: the performance budget.
 - Projection page: not started. The app still renders the design system preview.
 
 ## Engine conventions
@@ -125,7 +127,7 @@ show it in place. Nothing throws.
 |---|---|
 | Current age | Whole number, 16 to 70. The projection runs to 65, or from the current age if older. |
 | Monthly salary | Required, not negative, and above the rule set's graduated-rate threshold ($750): the engine does not model graduated rates. |
-| Salary growth | Required, -10% to 20% a year. Raise month 1 to 12, January by default. |
+| Salary growth | Required, -10% to 20% a year. Raise month 1 to 12, January by default. Rejected if a pay cut each year would take the salary down to the graduated-rate threshold before the projection ends (checked on the engine's own wage path in `salary.ts`). |
 | Opening balances | Optional, zero by default, never negative. |
 | Housing fields | Read only when a housing plan is selected, so leftovers in hidden fields never block a projection. Price, purchase age, downpayment and OA share are then required; tenure only if there is a loan; a rate only for a bank loan. |
 | Purchase age | Not before the current age, not after the projection ends. |
@@ -136,6 +138,28 @@ show it in place. Nothing throws.
 The other bounds (age 16 to 70, growth, bank rate up to 20%) are this tool's
 limits, not CPF rules, and live in `INPUT_LIMITS` so the form can use the same
 ones.
+
+## Engine invariants
+
+Alongside the worked-example fixtures, `src/engine/invariants.test.ts` uses
+[fast-check](https://fast-check.dev) to generate inputs across the whole range
+the validator accepts (ages 16 to 70, salaries above and below the wage ceiling,
+opening balances, no housing, HDB and bank loans, retention, instalments from
+OA or cash, start years 2026 to 2030) and checks, for every month of every
+projection:
+
+| Invariant | What is checked |
+|---|---|
+| Conservation | Per account: opening + contributions + interest - housing withdrawals, plus the recorded moves between accounts (MediSave overflow, age-55 transfers), = closing. Across all accounts the moves cancel out. Each month opens where the last closed. Loans repay exactly what was drawn; refundable = principal + accrued interest. |
+| No negative balances | No account, contribution, interest, loan or housing figure below zero; balances are whole cents; housing withdrawals never go below the retained amount. |
+| Determinism | Repeated runs of the same input are identical, and the input is never changed. |
+| Allocation | Every contribution is allocated in full, with no negative share, at any age, amount and Retirement Account position. Employee and employer shares add up to whole-dollar totals within the wage ceiling. |
+| Rules | MediSave never closes above the BHS; no Special Account balance from the 55th birthday month; interest credited in December only; principal used for housing never falls; every month names a listed rule set. |
+
+On a failure, fast-check shrinks the input to the smallest failing case and
+prints it with a seed to replay. Its first run found a real gap: a pay cut each
+year could take a low salary down to the graduated-rate threshold partway
+through a projection, where the engine throws. Validation now rejects that.
 
 ## Escalation assumptions
 
