@@ -234,6 +234,18 @@ export interface MonthlyHousing {
    * show that rather than let the account go negative.
    */
   paidInCash: Cents;
+  /**
+   * The part of `paidInCash` the member meant to pay from the Ordinary
+   * Account but could not, because the account held too little above the
+   * retained amount. Zero when the OA covered everything asked of it.
+   */
+  shortfallToCash: Cents;
+  /**
+   * The Ordinary Account balance kept back from housing payments this month:
+   * the member's choice, capped for an HDB loan at the rule set's retention
+   * limit. Withdrawals never take the OA below it.
+   */
+  ordinaryAccountRetention: Cents;
   /** Cumulative CPF principal used for the property, which is what must be refunded. */
   principalUsed: Cents;
   /** Interest that principal would have earned, compounded annually. */

@@ -237,7 +237,7 @@ export const SOURCES = {
     title: 'Retain $20,000 in your Ordinary Account if you are taking a housing loan',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/member/home-ownership/using-your-cpf-to-buy-a-home/retain-20000-in-your-oa-if-you-are-taking-a-housing-loan',
-    retrievedOn: '2026-09-14',
+    retrievedOn: '2026-10-11',
   },
   housingRefund: {
     id: 'housingRefund',

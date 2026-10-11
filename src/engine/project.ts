@@ -31,15 +31,18 @@
  *
  * With a housing plan, the loan is drawn in the month the member reaches the
  * purchase age and repaid in monthly instalments from the month after, at the
- * rate the rules in force give each month; see `loan.ts`. The month records
- * the debt, and a "loan cleared" event marks the last instalment.
+ * rate the rules in force give each month; see `loan.ts`. The downpayment and
+ * each instalment are paid from the Ordinary Account or in cash as the member
+ * chose, after this month's contribution lands and before interest is
+ * accrued, so money withdrawn stops earning in the month it leaves. The OA
+ * never goes below the retained amount, and whatever it cannot cover falls to
+ * cash; see `housing.ts`. Every OA withdrawal adds to the CPF principal used
+ * for housing.
  *
- * What this loop does not do yet: who pays for the property, the Ordinary
- * Account or cash, and the accrued interest on CPF used for it. The housing
- * withdrawal and accrued interest tickets fill in `MonthlyHousing`. Until
- * then the loan runs without touching any CPF balance, and anything reading
- * this output should treat that as "not implemented yet" rather than as a
- * result.
+ * What this loop does not do yet: the accrued interest on that principal,
+ * which has its own ticket. Until then `accruedInterest` is zero and
+ * `refundable` is the principal alone, and anything reading it should treat
+ * that as "not implemented yet" rather than as a result.
  *
  * Interest accrued in a year the projection ends partway through is not
  * credited, because CPF would not have credited it yet either. Opening
@@ -75,6 +78,7 @@ import {
   earningBalances,
   type AccruedThisYear,
 } from './interest';
+import { housingPayments } from './housing';
 import { drawLoan, repayLoan, type LoanMonth, type LoanState } from './loan';
 import { capMedisave } from './medisave';
 import { closeSpecialAccount, formRetirementAccount } from './transition';
@@ -229,6 +233,8 @@ export function project(input: ProjectionInput): ProjectionResult {
     ? (input.housing.purchaseAge - input.startAge) * MONTHS_PER_YEAR
     : undefined;
   let loan: LoanState | undefined;
+  // CPF principal used for the property so far: what must be refunded on sale.
+  let principalUsed = 0;
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
@@ -269,14 +275,35 @@ export function project(input: ProjectionInput): ProjectionResult {
       fullRetirementSum,
     });
 
-    // Accrued on the opening balances, so this month's contribution earns
-    // from next month. TODO: housing withdrawals are subtracted here once the
-    // housing ticket records them, since they stop earning in the month they
-    // leave.
+    // The loan: drawn in the purchase month, an instalment due each month after.
+    let loanMonth: LoanMonth | undefined;
+    if (loanTerms && step === purchaseStep) loanMonth = drawLoan(loanTerms, ruleSet);
+    else if (loan) loanMonth = repayLoan(loan, ruleSet);
+    loan = loanMonth && !loanMonth.cleared ? loanMonth.state : undefined;
+
+    // Paying for the property, from the purchase month on. The OA can draw
+    // on this month's contribution, which has landed by now.
+    const owning = input.housing !== undefined && purchaseStep !== undefined && step >= purchaseStep;
+    const payments =
+      owning && input.housing
+        ? housingPayments({
+            rules: ruleSet,
+            plan: input.housing,
+            isPurchaseMonth: step === purchaseStep,
+            instalmentDue: loanMonth?.record.instalment ?? 0,
+            ordinaryAvailable: openingBalances.ordinary + allocation.ordinary,
+          })
+        : undefined;
+    const withdrawnFromOrdinaryAccount = payments?.withdrawnFromOrdinaryAccount ?? 0;
+    principalUsed += withdrawnFromOrdinaryAccount;
+
+    // Accrued on the opening balances less this month's withdrawals: this
+    // month's contribution earns from next month, and money withdrawn stops
+    // earning from the month it leaves.
     const interest = accrueInterest({
       rules: ruleSet,
       ageInMonths,
-      earning: earningBalances(openingBalances),
+      earning: earningBalances(openingBalances, { ordinary: withdrawnFromOrdinaryAccount }),
       accruedThisYear,
     });
     accruedThisYear = interest.accruedThisYear;
@@ -291,24 +318,29 @@ export function project(input: ProjectionInput): ProjectionResult {
     const capped = capMedisave({
       rules: ruleSet,
       ageInMonths,
-      balances: add(add(openingBalances, allocation), credited),
+      balances: add(add(add(openingBalances, allocation), credited), {
+        ordinary: -withdrawnFromOrdinaryAccount,
+        special: 0,
+        medisave: 0,
+        retirement: 0,
+      }),
       basicHealthcareSum: caps.basicHealthcareSum,
       fullRetirementSum: onFrom55Rules(ageInMonths) ? fullRetirementSum : caps.currentFullRetirementSum,
     });
 
-    // TODO: housing moves balances too, in its own ticket.
     let closingBalances = capped.balances;
 
-    // Events in the order they happen within the month: the loan instalment,
-    // then the MediSave cap, then the age-55 transition.
+    // Events in the order they happen within the month: the purchase or the
+    // loan instalment, then the MediSave cap, then the age-55 transition.
     const events: ProjectionEvent[] = [];
-
-    // The loan, independent of the CPF balances until the housing withdrawal
-    // ticket decides who pays each instalment.
-    let loanMonth: LoanMonth | undefined;
-    if (loanTerms && step === purchaseStep) loanMonth = drawLoan(loanTerms, ruleSet);
-    else if (loan) loanMonth = repayLoan(loan, ruleSet);
-    loan = loanMonth && !loanMonth.cleared ? loanMonth.state : undefined;
+    if (input.housing && payments && step === purchaseStep) {
+      events.push({
+        kind: 'property-purchased',
+        fromOrdinaryAccount: payments.withdrawnFromOrdinaryAccount,
+        fromCash: payments.paidInCash,
+        loanPrincipal: loanTerms?.principal ?? 0,
+      });
+    }
     if (loanMonth?.cleared) {
       events.push({
         kind: 'housing-loan-cleared',
@@ -379,6 +411,15 @@ export function project(input: ProjectionInput): ProjectionResult {
       medisaveOverflow: capped.overflow,
       retirementTransfers,
       ...(loanMonth && { loan: loanMonth.record }),
+      ...(payments && {
+        housing: {
+          ...payments,
+          principalUsed,
+          // TODO: the accrued interest ticket compounds this on principalUsed.
+          accruedInterest: 0,
+          refundable: principalUsed,
+        },
+      }),
       events,
     });
 
