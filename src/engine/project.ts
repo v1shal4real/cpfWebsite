@@ -37,12 +37,10 @@
  * accrued, so money withdrawn stops earning in the month it leaves. The OA
  * never goes below the retained amount, and whatever it cannot cover falls to
  * cash; see `housing.ts`. Every OA withdrawal adds to the CPF principal used
- * for housing.
- *
- * What this loop does not do yet: the accrued interest on that principal,
- * which has its own ticket. Until then `accruedInterest` is zero and
- * `refundable` is the principal alone, and anything reading it should treat
- * that as "not implemented yet" rather than as a result.
+ * for housing, which accrues interest at the rule set's accrued interest rate,
+ * compounded annually, from the month it is withdrawn; see
+ * `accruedInterest.ts`. Each month records the refund due if the property
+ * were sold then.
  *
  * Interest accrued in a year the projection ends partway through is not
  * credited, because CPF would not have credited it yet either. Opening
@@ -78,6 +76,7 @@ import {
   earningBalances,
   type AccruedThisYear,
 } from './interest';
+import { NO_HOUSING_USE, accrueHousingInterest, type AccruedInterestState } from './accruedInterest';
 import { housingPayments } from './housing';
 import { drawLoan, repayLoan, type LoanMonth, type LoanState } from './loan';
 import { capMedisave } from './medisave';
@@ -233,8 +232,9 @@ export function project(input: ProjectionInput): ProjectionResult {
     ? (input.housing.purchaseAge - input.startAge) * MONTHS_PER_YEAR
     : undefined;
   let loan: LoanState | undefined;
-  // CPF principal used for the property so far: what must be refunded on sale.
-  let principalUsed = 0;
+  // CPF principal used for the property and the interest it has accrued:
+  // what must be refunded on sale.
+  let housingUse: AccruedInterestState = { ...NO_HOUSING_USE };
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
@@ -295,7 +295,15 @@ export function project(input: ProjectionInput): ProjectionResult {
           })
         : undefined;
     const withdrawnFromOrdinaryAccount = payments?.withdrawnFromOrdinaryAccount ?? 0;
-    principalUsed += withdrawnFromOrdinaryAccount;
+    const refund = payments
+      ? accrueHousingInterest({
+          rules: ruleSet,
+          state: housingUse,
+          withdrawn: withdrawnFromOrdinaryAccount,
+          calendarMonth,
+        })
+      : undefined;
+    if (refund) housingUse = refund.state;
 
     // Accrued on the opening balances less this month's withdrawals: this
     // month's contribution earns from next month, and money withdrawn stops
@@ -411,15 +419,15 @@ export function project(input: ProjectionInput): ProjectionResult {
       medisaveOverflow: capped.overflow,
       retirementTransfers,
       ...(loanMonth && { loan: loanMonth.record }),
-      ...(payments && {
-        housing: {
-          ...payments,
-          principalUsed,
-          // TODO: the accrued interest ticket compounds this on principalUsed.
-          accruedInterest: 0,
-          refundable: principalUsed,
-        },
-      }),
+      ...(payments &&
+        refund && {
+          housing: {
+            ...payments,
+            principalUsed: refund.principalUsed,
+            accruedInterest: refund.accruedInterest,
+            refundable: refund.refundable,
+          },
+        }),
       events,
     });
 

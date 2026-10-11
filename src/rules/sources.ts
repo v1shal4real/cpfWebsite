@@ -230,7 +230,7 @@ export const SOURCES = {
       'Why do I need to refund the accrued interest on the amount of CPF savings used for my property?',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/service/article/why-do-i-need-to-refund-the-accrued-interest-on-the-amount-of-cpf-savings-used-for-my-property',
-    retrievedOn: '2026-09-14',
+    retrievedOn: '2026-10-11',
   },
   housingLoanRetention: {
     id: 'housingLoanRetention',
