@@ -170,20 +170,31 @@ describe('contributions through the loop', () => {
 
 describe('allocation through the loop', () => {
   it('credits each month exactly its contribution, split by account', () => {
-    // From 30, and across the age-55 transition from 54.
-    for (const startAge of [30, 54]) {
-      const result = project(input({ startAge, endAge: startAge + 2 }));
+    // From 30; across the age-55 transition from 54; and buying a flat at 31.
+    const buyer: Partial<ProjectionInput> = {
+      housing: {
+        purchaseAge: 31,
+        price: 50_000_000,
+        downpaymentFromOrdinaryAccount: 2_000_000,
+        downpaymentFromCash: 8_000_000,
+        loan: { kind: 'hdb-concessionary', principal: 40_000_000, tenureYears: 25 },
+        instalmentsPaidFrom: 'ordinary-account',
+      },
+    };
+    for (const [startAge, extra] of [[30, {}], [54, {}], [30, buyer]] as const) {
+      const result = project(input({ startAge, endAge: startAge + 2, ...extra }));
       for (const month of result.months) {
         const { allocation, total } = month.contribution;
         expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(total);
         for (const account of ['ordinary', 'special', 'medisave', 'retirement'] as const) {
           // Interest lands in December; the MediSave overflow moves money out of
           // MediSave into the account it is routed to; the age-55 rules move
-          // money between accounts.
+          // money between accounts; housing payments leave the OA.
           const overflow = month.medisaveOverflow;
           const moved = account === 'medisave' ? -overflow.amount : overflow.to[account];
+          const housing = account === 'ordinary' ? (month.housing?.withdrawnFromOrdinaryAccount ?? 0) : 0;
           expect(month.closingBalances[account] - month.openingBalances[account], `${month.month} ${account}`).toBe(
-            allocation[account] + month.interest.credited[account] + moved + month.retirementTransfers[account],
+            allocation[account] + month.interest.credited[account] + moved + month.retirementTransfers[account] - housing,
           );
         }
       }
@@ -672,9 +683,138 @@ describe('housing loan through the loop', () => {
     expect(cash.months.some((month) => month.loan)).toBe(false);
   });
 
-  it('leaves the CPF balances alone until the housing withdrawal ticket decides who pays', () => {
-    const without = project(input({ ...withLoan, housing: undefined }));
-    expect(result.summary.atEnd.balances).toEqual(without.summary.atEnd.balances);
+});
+
+describe('housing withdrawals through the loop', () => {
+  const hdbLoan: LoanTerms = { kind: 'hdb-concessionary', principal: 40_000_000, tenureYears: 25 };
+  /** Bought at 32 in January 2028: $30,000 of the downpayment from OA, $70,000 in cash. */
+  const plan = (overrides: Partial<HousingPlan> = {}): HousingPlan => ({
+    purchaseAge: 32,
+    price: 50_000_000,
+    downpaymentFromOrdinaryAccount: 3_000_000,
+    downpaymentFromCash: 7_000_000,
+    loan: hdbLoan,
+    instalmentsPaidFrom: 'ordinary-account',
+    ...overrides,
+  });
+  const buyer = (overrides: Partial<HousingPlan> = {}) =>
+    project(input({ startMonth: '2026-01', startAge: 30, endAge: 65, housing: plan(overrides) }));
+  const result = buyer();
+  const at = (stamp: string) => result.months.find((month) => month.month === stamp)!;
+  const owning = result.months.filter((month) => month.housing);
+
+  it('draws the OA share of the downpayment in the purchase month', () => {
+    const purchase = at('2028-01');
+    expect(at('2027-12').housing).toBeUndefined();
+    expect(purchase.housing).toMatchObject({
+      withdrawnFromOrdinaryAccount: 3_000_000,
+      paidInCash: 7_000_000,
+      shortfallToCash: 0,
+      principalUsed: 3_000_000,
+    });
+    expect(purchase.events).toContainEqual({
+      kind: 'property-purchased',
+      fromOrdinaryAccount: 3_000_000,
+      fromCash: 7_000_000,
+      loanPrincipal: 40_000_000,
+    });
+  });
+
+  it('draws each instalment from the OA when the member chose to', () => {
+    for (const month of owning.filter((each) => each.loan && each.loan.instalment > 0)) {
+      const { withdrawnFromOrdinaryAccount, shortfallToCash } = month.housing!;
+      expect(withdrawnFromOrdinaryAccount + shortfallToCash, month.month).toBe(month.loan!.instalment);
+    }
+  });
+
+  it('pays each instalment in cash when the member chose to, leaving the OA alone', () => {
+    const cash = buyer({ instalmentsPaidFrom: 'cash' });
+    for (const month of cash.months.filter((each) => each.housing && each.month > '2028-01')) {
+      expect(month.housing!.withdrawnFromOrdinaryAccount).toBe(0);
+      expect(month.housing!.paidInCash).toBe(month.loan?.instalment ?? 0);
+    }
+  });
+
+  it('never takes the OA negative, and records the shortfall that falls to cash', () => {
+    // A member with nothing in OA, buying at once: the OA share cannot be met.
+    const broke = project(
+      input({
+        startMonth: '2026-01',
+        startAge: 30,
+        endAge: 35,
+        openingBalances: { ordinary: 0, special: 0, medisave: 0, retirement: 0 },
+        housing: plan({ purchaseAge: 30 }),
+      }),
+    );
+    const purchase = broke.months[0]!;
+    // Only this month's Ordinary share was there to draw on.
+    expect(purchase.housing!.withdrawnFromOrdinaryAccount).toBe(purchase.contribution.allocation.ordinary);
+    expect(purchase.housing!.shortfallToCash).toBe(3_000_000 - purchase.contribution.allocation.ordinary);
+    expect(purchase.housing!.paidInCash).toBe(7_000_000 + purchase.housing!.shortfallToCash);
+    for (const month of broke.months) expect(month.closingBalances.ordinary, month.month).toBeGreaterThanOrEqual(0);
+    // Instalments larger than the monthly Ordinary share run short every month.
+    expect(broke.months[1]!.housing!.shortfallToCash).toBeGreaterThan(0);
+  });
+
+  it('respects the HDB $20,000 retention, capping a larger request at it', () => {
+    const retaining = buyer({ ordinaryAccountRetention: 5_000_000 });
+    for (const month of retaining.months.filter((each) => each.housing)) {
+      expect(month.housing!.ordinaryAccountRetention).toBe(2_000_000);
+      if (month.housing!.withdrawnFromOrdinaryAccount > 0) {
+        const left = month.openingBalances.ordinary + month.contribution.allocation.ordinary;
+        expect(left - month.housing!.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(2_000_000);
+      }
+    }
+    // Retaining more leaves more in OA than paying from it freely does.
+    const withdrawnTotal = (months: typeof result.months) =>
+      months.reduce((sum, month) => sum + (month.housing?.withdrawnFromOrdinaryAccount ?? 0), 0);
+    expect(withdrawnTotal(retaining.months)).toBeLessThan(withdrawnTotal(result.months));
+  });
+
+  it('respects a bank-loan buyer’s retention of any amount', () => {
+    const bank = buyer({
+      loan: { kind: 'bank', principal: 40_000_000, tenureYears: 25, interestRate: 0.03 },
+      ordinaryAccountRetention: 5_000_000,
+    });
+    for (const month of bank.months.filter((each) => each.housing)) {
+      expect(month.housing!.ordinaryAccountRetention).toBe(5_000_000);
+      if (month.housing!.withdrawnFromOrdinaryAccount > 0) {
+        const left = month.openingBalances.ordinary + month.contribution.allocation.ordinary;
+        expect(left - month.housing!.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(5_000_000);
+      }
+    }
+  });
+
+  it('records every withdrawal as CPF principal used for housing', () => {
+    let running = 0;
+    for (const month of owning) {
+      running += month.housing!.withdrawnFromOrdinaryAccount;
+      expect(month.housing!.principalUsed, month.month).toBe(running);
+    }
+    expect(result.summary.totals.housingWithdrawals).toBe(running);
+    // Until the accrued interest ticket, the refund due is the principal alone.
+    expect(owning.at(-1)!.housing!.refundable).toBe(running);
+  });
+
+  it('keeps recording the principal used after the loan is cleared', () => {
+    const afterLoan = owning.filter((month) => month.month > '2053-01');
+    expect(afterLoan.length).toBeGreaterThan(0);
+    for (const month of afterLoan) {
+      expect(month.housing!.withdrawnFromOrdinaryAccount).toBe(0);
+      expect(month.housing!.principalUsed).toBe(at('2053-01').housing!.principalUsed);
+    }
+  });
+
+  it('stops money withdrawn earning interest from the month it leaves', () => {
+    const purchase = at('2028-01');
+    const earning = purchase.openingBalances.ordinary - purchase.housing!.withdrawnFromOrdinaryAccount;
+    const exact = (Math.max(0, earning) * CURRENT_RULE_SET.interest.ordinary) / 12;
+    expect(Math.abs(purchase.interest.baseAccrued.ordinary - exact)).toBeLessThanOrEqual(1);
+  });
+
+  it('draws down the OA compared with not buying', () => {
+    const renter = project(input({ startMonth: '2026-01', startAge: 30, endAge: 65 }));
+    expect(result.summary.atEnd.balances.ordinary).toBeLessThan(renter.summary.atEnd.balances.ordinary);
   });
 });
 
