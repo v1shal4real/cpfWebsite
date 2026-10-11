@@ -90,6 +90,12 @@ import type {
   ProjectionResult,
   ProjectionSummary,
 } from './types';
+import {
+  validateProjectionInput,
+  type FieldAdjustment,
+  type FieldError,
+  type ProjectionDraft,
+} from './validate';
 
 const MONTHS_PER_YEAR = 12;
 
@@ -195,11 +201,32 @@ function isRaiseMonth(input: ProjectionInput, step: number, calendarMonth: numbe
   return step > 0 && calendarMonth === input.salaryGrowth.appliedInMonth;
 }
 
+export type DraftProjection =
+  | { ok: true; result: ProjectionResult; adjustments: FieldAdjustment[] }
+  | { ok: false; errors: FieldError[] };
+
+/**
+ * Validates a draft from the form and, if it can be projected, projects it.
+ *
+ * The interface's entry point. It never throws: an input the engine cannot
+ * project comes back as typed field errors instead, and a value that was
+ * clamped comes back as an adjustment alongside the result.
+ */
+export function projectDraft(draft: ProjectionDraft): DraftProjection {
+  const validated = validateProjectionInput(draft);
+  if (!validated.ok) return validated;
+  return { ok: true, result: project(validated.input), adjustments: validated.adjustments };
+}
+
 /**
  * Runs a projection.
  *
  * `endAge` is inclusive: the last month is the one in which the member reaches
  * it, so a 30-year-old projected to 65 gets 421 months.
+ *
+ * Trusts its input: a wage at or below the graduated-rate threshold throws,
+ * and other out-of-range values give meaningless results. Anything built from
+ * user input should come through `projectDraft`, which validates first.
  */
 export function project(input: ProjectionInput): ProjectionResult {
   const steps = (input.endAge - input.startAge) * MONTHS_PER_YEAR + 1;
@@ -225,8 +252,8 @@ export function project(input: ProjectionInput): ProjectionResult {
   let basicHealthcareSumReached = false;
   // The housing loan, drawn in the month the member reaches the purchase age.
   // A purchase with no loan, or none in the projection, never draws one.
-  // TODO: a purchase age before the start age is for input validation to
-  // reject; the loop would simply never reach the month to draw it.
+  // A purchase age before the start age is rejected by `validate.ts`; given
+  // one directly, the loop would simply never reach the month to draw it.
   const loanTerms = input.housing && input.housing.loan.principal > 0 ? input.housing.loan : undefined;
   const purchaseStep = input.housing
     ? (input.housing.purchaseAge - input.startAge) * MONTHS_PER_YEAR

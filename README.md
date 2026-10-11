@@ -57,7 +57,10 @@ docs/
     withdrawals from the Ordinary Account, with the retention option and
     shortfalls falling to cash; accrued interest on CPF used for housing, and
     the refund due on sale at every age.
-  - Not yet: input validation, invariant tests and the performance budget.
+  - Input validation (`validate.ts`): `projectDraft` takes the form's draft,
+    returns typed field errors instead of throwing, and projects only what
+    passes (see below).
+  - Not yet: invariant tests and the performance budget.
 - Projection page: not started. The app still renders the design system preview.
 
 ## Engine conventions
@@ -108,6 +111,31 @@ takes those dollars out of the extra-interest tier as well as out of OA, so
 each one forfeits the extra-interest rate on it (1% a year below 55, up to 2%
 from 55, credited to SA or RA) unless other savings are available to refill
 the tier.
+
+## Input validation
+
+The interface never calls the engine directly. `projectDraft(draft)` in
+`src/engine/project.ts` validates a draft shaped like the spec's §3.1 inputs
+and returns either `{ ok: true, result, adjustments }` or
+`{ ok: false, errors }`. Each error names its field, a code, a plain-language
+message and, where there is one, the bound that was crossed, so the form can
+show it in place. Nothing throws.
+
+| Check | Rule |
+|---|---|
+| Current age | Whole number, 16 to 70. The projection runs to 65, or from the current age if older. |
+| Monthly salary | Required, not negative, and above the rule set's graduated-rate threshold ($750): the engine does not model graduated rates. |
+| Salary growth | Required, -10% to 20% a year. Raise month 1 to 12, January by default. |
+| Opening balances | Optional, zero by default, never negative. |
+| Housing fields | Read only when a housing plan is selected, so leftovers in hidden fields never block a projection. Price, purchase age, downpayment and OA share are then required; tenure only if there is a loan; a rate only for a bank loan. |
+| Purchase age | Not before the current age, not after the projection ends. |
+| Downpayment | Not above the price; the loan is the price less the downpayment. OA share 0 to 100%. |
+| Loan tenure | 1 to 25 years for an HDB loan, 1 to 35 for a bank loan. Not yet verified against a primary source; the "source housing loan parameters" ticket should verify and move these into the rule set. |
+| OA retention | An HDB-loan figure above the rule set's $20,000 cap is clamped to it, with a notice returned as an adjustment. |
+
+The other bounds (age 16 to 70, growth, bank rate up to 20%) are this tool's
+limits, not CPF rules, and live in `INPUT_LIMITS` so the form can use the same
+ones.
 
 ## Escalation assumptions
 
