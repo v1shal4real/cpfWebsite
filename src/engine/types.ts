@@ -47,6 +47,29 @@ export type AccountAmounts = Record<AccountName, Cents>;
 export type LoanKind = 'hdb-concessionary' | 'bank';
 
 /**
+ * The housing loan, drawn down in the month the property is bought and repaid
+ * in equal monthly instalments over the tenure.
+ *
+ * The two kinds differ in where the rate comes from, and the type keeps that
+ * straight: an HDB concessionary loan takes its rate from the rule set, where
+ * it is pegged to the Ordinary Account rate, so it cannot be given one; a
+ * bank loan has no published rate, so it cannot be left without one.
+ */
+export type LoanTerms =
+  | {
+      kind: 'hdb-concessionary';
+      principal: Cents;
+      tenureYears: number;
+    }
+  | {
+      kind: 'bank';
+      principal: Cents;
+      tenureYears: number;
+      /** Annual rate, as a fraction, held for the whole tenure. */
+      interestRate: Fraction;
+    };
+
+/**
  * How the member pays for a property.
  *
  * Absent means no property in the projection, which is a supported scenario
@@ -60,17 +83,7 @@ export interface HousingPlan {
   downpaymentFromOrdinaryAccount: Cents;
   /** Downpayment paid in cash. Recorded so the two sources add up to the downpayment. */
   downpaymentFromCash: Cents;
-  loan: {
-    kind: LoanKind;
-    principal: Cents;
-    tenureYears: number;
-    /**
-     * Bank loans only. An HDB concessionary loan takes its rate from the rule
-     * set, where it is pegged to the Ordinary Account rate, so passing one
-     * here would let a caller contradict the published peg.
-     */
-    interestRate?: Fraction;
-  };
+  loan: LoanTerms;
   /** Whether monthly instalments are paid from the Ordinary Account or in cash. */
   instalmentsPaidFrom: 'ordinary-account' | 'cash';
   /**
@@ -182,6 +195,35 @@ export interface MedisaveOverflow {
   to: AccountAmounts;
 }
 
+/**
+ * The housing loan for one month.
+ *
+ * This is the debt alone: what was owed, what the instalment was and how it
+ * split between interest and principal. Who paid the instalment, the Ordinary
+ * Account or cash, is the CPF side of the story and lives in
+ * `MonthlyHousing`.
+ */
+export interface MonthlyLoan {
+  /** Annual rate charged this month, as a fraction. */
+  rate: Fraction;
+  /** Owed at the start of the month. */
+  openingBalance: Cents;
+  /** Borrowed this month: the principal in the month of purchase, zero after. */
+  drawn: Cents;
+  /**
+   * Due this month. Zero in the month the loan is drawn, since the first
+   * instalment falls due a month later. The last instalment is whatever
+   * clears the balance exactly, so it can differ from the others by cents.
+   */
+  instalment: Cents;
+  /** The part of the instalment that is interest: a month of the rate on the opening balance. */
+  interest: Cents;
+  /** The part that repays the loan. */
+  principal: Cents;
+  /** Owed at the end of the month: opening, plus drawn, less principal repaid. */
+  closingBalance: Cents;
+}
+
 /** Housing position for one month. */
 export interface MonthlyHousing {
   /** Taken from the Ordinary Account this month, for downpayment or instalment. */
@@ -192,7 +234,6 @@ export interface MonthlyHousing {
    * show that rather than let the account go negative.
    */
   paidInCash: Cents;
-  outstandingLoan: Cents;
   /** Cumulative CPF principal used for the property, which is what must be refunded. */
   principalUsed: Cents;
   /** Interest that principal would have earned, compounded annually. */
@@ -272,7 +313,12 @@ export type ProjectionEvent =
       overflowTo: AccountAmounts;
     }
   | {
+      /** The month the last instalment clears the loan. */
       kind: 'housing-loan-cleared';
+      /** What was borrowed. */
+      principal: Cents;
+      /** How many monthly instalments it took. */
+      instalmentsPaid: number;
       /** Total interest paid over the life of the loan, cash and CPF together. */
       totalInterestPaid: Cents;
     };
@@ -312,6 +358,8 @@ export interface ProjectionMonth {
    * every other month.
    */
   retirementTransfers: AccountAmounts;
+  /** Present from the month the loan is drawn to the month it is cleared. */
+  loan?: MonthlyLoan;
   housing?: MonthlyHousing;
   /** Empty in most months. Ordered as they occurred within the month. */
   events: readonly ProjectionEvent[];

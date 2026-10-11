@@ -187,11 +187,15 @@ export const RULE_SET_2026: RuleSet = {
     fieldSources: {
       hdbLoanRetentionCap: 'housingLoanRetention',
       concessionaryLoanRate: 'newsRelease2026Q1',
+      concessionaryLoanSpread: 'newsRelease2026Q1',
     },
     // The prevailing Ordinary Account rate, compounded annually.
     accruedInterestRate: 0.025,
     // Bank-loan buyers may retain any amount, so only the HDB cap is a rule.
     hdbLoanRetentionCap: 20_000,
+    // "pegged at 0.1% above the OA interest rate, will remain unchanged at
+    // 2.6% per annum". The engine uses the peg; the rate is the cross-check.
     concessionaryLoanRate: 0.026,
+    concessionaryLoanSpread: 0.001,
   },
 };
