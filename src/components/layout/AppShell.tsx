@@ -1,5 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import { DESIGN_SYSTEM_PATH } from '@/routes';
 import { RulesStamp } from './RulesStamp';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -92,7 +93,14 @@ function Footer() {
           recommendation and suggests no course of action. Rules change; check the current figures
           with CPF Board before relying on any of them.
         </p>
-        <RulesStamp className="shrink-0" />
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <RulesStamp />
+          {import.meta.env.DEV ? (
+            <a href={DESIGN_SYSTEM_PATH} className="text-accent underline underline-offset-2">
+              Design system preview (development only)
+            </a>
+          ) : null}
+        </div>
       </Container>
     </footer>
   );

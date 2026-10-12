@@ -137,7 +137,11 @@ export function DesignSystemPage() {
         </p>
         <Callout tone="caution" title="Placeholder data">
           Figures and curves on this page exist to exercise the components. They are not produced by
-          the projection engine, which has not been built yet.
+          the projection engine. This page is reachable in development builds only;{' '}
+          <a href="/" className="text-accent underline underline-offset-2">
+            back to the projection
+          </a>
+          .
         </Callout>
       </header>
 
