@@ -37,7 +37,7 @@ src/
     layout/            AppShell, header/footer, rules-as-at stamp, theme toggle
   pages/
     ProjectionPage     The landing view: headline, inputs, results
-    projection/        Page-level pieces, such as the default draft
+    projection/        The input panel, its form state and defaults, and the form-to-draft conversion
     DesignSystemPage   Live preview of every component (placeholder data), development only
   routes.ts            Projection on every path; /design-system in development builds only
 docs/
@@ -69,12 +69,19 @@ docs/
   - Performance budget: a full recomputation under 50ms, asserted in the test
     suite (see "Performance" below).
   - The v1 engine tickets are complete.
-- Projection page: the default view. It opens on a projection of a default
-  draft (age 30, $5,000 a month, 3% growth, no housing), with no account or
-  input needed. Layout and mobile order are in `docs/design-system.md`. The
-  headline tiles and the balances table are first cuts; the input panel,
-  headline row, balance chart, timeline and assumptions panel each have their
-  own ticket.
+- Projection page: the default view. It opens on a projection of the default
+  inputs (age 30, $5,000 a month, 0% salary growth, no housing), with no
+  account or input needed. Layout and mobile order are in
+  `docs/design-system.md`.
+  - Input panel (`pages/projection/InputPanel.tsx`): every §3.1 input. Salary
+    growth defaults to 0%, a stated assumption that the salary stays as it is
+    today, shown in the hint. Housing fields appear only once a housing plan
+    is selected. Validation errors from the engine guards show beside their
+    field: a wrong value at once, a missing one once the field has been
+    visited. While the inputs cannot be projected, the last complete
+    projection stays on screen under a notice listing what to resolve.
+  - The headline tiles and balances table are first cuts; the headline row,
+    balance chart, timeline and assumptions panel each have their own ticket.
 - Design system preview: `npm run dev`, then `/design-system`. Development
   builds only; the production build does not contain it.
 
