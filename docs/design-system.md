@@ -91,6 +91,30 @@ Designed at 360px first. The header moves the rules stamp to its own row below
 `md` rather than hiding it. Tables scroll horizontally inside their own
 container with a sticky first column; the page body never scrolls sideways.
 
+## Page layout
+
+The projection page (`src/pages/ProjectionPage.tsx`) has three regions. Their
+DOM order is fixed, and is the order at 360px, the reading order and the
+focus order at every width:
+
+1. **Headline figures.** The answer first: the spec's thirty-second criterion
+   is met by a projection already on screen above the fold, not by a form.
+2. **Inputs.** What produced the answer, directly beneath it, so the figures
+   and the assumptions behind them are never more than a scroll apart.
+3. **Results.** Chart, timeline and assumptions panel, which need width.
+
+From `lg`, grid areas move the inputs into a sticky left column beside the
+headline and results, so editing an input and watching the figures respond
+happen in one view. Only grid areas change; the DOM order does not, so focus
+and screen-reader order never diverge from what the layout implies.
+
+The page opens on a projection of a default draft
+(`src/pages/projection/defaults.ts`) rather than an empty form, and with no
+housing plan, so no particular purchase is put in front of every visitor.
+
+The design system preview is served at `/design-system` in development builds
+only, and is dropped from the production bundle.
+
 ## Component inventory
 
 | Component | File | Notes |

@@ -36,7 +36,10 @@ src/
     chart/             ChartFrame, legend, tooltip, textures, Recharts styling
     layout/            AppShell, header/footer, rules-as-at stamp, theme toggle
   pages/
-    DesignSystemPage   Live preview of every component (placeholder data)
+    ProjectionPage     The landing view: headline, inputs, results
+    projection/        Page-level pieces, such as the default draft
+    DesignSystemPage   Live preview of every component (placeholder data), development only
+  routes.ts            Projection on every path; /design-system in development builds only
 docs/
   design-system.md     Token, colour, accessibility and component reference
 ```
@@ -66,7 +69,14 @@ docs/
   - Performance budget: a full recomputation under 50ms, asserted in the test
     suite (see "Performance" below).
   - The v1 engine tickets are complete.
-- Projection page: not started. The app still renders the design system preview.
+- Projection page: the default view. It opens on a projection of a default
+  draft (age 30, $5,000 a month, 3% growth, no housing), with no account or
+  input needed. Layout and mobile order are in `docs/design-system.md`. The
+  headline tiles and the balances table are first cuts; the input panel,
+  headline row, balance chart, timeline and assumptions panel each have their
+  own ticket.
+- Design system preview: `npm run dev`, then `/design-system`. Development
+  builds only; the production build does not contain it.
 
 ## Engine conventions
 
