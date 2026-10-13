@@ -2,6 +2,8 @@ import { Suspense, lazy, useMemo } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { currentMonth } from '@/lib/clock';
 import { ProjectionPage } from '@/pages/ProjectionPage';
+import { decodeUrlState } from '@/pages/projection/urlState';
+import { ruleSetById } from '@/rules';
 import { routeFor } from '@/routes';
 
 /**
@@ -15,17 +17,24 @@ const DesignSystemPage = import.meta.env.DEV
 
 export function App() {
   const route = routeFor(window.location.pathname, import.meta.env.DEV);
-  // The month the projection starts from: read once, here, never in the engine.
-  const startMonth = useMemo(() => currentMonth(), []);
+  // A shared link carries its own state, start month and rule set; a bare URL
+  // starts this month on the defaults. Read once, here: the clock is never
+  // read in the engine.
+  const link = useMemo(() => decodeUrlState(window.location.search, { startMonth: currentMonth() }), []);
 
   return (
-    <AppShell>
+    <AppShell ruleSet={route === 'projection' ? ruleSetById(link.state.rulesAsAt) : undefined}>
       {route === 'design-system' && DesignSystemPage ? (
         <Suspense fallback={null}>
           <DesignSystemPage />
         </Suspense>
       ) : (
-        <ProjectionPage startMonth={startMonth} />
+        <ProjectionPage
+          startMonth={link.state.startMonth}
+          initialForm={link.state.form}
+          rulesAsAt={link.state.rulesAsAt}
+          linkNotices={link.notices}
+        />
       )}
     </AppShell>
   );

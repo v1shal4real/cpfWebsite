@@ -112,6 +112,22 @@ describe('the input panel', () => {
   });
 });
 
+describe('opening a shared link', () => {
+  it('shows what the link carried that could not be used', () => {
+    const notice = 'The current age in this link is outside what the projection supports, so the default is used.';
+    const html = renderToString(
+      <ProjectionPage startMonth={START} initialForm={DEFAULT_FORM} linkNotices={[notice]} />,
+    );
+    expect(html).toContain('Parts of this link could not be used');
+    expect(html).toContain(notice);
+  });
+
+  it('says nothing when the link was read in full', () => {
+    const { text } = render();
+    expect(text).not.toContain('Parts of this link could not be used');
+  });
+});
+
 describe('validation errors', () => {
   it('shows an engine guard error beside its field, as an alert linked to the control', () => {
     const { html } = render({ ...DEFAULT_FORM, monthlySalary: 100 });

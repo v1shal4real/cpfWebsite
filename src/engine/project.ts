@@ -153,7 +153,7 @@ function monthTurning55(input: ProjectionInput): string {
  */
 function cohortRetirementSums(input: ProjectionInput): CohortRetirementSums {
   const month = monthTurning55(input);
-  return retirementSumsForCohort(resolveRuleSet(monthToIsoDate(month)), parseMonth(month).year);
+  return retirementSumsForCohort(resolveRuleSet(monthToIsoDate(month), input.rulesAsAt), parseMonth(month).year);
 }
 
 /** The calendar year this member turns 65, when their Basic Healthcare Sum fixes. */
@@ -255,7 +255,7 @@ export function project(input: ProjectionInput): ProjectionResult {
     const month = addMonths(input.startMonth, step);
     const { year, month: calendarMonth } = parseMonth(month);
     const ageInMonths = input.startAge * MONTHS_PER_YEAR + step;
-    const ruleSet = resolveRuleSet(monthToIsoDate(month));
+    const ruleSet = resolveRuleSet(monthToIsoDate(month), input.rulesAsAt);
     if (ruleSetIds.at(-1) !== ruleSet.id) ruleSetIds.push(ruleSet.id);
 
     if (year !== yearInProgress) {

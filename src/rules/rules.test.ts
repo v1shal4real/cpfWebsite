@@ -4,6 +4,7 @@ import {
   RULE_SETS,
   SOURCES,
   bandForAge,
+  resolveFrom,
   resolveRuleSet,
   ruleSetById,
   sourceFor,
@@ -130,6 +131,33 @@ describe('source registry', () => {
   it('gives every page exactly one entry', () => {
     const urls = Object.values(SOURCES).map((src) => src.url);
     expect(new Set(urls).size).toBe(urls.length);
+  });
+});
+
+describe('pinning a rule set for a shared link', () => {
+  // A hypothetical 2027 set, to show what happens once a second one exists.
+  const RULES_2026: RuleSet = { ...CURRENT_RULE_SET, id: 'test-2026', effectiveFrom: '2026-01-01', effectiveTo: '2026-12-31' };
+  const RULES_2027: RuleSet = { ...CURRENT_RULE_SET, id: 'test-2027', effectiveFrom: '2027-01-01', effectiveTo: null };
+  const SETS = [RULES_2026, RULES_2027];
+
+  it('resolves by date when nothing is pinned', () => {
+    expect(resolveFrom(SETS, '2026-06-01').id).toBe('test-2026');
+    expect(resolveFrom(SETS, '2030-06-01').id).toBe('test-2027');
+  });
+
+  it('never applies rules newer than the pinned set, which it treats as still in force', () => {
+    // A link made in 2026 keeps its 2026 rules for 2030, as they were then.
+    expect(resolveFrom(SETS, '2030-06-01', 'test-2026').id).toBe('test-2026');
+    expect(resolveFrom(SETS, '2026-06-01', 'test-2026').id).toBe('test-2026');
+  });
+
+  it('pinned to the newest set, behaves as unpinned', () => {
+    expect(resolveFrom(SETS, '2030-06-01', 'test-2027').id).toBe('test-2027');
+    expect(resolveFrom(SETS, '2026-06-01', 'test-2027').id).toBe('test-2026');
+  });
+
+  it('pinned to the current set today, changes nothing', () => {
+    expect(resolveRuleSet('2040-01-01', CURRENT_RULE_SET.id)).toBe(resolveRuleSet('2040-01-01'));
   });
 });
 

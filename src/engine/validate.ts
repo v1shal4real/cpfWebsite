@@ -28,7 +28,7 @@
  * form can use the same ones.
  */
 
-import { resolveRuleSet, type RuleSet } from '@/rules';
+import { resolveRuleSet, ruleSetById, type RuleSet } from '@/rules';
 import { lowestWage } from './salary';
 import type { Cents, Fraction, HousingPlan, LoanTerms, MonthStamp, ProjectionInput } from './types';
 
@@ -97,6 +97,8 @@ export interface ProjectionDraft {
   ordinaryAccountRetention?: Cents;
   /** Defaults to the Ordinary Account. */
   instalmentsPaidFrom?: 'ordinary-account' | 'cash';
+  /** The newest rule set the projection may use, by id. Absent means every rule set known. */
+  rulesAsAt?: string;
 }
 
 export type ProjectionField =
@@ -114,7 +116,8 @@ export type ProjectionField =
   | 'downpaymentShareFromOrdinaryAccount'
   | 'loanTenureYears'
   | 'bankLoanRate'
-  | 'ordinaryAccountRetention';
+  | 'ordinaryAccountRetention'
+  | 'rulesAsAt';
 
 export type ValidationErrorCode =
   | 'required'
@@ -127,7 +130,8 @@ export type ValidationErrorCode =
   | 'graduated-rates-not-modelled'
   | 'before-current-age'
   | 'after-projection-end'
-  | 'exceeds-property-price';
+  | 'exceeds-property-price'
+  | 'unknown-rule-set';
 
 export interface FieldError {
   field: ProjectionField;
@@ -219,7 +223,12 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     check.fail('startMonth', 'invalid-month', 'The start month must be a YYYY-MM month.');
     return { ok: false, errors: check.errors };
   }
-  const rules: RuleSet = resolveRuleSet(`${draft.startMonth}-01`);
+  if (draft.rulesAsAt !== undefined && !ruleSetById(draft.rulesAsAt)) {
+    // Also supplied by the interface, which falls back before it gets here.
+    check.fail('rulesAsAt', 'unknown-rule-set', `No rule set is known by the id "${draft.rulesAsAt}".`);
+    return { ok: false, errors: check.errors };
+  }
+  const rules: RuleSet = resolveRuleSet(`${draft.startMonth}-01`, draft.rulesAsAt);
 
   // Age.
   const age = check.range(
@@ -284,6 +293,7 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     monthlyOrdinaryWage: salary,
     salaryGrowth: { rate: growth!, appliedInMonth: raiseMonth! },
     ...(housing && { housing }),
+    ...(draft.rulesAsAt !== undefined && { rulesAsAt: draft.rulesAsAt }),
   };
 
   // A pay cut each year can take the wage down to the graduated-rate

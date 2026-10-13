@@ -1,4 +1,5 @@
 import type { ComponentPropsWithRef, ReactNode } from 'react';
+import type { RuleSet } from '@/rules';
 import { cn } from '@/lib/cn';
 import { DESIGN_SYSTEM_PATH } from '@/routes';
 import { RulesStamp } from './RulesStamp';
@@ -29,7 +30,12 @@ export function Container({
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+/**
+ * `ruleSet` is the one the page's figures were made with; a shared link may
+ * pin an older one than the current. The stamps in the header and footer
+ * follow it, so they never claim newer rules than the figures used.
+ */
+export function AppShell({ children, ruleSet }: { children: ReactNode; ruleSet?: RuleSet | undefined }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -43,18 +49,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to projection
       </a>
 
-      <Header />
+      <Header ruleSet={ruleSet} />
 
       <main id="main" tabIndex={-1} className="flex-1 outline-none">
         {children}
       </main>
 
-      <Footer />
+      <Footer ruleSet={ruleSet} />
     </div>
   );
 }
 
-function Header() {
+function Header({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
       <Container className="flex h-14 items-center justify-between gap-3">
@@ -71,19 +77,19 @@ function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          <RulesStamp compact className="hidden md:inline-flex" />
+          <RulesStamp compact ruleSet={ruleSet} className="hidden md:inline-flex" />
           <ThemeToggle />
         </div>
       </Container>
       {/* Below md, the stamp gets its own row rather than disappearing. */}
       <Container className="flex h-8 items-center border-t border-line md:hidden">
-        <RulesStamp compact />
+        <RulesStamp compact ruleSet={ruleSet} />
       </Container>
     </header>
   );
 }
 
-function Footer() {
+function Footer({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
   return (
     <footer className="mt-16 border-t border-line bg-surface">
       <Container className="flex flex-col gap-3 py-6 text-[0.75rem] leading-relaxed text-ink-subtle sm:flex-row sm:items-start sm:justify-between">
@@ -94,7 +100,7 @@ function Footer() {
           with CPF Board before relying on any of them.
         </p>
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-          <RulesStamp />
+          <RulesStamp ruleSet={ruleSet} />
           {import.meta.env.DEV ? (
             <a href={DESIGN_SYSTEM_PATH} className="text-accent underline underline-offset-2">
               Design system preview (development only)

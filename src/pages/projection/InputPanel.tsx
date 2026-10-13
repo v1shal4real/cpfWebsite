@@ -11,7 +11,7 @@ import {
 } from '@/components/ui';
 import { INPUT_LIMITS, type HousingPlanChoice } from '@/engine/validate';
 import { formatMoney } from '@/lib/format';
-import { CURRENT_RULE_SET, sourceFor } from '@/rules';
+import { sourceFor, type RuleSet } from '@/rules';
 import {
   DEFAULT_SALARY_GROWTH_PERCENT,
   shouldShowError,
@@ -33,15 +33,16 @@ import {
  * engine would reject.
  */
 
-const { wageCeilings, contributionRates } = CURRENT_RULE_SET;
-
 export interface InputPanelProps {
   values: FormValues;
   onChange: (patch: Partial<FormValues>) => void;
   errors: FormErrors;
+  /** The rule set the projection is pinned to, for the figures in hints. */
+  rules: RuleSet;
 }
 
-export function InputPanel({ values, onChange, errors }: InputPanelProps) {
+export function InputPanel({ values, onChange, errors, rules }: InputPanelProps) {
+  const { wageCeilings, contributionRates } = rules;
   const [touched, setTouched] = useState<ReadonlySet<FormField>>(new Set());
 
   const markTouched = (field: FormField) => () =>

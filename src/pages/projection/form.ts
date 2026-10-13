@@ -117,6 +117,8 @@ const FORM_FIELD_FOR: Record<ProjectionField, FormField | undefined> = {
   bankLoanRate: 'bankLoanRatePercent',
   // Not a v1 input; the validator caps it rather than rejecting it.
   ordinaryAccountRetention: undefined,
+  // Supplied by the page from the link, which falls back before validating.
+  rulesAsAt: undefined,
 };
 
 export type FormErrors = Partial<Record<FormField, FieldError>>;

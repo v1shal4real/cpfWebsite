@@ -214,6 +214,25 @@ describe('housing fields', () => {
   });
 });
 
+describe('the pinned rule set', () => {
+  it('carries a known rule set id through to the engine input', () => {
+    const { input } = valid(validateProjectionInput({ ...NO_HOUSING, rulesAsAt: CURRENT_RULE_SET.id }));
+    expect(input.rulesAsAt).toBe(CURRENT_RULE_SET.id);
+  });
+
+  it('rejects an unknown rule set id as a typed error rather than guessing', () => {
+    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, rulesAsAt: 'sg-cpf-1999-01' }), 'rulesAsAt')).toBe(
+      'unknown-rule-set',
+    );
+  });
+
+  it('projects the same figures pinned to the current rules as unpinned', () => {
+    const pinned = projectDraft({ ...HDB_PURCHASE, rulesAsAt: CURRENT_RULE_SET.id });
+    const unpinned = projectDraft(HDB_PURCHASE);
+    expect(pinned.ok && unpinned.ok && pinned.result.months).toEqual(unpinned.ok && unpinned.result.months);
+  });
+});
+
 describe('the result the interface maps to fields', () => {
   it('reports every invalid field at once, one error each', () => {
     const result = validateProjectionInput({

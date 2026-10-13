@@ -80,6 +80,9 @@ docs/
     field: a wrong value at once, a missing one once the field has been
     visited. While the inputs cannot be projected, the last complete
     projection stays on screen under a notice listing what to resolve.
+  - Shareable state: every input, the start month and the pinned rule set
+    live in the URL (see "Shareable links" below). No storage, cookies or
+    server calls.
   - The headline tiles and balances table are first cuts; the headline row,
     balance chart, timeline and assumptions panel each have their own ticket.
 - Design system preview: `npm run dev`, then `/design-system`. Development
@@ -133,6 +136,44 @@ takes those dollars out of the extra-interest tier as well as out of OA, so
 each one forfeits the extra-interest rate on it (1% a year below 55, up to 2%
 from 55, credited to SA or RA) unless other savings are available to refill
 the tier.
+
+## Shareable links
+
+A projection is shared by its URL, with no account, storage, cookie or server
+call. `src/pages/projection/urlState.ts` encodes the state into the query
+string and decodes it; the page rewrites the URL with `history.replaceState`
+on every change, so the address bar is always a complete link and Back leaves
+the page rather than stepping through keystrokes.
+
+Schema version 1. Values are in the form's units, dollars and percentage
+points; empty fields are left out, and housing keys appear only with a plan.
+
+| Key | Value | Key | Value |
+|---|---|---|---|
+| `v` | schema version, `1` | `h` | housing plan: `n`, `hdb`, `bank` |
+| `r` | rule set id, e.g. `sg-cpf-2026-01` | `p` | property price ($) |
+| `m` | start month, `YYYY-MM` | `pa` | age at purchase |
+| `a` | current age | `d` | downpayment ($) |
+| `s` | monthly salary ($) | `os` | OA share of the downpayment (%) |
+| `g` | salary growth (%) | `t` | loan tenure (years) |
+| `ob` `sb` `mb` | OA, SA, MA balances ($) | `br` | bank loan rate (%) |
+
+A link renders the same figures whenever it is opened:
+
+- **Start month.** The link keeps its own, so its timeline does not shift with
+  the calendar.
+- **Pinned rules.** `r` pins the rule set. The engine takes it as `rulesAsAt`
+  and considers only the rule sets up to that one, treating it as still in
+  force, so a link made today keeps today's rules after later sets are added.
+  The rules stamps in the page, header and footer show the pinned set.
+
+Malformed or old links degrade, never fail. An unknown schema version opens
+on the defaults; an unknown rule set uses the current rules; an unreadable
+start month starts this month; a value that is not a number, or that the
+engine would reject, takes its default; and unusable property details drop
+the property as a whole rather than leave half a purchase. Each fallback is
+listed in a dismissible notice above the figures, and every link opens on a
+projection.
 
 ## Input validation
 

@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Button,
   Callout,
   Card,
   CardBody,
@@ -20,9 +21,11 @@ import type { AccountAmounts, AccountName, MonthStamp, ProjectionResult } from '
 import { INPUT_LIMITS, type FieldError } from '@/engine/validate';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
 import { SERIES, type SeriesKey } from '@/theme/series';
 import { InputPanel } from './projection/InputPanel';
 import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormValues } from './projection/form';
+import { encodeUrlState } from './projection/urlState';
 
 /**
  * The projection page: the product's landing view.
@@ -91,11 +94,30 @@ export interface ProjectionPageProps {
   startMonth: MonthStamp;
   /** The values the panel opens with: the stated defaults unless a test or a shared link says otherwise. */
   initialForm?: FormValues;
+  /** The rule set id the projection is pinned to; a shared link carries its own. */
+  rulesAsAt?: string;
+  /** What a shared link carried that could not be used, one sentence each. */
+  linkNotices?: readonly string[];
 }
 
-export function ProjectionPage({ startMonth, initialForm = DEFAULT_FORM }: ProjectionPageProps) {
+export function ProjectionPage({
+  startMonth,
+  initialForm = DEFAULT_FORM,
+  rulesAsAt = CURRENT_RULE_SET.id,
+  linkNotices = [],
+}: ProjectionPageProps) {
   const [form, setForm] = useState<FormValues>(initialForm);
-  const draft = useMemo(() => toDraft(form, startMonth), [form, startMonth]);
+  const ruleSet = ruleSetById(rulesAsAt) ?? CURRENT_RULE_SET;
+  const draft = useMemo(() => ({ ...toDraft(form, startMonth), rulesAsAt }), [form, startMonth, rulesAsAt]);
+
+  // The URL is the projection's only memory: every change is written to it,
+  // replacing the history entry so Back leaves the page rather than stepping
+  // through keystrokes. No storage, no cookie, no server call.
+  useEffect(() => {
+    const query = encodeUrlState({ form, startMonth, rulesAsAt });
+    const { pathname, hash } = window.location;
+    window.history.replaceState(window.history.state, '', `${pathname}${query}${hash}`);
+  }, [form, startMonth, rulesAsAt]);
   // The engine is pure and well inside its 50ms budget, so the page simply
   // recomputes on every change.
   const outcome = useMemo(() => projectDraft(draft), [draft]);
@@ -132,13 +154,36 @@ export function ProjectionPage({ startMonth, initialForm = DEFAULT_FORM }: Proje
         )}
       >
         <div className="flex min-w-0 flex-col gap-4 lg:[grid-area:headline]">
+          <LinkNotice notices={linkNotices} />
           {outcome.ok ? null : <StaleNotice errors={outcome.errors} hasEarlierResult={shown !== null} />}
-          {shown ? <HeadlineRegion result={shown} /> : null}
+          {shown ? <HeadlineRegion result={shown} ruleSet={ruleSet} /> : null}
         </div>
-        <InputsRegion form={form} onChange={onChange} errors={errors} startMonth={startMonth} />
+        <InputsRegion form={form} onChange={onChange} errors={errors} startMonth={startMonth} ruleSet={ruleSet} />
         {shown ? <ResultsRegion result={shown} /> : null}
       </div>
     </Container>
+  );
+}
+
+/**
+ * Shown when a shared link carried values that could not be used, so the
+ * visitor knows the figures are not exactly the ones that were shared.
+ * Dismissible: once read, it has done its job.
+ */
+function LinkNotice({ notices }: { notices: readonly string[] }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (notices.length === 0 || dismissed) return null;
+  return (
+    <Callout tone="info" title="Parts of this link could not be used">
+      <ul className="list-disc pl-5">
+        {notices.map((notice) => (
+          <li key={notice}>{notice}</li>
+        ))}
+      </ul>
+      <Button variant="link" size="sm" className="mt-1" onClick={() => setDismissed(true)}>
+        Dismiss
+      </Button>
+    </Callout>
   );
 }
 
@@ -167,7 +212,7 @@ function StaleNotice({ errors, hasEarlierResult }: { errors: readonly FieldError
   );
 }
 
-function HeadlineRegion({ result }: { result: ProjectionResult }) {
+function HeadlineRegion({ result, ruleSet }: { result: ProjectionResult; ruleSet: RuleSet }) {
   const { summary, input } = result;
   const atEnd = centsToDollars(totalOf(summary.atEnd.balances));
   return (
@@ -183,7 +228,7 @@ function HeadlineRegion({ result }: { result: ProjectionResult }) {
             value={<Money value={centsToDollars(totalOf(summary.atAge55.balances))} />}
             animationKey={totalOf(summary.atAge55.balances)}
             context="All accounts, once the Retirement Account is formed"
-            source={<RulesStamp compact />}
+            source={<RulesStamp compact ruleSet={ruleSet} />}
           />
         ) : null}
         <StatTile
@@ -192,7 +237,7 @@ function HeadlineRegion({ result }: { result: ProjectionResult }) {
           value={<Money value={atEnd} />}
           animationKey={atEnd}
           context="All accounts, at the end of the projection"
-          source={<RulesStamp compact />}
+          source={<RulesStamp compact ruleSet={ruleSet} />}
         />
       </div>
     </section>
@@ -204,11 +249,13 @@ function InputsRegion({
   onChange,
   errors,
   startMonth,
+  ruleSet,
 }: {
   form: FormValues;
   onChange: (patch: Partial<FormValues>) => void;
   errors: FormErrors;
   startMonth: MonthStamp;
+  ruleSet: RuleSet;
 }) {
   return (
     <aside
@@ -224,7 +271,7 @@ function InputsRegion({
           description={`Every figure follows from these. The projection starts in ${startMonth}.`}
         />
         <CardBody>
-          <InputPanel values={form} onChange={onChange} errors={errors} />
+          <InputPanel values={form} onChange={onChange} errors={errors} rules={ruleSet} />
         </CardBody>
       </Card>
     </aside>
