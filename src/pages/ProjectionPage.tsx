@@ -1,10 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Callout,
   Card,
   CardBody,
   CardHeader,
-  DefinitionList,
   Money,
   StatTile,
   TBody,
@@ -17,11 +16,13 @@ import {
 import { Container } from '@/components/layout/AppShell';
 import { RulesStamp } from '@/components/layout/RulesStamp';
 import { projectDraft } from '@/engine/project';
-import type { AccountAmounts, AccountName, ProjectionResult } from '@/engine/types';
-import type { ProjectionDraft } from '@/engine/validate';
-import { formatMoney, formatPercent } from '@/lib/format';
+import type { AccountAmounts, AccountName, MonthStamp, ProjectionResult } from '@/engine/types';
+import { INPUT_LIMITS, type FieldError } from '@/engine/validate';
+import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { SERIES, type SeriesKey } from '@/theme/series';
+import { InputPanel } from './projection/InputPanel';
+import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormValues } from './projection/form';
 
 /**
  * The projection page: the product's landing view.
@@ -41,10 +42,10 @@ import { SERIES, type SeriesKey } from '@/theme/series';
  * view. Grid areas move them; the DOM order does not change, so the reading
  * and focus order stay the same at every width.
  *
- * Each region is a slot its own ticket fills: the input panel, the headline
- * figures row, the balance chart, the timeline and the assumptions panel. The
- * content here is the first cut of each, enough to show the projection on
- * landing.
+ * The page owns the form values. The input panel edits them, and the
+ * projection recomputes on every change. The headline, chart, timeline and
+ * assumptions panel are each a slot their own ticket fills; the headline
+ * tiles and balances table here are first cuts.
  */
 
 const AGE_55 = 55;
@@ -85,16 +86,35 @@ function rowsAtMilestones(result: ProjectionResult): AgeRow[] {
     });
 }
 
-export function ProjectionPage({ draft }: { draft: ProjectionDraft }) {
+export interface ProjectionPageProps {
+  /** The month the projection starts from, supplied by the app so the engine never reads the clock. */
+  startMonth: MonthStamp;
+  /** The values the panel opens with: the stated defaults unless a test or a shared link says otherwise. */
+  initialForm?: FormValues;
+}
+
+export function ProjectionPage({ startMonth, initialForm = DEFAULT_FORM }: ProjectionPageProps) {
+  const [form, setForm] = useState<FormValues>(initialForm);
+  const draft = useMemo(() => toDraft(form, startMonth), [form, startMonth]);
   // The engine is pure and well inside its 50ms budget, so the page simply
-  // recomputes whenever the draft changes.
+  // recomputes on every change.
   const outcome = useMemo(() => projectDraft(draft), [draft]);
+  const errors = useMemo(() => (outcome.ok ? {} : errorsByField(outcome.errors)), [outcome]);
+
+  // While the inputs cannot be projected, for instance halfway through typing
+  // a number, the last projection that could stays on screen, marked as such,
+  // rather than the figures vanishing under the visitor's cursor.
+  const lastResult = useRef<ProjectionResult | null>(null);
+  if (outcome.ok) lastResult.current = outcome.result;
+  const shown = outcome.ok ? outcome.result : lastResult.current;
+
+  const onChange = (patch: Partial<FormValues>) => setForm((previous) => ({ ...previous, ...patch }));
 
   return (
     <Container className="flex flex-col gap-6 py-6 sm:gap-8 sm:py-10">
       <header className="flex max-w-3xl flex-col gap-2">
         <h1 className="text-[1.625rem] leading-tight text-ink sm:text-[2rem]">
-          Your CPF balances, projected to {outcome.ok ? outcome.result.input.endAge : 65}
+          Your CPF balances, projected to {shown ? shown.input.endAge : INPUT_LIMITS.projectionEndAge}
         </h1>
         <p className="text-ink-muted">
           An illustrative calculation from published CPF Board parameters and the inputs below. It
@@ -102,28 +122,48 @@ export function ProjectionPage({ draft }: { draft: ProjectionDraft }) {
         </p>
       </header>
 
-      {outcome.ok ? (
-        <div
-          className={cn(
-            'grid grid-cols-1 gap-6',
-            'lg:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)] lg:gap-8',
-            "lg:[grid-template-areas:'inputs_headline'_'inputs_results']",
-          )}
-        >
-          <HeadlineRegion result={outcome.result} />
-          <InputsRegion draft={draft} result={outcome.result} />
-          <ResultsRegion result={outcome.result} />
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-6',
+          // The first row fits the headline; the results take the rest, so a
+          // tall inputs column spanning both rows cannot stretch the first.
+          'lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:gap-8',
+          "lg:[grid-template-areas:'inputs_headline'_'inputs_results']",
+        )}
+      >
+        <div className="flex min-w-0 flex-col gap-4 lg:[grid-area:headline]">
+          {outcome.ok ? null : <StaleNotice errors={outcome.errors} hasEarlierResult={shown !== null} />}
+          {shown ? <HeadlineRegion result={shown} /> : null}
         </div>
-      ) : (
-        <Callout tone="caution" title="This projection cannot be calculated yet">
-          <ul className="list-disc pl-5">
-            {outcome.errors.map((error) => (
-              <li key={error.field}>{error.message}</li>
-            ))}
-          </ul>
-        </Callout>
-      )}
+        <InputsRegion form={form} onChange={onChange} errors={errors} startMonth={startMonth} />
+        {shown ? <ResultsRegion result={shown} /> : null}
+      </div>
     </Container>
+  );
+}
+
+/**
+ * Shown while the inputs cannot be projected: says which figures are on
+ * screen, and lists every problem in one place, including any beside a field
+ * the visitor has not reached yet.
+ */
+function StaleNotice({ errors, hasEarlierResult }: { errors: readonly FieldError[]; hasEarlierResult: boolean }) {
+  return (
+    <Callout
+      tone="caution"
+      title={hasEarlierResult ? 'Showing your last complete projection' : 'This projection cannot be calculated yet'}
+    >
+      <p>
+        {hasEarlierResult
+          ? 'The figures below are from your last complete set of inputs. They will update once these are resolved:'
+          : 'Resolve these to see a projection:'}
+      </p>
+      <ul className="mt-1 list-disc pl-5">
+        {errors.map((error) => (
+          <li key={error.field}>{error.message}</li>
+        ))}
+      </ul>
+    </Callout>
   );
 }
 
@@ -159,37 +199,32 @@ function HeadlineRegion({ result }: { result: ProjectionResult }) {
   );
 }
 
-function InputsRegion({ draft, result }: { draft: ProjectionDraft; result: ProjectionResult }) {
-  const { input } = result;
-  const opening = input.openingBalances;
+function InputsRegion({
+  form,
+  onChange,
+  errors,
+  startMonth,
+}: {
+  form: FormValues;
+  onChange: (patch: Partial<FormValues>) => void;
+  errors: FormErrors;
+  startMonth: MonthStamp;
+}) {
   return (
     <aside
       aria-labelledby="inputs-heading"
-      className="min-w-0 lg:sticky lg:top-20 lg:self-start lg:[grid-area:inputs]"
+      // Sticky beside the results on wide screens, scrolling on its own when
+      // it is taller than the window, so no field is ever out of reach.
+      className="min-w-0 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:[grid-area:inputs]"
     >
       <Card>
         <CardHeader
           as="h2"
-          title={<span id="inputs-heading">Inputs used</span>}
-          description="Illustrative starting values. Every figure below follows from these."
+          title={<span id="inputs-heading">Your inputs</span>}
+          description={`Every figure follows from these. The projection starts in ${startMonth}.`}
         />
         <CardBody>
-          <DefinitionList
-            items={[
-              { term: 'Current age', value: String(input.startAge) },
-              { term: 'Gross monthly salary', value: formatMoney(centsToDollars(input.monthlyOrdinaryWage)) },
-              { term: 'Salary growth a year', value: formatPercent(input.salaryGrowth.rate, 1) },
-              {
-                term: 'Opening balances',
-                value:
-                  totalOf(opening) === 0
-                    ? 'None'
-                    : `OA ${formatMoney(centsToDollars(opening.ordinary))}, SA ${formatMoney(centsToDollars(opening.special))}, MA ${formatMoney(centsToDollars(opening.medisave))}`,
-              },
-              { term: 'Housing plan', value: draft.housingPlan === 'none' ? 'None' : draft.housingPlan === 'hdb-loan' ? 'HDB loan' : 'Bank loan' },
-              { term: 'Projection starts', value: input.startMonth },
-            ]}
-          />
+          <InputPanel values={form} onChange={onChange} errors={errors} />
         </CardBody>
       </Card>
     </aside>

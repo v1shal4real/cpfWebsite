@@ -108,9 +108,25 @@ headline and results, so editing an input and watching the figures respond
 happen in one view. Only grid areas change; the DOM order does not, so focus
 and screen-reader order never diverge from what the layout implies.
 
-The page opens on a projection of a default draft
-(`src/pages/projection/defaults.ts`) rather than an empty form, and with no
-housing plan, so no particular purchase is put in front of every visitor.
+The page opens on a projection of the default form values
+(`DEFAULT_FORM` in `src/pages/projection/form.ts`) rather than an empty form,
+and with no housing plan, so no particular purchase is put in front of every
+visitor.
+
+## Form behaviour
+
+- Fields are grouped in real `<fieldset>`s, so each legend is announced with
+  its controls. The legend is floated so it takes part in normal layout.
+- Errors come from the engine's validator, never from the components, so the
+  form and the engine cannot disagree about what is valid. A wrong value is
+  flagged as soon as it is entered; a missing value only once the field has
+  been visited, so a form the visitor has not reached is not a wall of
+  "required".
+- While the inputs cannot be projected, the last complete projection stays on
+  screen under a caution callout that lists every problem, including any
+  beside a field the visitor has not reached. Figures never vanish mid-edit.
+- Fields that do not apply are not rendered at all, rather than disabled, and
+  the validator ignores them, so leftovers can never block a projection.
 
 The design system preview is served at `/design-system` in development builds
 only, and is dropped from the production bundle.
