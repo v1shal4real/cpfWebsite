@@ -30,17 +30,36 @@ export const RULES_AS_AT = CURRENT_RULE_SET.label;
  * rather than freezing today's. It deliberately takes a date argument instead
  * of reading the clock, which is what makes a projection reproducible: the
  * same inputs give the same outputs regardless of when they are run.
+ *
+ * `asOf` pins the resolution to what was known when a link was shared: only
+ * the sets up to and including that id are considered, and the newest of them
+ * is treated as still in force, as it was then. A shared link therefore keeps
+ * rendering the figures it was made with after later rule sets are added. An
+ * unknown id is the caller's to reject; here it is ignored.
  */
-export function resolveRuleSet(isoDate: string): RuleSet {
+export function resolveRuleSet(isoDate: string, asOf?: string): RuleSet {
+  return resolveFrom(RULE_SETS, isoDate, asOf);
+}
+
+/**
+ * `resolveRuleSet` over a given list, oldest first. Exported so the pinning
+ * can be tested against more rule sets than exist today.
+ */
+export function resolveFrom(sets: readonly RuleSet[], isoDate: string, asOf?: string): RuleSet {
+  const pinnedAt = asOf === undefined ? -1 : sets.findIndex((set) => set.id === asOf);
+  const known = pinnedAt === -1 ? sets : sets.slice(0, pinnedAt + 1);
+  const newest = known[known.length - 1]!;
+
   let resolved: RuleSet | undefined;
-  for (const set of RULE_SETS) {
+  for (const set of known) {
     if (set.effectiveFrom > isoDate) break;
-    if (set.effectiveTo === null || set.effectiveTo >= isoDate) resolved = set;
+    const effectiveTo = set === newest ? null : set.effectiveTo;
+    if (effectiveTo === null || effectiveTo >= isoDate) resolved = set;
   }
   // Before the earliest set we have, fall back to the earliest rather than
   // throwing: a user entering a historical purchase date should still see a
   // projection, clearly stamped with the rules it used.
-  return resolved ?? RULE_SETS[0]!;
+  return resolved ?? sets[0]!;
 }
 
 /** Looks a rule set up by its pinned id, for shared links. */

@@ -130,6 +130,13 @@ export interface ProjectionInput {
     appliedInMonth: number;
   };
   housing?: HousingPlan;
+  /**
+   * The id of the newest rule set the projection may use. Absent means every
+   * rule set known. A shared link pins it, so the link keeps rendering the
+   * figures it was made with after later rule sets are added; see
+   * `resolveRuleSet`.
+   */
+  rulesAsAt?: string;
 }
 
 /* Monthly state ------------------------------------------------------------ */
