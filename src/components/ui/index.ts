@@ -42,3 +42,4 @@ export {
   Kbd,
   type DefinitionItem,
 } from './Misc';
+export { CopyLinkButton, COPY_MESSAGES, type CopyLinkButtonProps, type CopyStatus } from './CopyLinkButton';

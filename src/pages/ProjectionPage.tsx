@@ -5,6 +5,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  CopyLinkButton,
   Money,
   StatTile,
   TBody,
@@ -142,6 +143,7 @@ export function ProjectionPage({
           An illustrative calculation from published CPF Board parameters and the inputs below. It
           is a projection, not advice, and suggests no course of action.
         </p>
+        <CopyLinkButton label="Copy link to this projection" className="mt-1" />
       </header>
 
       <div
