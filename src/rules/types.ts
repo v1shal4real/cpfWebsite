@@ -214,8 +214,31 @@ export interface RetirementAccountRules
   withdrawableWithoutFullRetirementSum: number;
 }
 
+/** Limits on one kind of housing loan, as fractions of the price. */
+export interface LoanLimits {
+  /** Highest loan as a share of the price (the loan-to-value limit). */
+  maximumLoanToValue: number;
+  /** Least of the price that must be paid in cash, not CPF. */
+  minimumCashDownpayment: number;
+  /** Longest tenure, in years. */
+  maximumTenureYears: number;
+  /**
+   * Tighter limits that apply when the tenure is longer than
+   * `aboveTenureYears`, or when the loan runs past `pastAge`. Bank loans only:
+   * the MAS rule does not apply to HDB's own loans.
+   */
+  reduced?: {
+    maximumLoanToValue: number;
+    minimumCashDownpayment: number;
+    aboveTenureYears: number;
+    pastAge: number;
+  };
+}
+
 export interface HousingRules
-  extends Sourced<'hdbLoanRetentionCap' | 'concessionaryLoanRate' | 'concessionaryLoanSpread'> {
+  extends Sourced<
+    'hdbLoanRetentionCap' | 'concessionaryLoanRate' | 'concessionaryLoanSpread' | 'hdbLoanLimits' | 'bankLoanLimits'
+  > {
   /**
    * Rate at which CPF used for property accrues interest, compounded annually.
    * CPF Board defines it as what the savings would have earned had they stayed
@@ -239,6 +262,10 @@ export interface HousingRules
    * this.
    */
   concessionaryLoanSpread: number;
+  /** HDB concessionary loan limits. */
+  hdbLoanLimits: LoanLimits;
+  /** Limits on a first housing loan from a bank or other financial institution. */
+  bankLoanLimits: LoanLimits;
 }
 
 export interface RuleSet {

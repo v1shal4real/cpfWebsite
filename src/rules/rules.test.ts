@@ -123,7 +123,7 @@ describe('rule set data integrity', () => {
 describe('source registry', () => {
   it.each(Object.entries(SOURCES))('%s is a well-formed, dated government page', (key, src) => {
     expect(src.id).toBe(key);
-    expect(src.url).toMatch(/^https:\/\/(www\.)?(cpf|moh|hdb)\.gov\.sg\//);
+    expect(src.url).toMatch(/^https:\/\/(www\.)?(cpf|moh|hdb|mas)\.gov\.sg\//);
     expect(src.retrievedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(Number.isNaN(Date.parse(src.retrievedOn))).toBe(false);
   });

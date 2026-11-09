@@ -188,6 +188,8 @@ export const RULE_SET_2026: RuleSet = {
       hdbLoanRetentionCap: 'housingLoanRetention',
       concessionaryLoanRate: 'newsRelease2026Q1',
       concessionaryLoanSpread: 'newsRelease2026Q1',
+      hdbLoanLimits: 'hdbLoanToValue',
+      bankLoanLimits: 'bankLoanLimits',
     },
     // The prevailing Ordinary Account rate, compounded annually.
     accruedInterestRate: 0.025,
@@ -197,5 +199,21 @@ export const RULE_SET_2026: RuleSet = {
     // 2.6% per annum". The engine uses the peg; the rate is the cross-check.
     concessionaryLoanRate: 0.026,
     concessionaryLoanSpread: 0.001,
+    // HDB lowered its LTV from 80% to 75% from the October 2024 BTO exercise.
+    // The downpayment may be paid wholly from CPF, so no cash minimum. The
+    // 25-year tenure is HDB's long-standing maximum; HDB's own page for it is
+    // not in the registry yet, and MAS's 25-year threshold for HDB flats
+    // matches it.
+    hdbLoanLimits: { maximumLoanToValue: 0.75, minimumCashDownpayment: 0, maximumTenureYears: 25 },
+    // MAS limits for a first housing loan from a financial institution. The
+    // tool does not ask the property type, so the tenure cap and the
+    // reduced-limit threshold are MAS's figures for non-HDB property (35 and
+    // 30 years); for an HDB flat they are 30 and 25.
+    bankLoanLimits: {
+      maximumLoanToValue: 0.75,
+      minimumCashDownpayment: 0.05,
+      maximumTenureYears: 35,
+      reduced: { maximumLoanToValue: 0.55, minimumCashDownpayment: 0.1, aboveTenureYears: 30, pastAge: 65 },
+    },
   },
 };

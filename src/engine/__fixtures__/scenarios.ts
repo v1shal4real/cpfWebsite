@@ -21,7 +21,7 @@ const BASE: ProjectionDraft = {
   housingPlan: 'hdb-loan',
   propertyPrice: 50_000_000,
   purchaseAge: 30,
-  downpayment: 10_000_000,
+  downpayment: 12_500_000,
   downpaymentShareFromOrdinaryAccount: 7_500 / 10_000,
   loanTenureYears: 25,
   ordinaryAccountRetention: 2_000_000,
