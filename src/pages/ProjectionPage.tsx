@@ -18,6 +18,7 @@ import { cn } from '@/lib/cn';
 import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
 import { BalanceChart } from './projection/BalanceChart';
 import { InputPanel } from './projection/InputPanel';
+import { Timeline } from './projection/Timeline';
 import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormValues } from './projection/form';
 import { encodeUrlState } from './projection/urlState';
 
@@ -244,12 +245,23 @@ function InputsRegion({
 }
 
 function ResultsRegion({ result }: { result: ProjectionResult }) {
+  const { startAge, endAge } = result.input;
+  const fallback = (startAge <= 55 && 55 <= endAge ? 55 : endAge) * 12;
+  const [scrubbed, setScrubbed] = useState(fallback);
+  // Inputs can move the ends; keep the scrubbed age inside them.
+  const ageInMonths = Math.min(endAge * 12, Math.max(startAge * 12, scrubbed));
+
   return (
     <section aria-labelledby="results-heading" className="flex min-w-0 flex-col gap-6 lg:[grid-area:results]">
       <h2 id="results-heading" className="sr-only-abs">
         Projection detail
       </h2>
-      <BalanceChart result={result} />
+      <BalanceChart
+        result={result}
+        cursorAgeInMonths={ageInMonths}
+        onHoverAge={(age) => setScrubbed(age * 12)}
+      />
+      <Timeline result={result} ageInMonths={ageInMonths} onAgeChange={setScrubbed} />
     </section>
   );
 }

@@ -86,7 +86,15 @@ function ageTicks(startAge: number, endAge: number): number[] {
   return [...ticks].sort((a, b) => a - b);
 }
 
-export function BalanceChart({ result }: { result: ProjectionResult }) {
+export interface BalanceChartProps {
+  result: ProjectionResult;
+  /** The timeline's age, in months: drawn as the crosshair. */
+  cursorAgeInMonths?: number;
+  /** Called with the hovered age, in whole years, so the timeline follows the pointer. */
+  onHoverAge?: (age: number) => void;
+}
+
+export function BalanceChart({ result, cursorAgeInMonths, onHoverAge }: BalanceChartProps) {
   const rows = yearlyRows(result);
   const points = chartPoints(rows);
   const { startAge, endAge } = result.input;
@@ -109,7 +117,14 @@ export function BalanceChart({ result }: { result: ProjectionResult }) {
       renderTable={({ visible }) => <BalanceTable rows={rows} visible={visible} />}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={chartMargin}>
+        <LineChart
+          data={points}
+          margin={chartMargin}
+          onMouseMove={(state) => {
+            const age = Number(state?.activeLabel);
+            if (onHoverAge && Number.isFinite(age)) onHoverAge(age);
+          }}
+        >
           <CartesianGrid {...gridProps} />
           <XAxis
             dataKey="age"
@@ -138,6 +153,9 @@ export function BalanceChart({ result }: { result: ProjectionResult }) {
               {...referenceLineProps}
               label={{ value: 'Age 55', position: 'insideTopRight', fill: 'var(--ink-subtle)', fontSize: 11 }}
             />
+          ) : null}
+          {cursorAgeInMonths !== undefined ? (
+            <ReferenceLine x={cursorAgeInMonths / 12} stroke="var(--ink)" strokeWidth={1} ifOverflow="hidden" />
           ) : null}
           {BALANCE_SERIES.map((key) => (
             <Line
