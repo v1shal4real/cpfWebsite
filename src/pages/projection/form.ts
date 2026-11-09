@@ -38,6 +38,8 @@ export interface FormValues {
   loanTenureYears: number | null;
   /** Percentage points. Bank loans only. */
   bankLoanRatePercent: number | null;
+  /** Dollars of Ordinary Account savings kept back from the property. Optional; empty means none. */
+  retainedOrdinaryAccount: number | null;
 }
 
 export type FormField = keyof FormValues;
@@ -69,6 +71,7 @@ export const DEFAULT_FORM: FormValues = {
   ordinaryAccountSharePercent: 100,
   loanTenureYears: null,
   bankLoanRatePercent: null,
+  retainedOrdinaryAccount: null,
 };
 
 const cents = (dollars: number | null) => (dollars === null ? undefined : Math.round(dollars * CENTS_PER_DOLLAR));
@@ -94,6 +97,7 @@ export function toDraft(form: FormValues, startMonth: MonthStamp): ProjectionDra
     downpaymentShareFromOrdinaryAccount: form.ordinaryAccountSharePercent / PERCENT,
     loanTenureYears: optional(form.loanTenureYears),
     bankLoanRate: fraction(form.bankLoanRatePercent),
+    ordinaryAccountRetention: cents(form.retainedOrdinaryAccount),
   };
 }
 
@@ -115,8 +119,7 @@ const FORM_FIELD_FOR: Record<ProjectionField, FormField | undefined> = {
   downpaymentShareFromOrdinaryAccount: 'ordinaryAccountSharePercent',
   loanTenureYears: 'loanTenureYears',
   bankLoanRate: 'bankLoanRatePercent',
-  // Not a v1 input; the validator caps it rather than rejecting it.
-  ordinaryAccountRetention: undefined,
+  ordinaryAccountRetention: 'retainedOrdinaryAccount',
   // Supplied by the page from the link, which falls back before validating.
   rulesAsAt: undefined,
 };

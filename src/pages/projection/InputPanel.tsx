@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
+  Callout,
   Field,
   MoneyInput,
   NumericInput,
@@ -19,6 +20,7 @@ import {
   type FormField,
   type FormValues,
 } from './form';
+import { retentionHint, retentionNote, shareInterestHint } from './retentionCopy';
 
 /**
  * The projection input panel: every §3.1 input.
@@ -202,8 +204,8 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
               label="Share of the downpayment from the Ordinary Account"
               hint={
                 loanLimits.minimumCashDownpayment > 0
-                  ? `The rest is paid in cash. With a bank loan, at least ${pct(loanLimits.minimumCashDownpayment)} of the price must be cash.`
-                  : 'The rest is paid in cash. An HDB loan downpayment may come wholly from the Ordinary Account.'
+                  ? `The rest is paid in cash. With a bank loan, at least ${pct(loanLimits.minimumCashDownpayment)} of the price must be cash. ${shareInterestHint()}`
+                  : `The rest is paid in cash. An HDB loan downpayment may come wholly from the Ordinary Account. ${shareInterestHint()}`
               }
               error={errorFor('ordinaryAccountSharePercent')}
             >
@@ -219,6 +221,23 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
                 maxLabel="All from OA"
               />
             </Field>
+
+            <Field
+              label="Ordinary Account to set aside"
+              hint={retentionHint(rules, values.housingPlan)}
+              error={errorFor('retainedOrdinaryAccount')}
+            >
+              <MoneyInput
+                value={values.retainedOrdinaryAccount}
+                onValueChange={(retainedOrdinaryAccount) => onChange({ retainedOrdinaryAccount })}
+                onBlur={markTouched('retainedOrdinaryAccount')}
+                min={0}
+                max={values.housingPlan === 'hdb-loan' ? rules.housing.hdbLoanRetentionCap : undefined}
+                step={1_000}
+              />
+            </Field>
+
+            <RetentionNoteCallout rules={rules} plan={values.housingPlan} />
 
             <Field
               label="Loan tenure"
@@ -278,5 +297,21 @@ function Group({ legend, description, children }: { legend: string; description?
         {children}
       </div>
     </fieldset>
+  );
+}
+
+/** The note beside the retention option: why the HDB cap and the extra-interest sub-cap match. */
+function RetentionNoteCallout({ rules, plan }: { rules: RuleSet; plan: FormValues['housingPlan'] }) {
+  const note = retentionNote(rules, plan);
+  return (
+    <Callout tone="note" title={note.title}>
+      {note.paragraphs.map((paragraph) => (
+        <p key={paragraph}>{paragraph}</p>
+      ))}
+      <p className="flex flex-wrap gap-2 pt-1">
+        <SourceLink sourceId={sourceFor(rules.housing, 'hdbLoanRetentionCap')} variant="chip" />
+        <SourceLink sourceId={sourceFor(rules.interest, 'extraInterestCountingOrder')} variant="chip" />
+      </p>
+    </Callout>
   );
 }
