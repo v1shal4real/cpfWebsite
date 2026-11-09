@@ -53,8 +53,9 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
     shouldShowError(errors[field], touched.has(field)) ? errors[field]?.message : undefined;
 
   const housing = values.housingPlan !== 'none';
-  const maxTenure =
-    INPUT_LIMITS.maximumTenureYears[values.housingPlan === 'bank-loan' ? 'bank' : 'hdb-concessionary'];
+  const loanLimits = values.housingPlan === 'bank-loan' ? rules.housing.bankLoanLimits : rules.housing.hdbLoanLimits;
+  const maxTenure = loanLimits.maximumTenureYears;
+  const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
 
   return (
     <form
@@ -184,7 +185,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
 
             <Field
               label="Downpayment"
-              hint="The whole downpayment. The loan is the price less this."
+              hint={`The whole downpayment, at least ${pct(1 - loanLimits.maximumLoanToValue)} of the price: ${values.housingPlan === 'bank-loan' ? 'a bank loan' : 'an HDB loan'} covers up to ${pct(loanLimits.maximumLoanToValue)}. The loan is the price less this.`}
               required
               error={errorFor('downpayment')}
             >
@@ -199,7 +200,11 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
 
             <Field
               label="Share of the downpayment from the Ordinary Account"
-              hint="The rest is paid in cash."
+              hint={
+                loanLimits.minimumCashDownpayment > 0
+                  ? `The rest is paid in cash. With a bank loan, at least ${pct(loanLimits.minimumCashDownpayment)} of the price must be cash.`
+                  : 'The rest is paid in cash. An HDB loan downpayment may come wholly from the Ordinary Account.'
+              }
               error={errorFor('ordinaryAccountSharePercent')}
             >
               <Slider

@@ -57,8 +57,10 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
     housingPlan: fc.constantFrom('none', 'hdb-loan', 'bank-loan') as fc.Arbitrary<ProjectionDraft['housingPlan']>,
     propertyPrice: fc.integer({ min: 10_000_000, max: 200_000_000 }),
     purchaseAfterYears: fc.integer({ min: 0, max: 15 }),
-    downpaymentShareOfPrice: basisPoints(0, 10_000),
-    downpaymentShareFromOrdinaryAccount: basisPoints(0, 10_000),
+    // At least 45% down and at most 75% of it from the OA, so every draft
+    // clears the strictest loan-to-value (55%) and cash (10%) limits.
+    downpaymentShareOfPrice: basisPoints(4_500, 10_000),
+    downpaymentShareFromOrdinaryAccount: basisPoints(0, 7_500),
     tenure: fc.integer({ min: 1, max: 35 }),
     bankLoanRate: basisPoints(0, 800),
     ordinaryAccountRetention: fc.option(fc.integer({ min: 0, max: 5_000_000 }), { nil: undefined }),
@@ -66,7 +68,7 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
   })
   .map((g): ProjectionDraft => {
     const endAge = Math.max(INPUT_LIMITS.projectionEndAge, g.currentAge);
-    const maxTenure = g.housingPlan === 'hdb-loan' ? INPUT_LIMITS.maximumTenureYears['hdb-concessionary'] : INPUT_LIMITS.maximumTenureYears.bank;
+    const maxTenure = (g.housingPlan === 'hdb-loan' ? CURRENT_RULE_SET.housing.hdbLoanLimits : CURRENT_RULE_SET.housing.bankLoanLimits).maximumTenureYears;
     return {
       startMonth: `${g.year}-${String(g.month).padStart(2, '0')}`,
       currentAge: g.currentAge,

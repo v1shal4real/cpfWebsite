@@ -59,7 +59,7 @@ describe('readout', () => {
         housingPlan: 'hdb-loan',
         propertyPrice: 500_000,
         purchaseAge: 32,
-        downpayment: 100_000,
+        downpayment: 125_000,
         ordinaryAccountSharePercent: 75,
         loanTenureYears: 25,
       }),

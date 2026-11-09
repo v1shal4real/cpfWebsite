@@ -50,17 +50,6 @@ export const INPUT_LIMITS = {
   maximumSalaryGrowthPercent: 20,
   /** The highest bank loan rate the tool will project, in whole percent. */
   maximumBankLoanRatePercent: 20,
-  /**
-   * Longest loan tenure, in years, by kind of loan.
-   *
-   * Not yet verified against a primary source. HDB's published maximum for its
-   * own loans is widely reported as 25 years, and the longest bank housing
-   * loan as 35 years (for private property; 30 for an HDB flat), but neither
-   * figure was found on a page the source registry accepts. The "source housing
-   * loan parameters" ticket should verify these and move them into the rule
-   * set alongside the loan-to-value limits.
-   */
-  maximumTenureYears: { 'hdb-concessionary': 25, bank: 35 },
 } as const;
 
 export type HousingPlanChoice = 'none' | 'hdb-loan' | 'bank-loan';
@@ -131,6 +120,10 @@ export type ValidationErrorCode =
   | 'before-current-age'
   | 'after-projection-end'
   | 'exceeds-property-price'
+  /** The loan is above the loan-to-value limit for its kind. */
+  | 'below-minimum-downpayment'
+  /** Less of the price is paid in cash than the loan's minimum cash downpayment. */
+  | 'below-minimum-cash'
   | 'unknown-rule-set';
 
 export interface FieldError {
@@ -159,7 +152,7 @@ const PERCENT = 100;
 /** Whole dollars with thousands separators, without depending on the runtime's locale. */
 function dollars(cents: Cents): string {
   const whole = Math.round(cents / CENTS_PER_DOLLAR);
-  return `$${String(whole).replace(/B(?=(d{3})+(?!d))/g, ',')}`;
+  return `$${String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
 
 function percent(fraction: Fraction): string {
@@ -355,7 +348,8 @@ function validateHousing(
   const principal = price !== undefined && downpayment !== undefined ? price - downpayment : undefined;
   const borrowing = principal === undefined || principal > 0;
 
-  const maxTenure = INPUT_LIMITS.maximumTenureYears[kind];
+  const limits = kind === 'bank' ? rules.housing.bankLoanLimits : rules.housing.hdbLoanLimits;
+  const maxTenure = limits.maximumTenureYears;
   const tenure = borrowing
     ? check.range(
         'loanTenureYears',
@@ -378,6 +372,46 @@ function validateHousing(
           'Bank loan rate',
         )
       : undefined;
+
+  // Loan-to-value and minimum cash, on the limits that apply to this loan:
+  // the reduced ones for a bank loan that is long or runs past the age set.
+  if (borrowing && price !== undefined && downpayment !== undefined) {
+    const reduced =
+      limits.reduced &&
+      tenure !== undefined &&
+      (tenure > limits.reduced.aboveTenureYears ||
+        (purchaseAge !== undefined && purchaseAge + tenure > limits.reduced.pastAge))
+        ? limits.reduced
+        : undefined;
+    const ltv = reduced?.maximumLoanToValue ?? limits.maximumLoanToValue;
+    const minCash = reduced?.minimumCashDownpayment ?? limits.minimumCashDownpayment;
+    const loanName = kind === 'bank' ? 'a bank loan' : 'an HDB loan';
+    const why = reduced
+      ? ` because the loan runs longer than ${reduced.aboveTenureYears} years or past age ${reduced.pastAge}`
+      : '';
+
+    const minimumDownpayment = Math.ceil(price * (1 - ltv));
+    if (downpayment < minimumDownpayment) {
+      check.fail(
+        'downpayment',
+        'below-minimum-downpayment',
+        `With ${loanName}, the loan can be at most ${percent(ltv)} of the price${why}, so the downpayment must be at least ${dollars(minimumDownpayment)}.`,
+        minimumDownpayment,
+      );
+    } else if (share !== undefined && minCash > 0) {
+      const minimumCash = Math.ceil(price * minCash);
+      const cash = downpayment - Math.round(downpayment * share);
+      if (cash < minimumCash) {
+        const maxShare = Math.floor(((downpayment - minimumCash) / downpayment) * 100);
+        check.fail(
+          'downpaymentShareFromOrdinaryAccount',
+          'below-minimum-cash',
+          `With ${loanName}, at least ${percent(minCash)} of the price (${dollars(minimumCash)}) must be paid in cash${why}, so at most ${maxShare}% of this downpayment can come from the Ordinary Account.`,
+          maxShare / 100,
+        );
+      }
+    }
+  }
 
   // Retention: an HDB-loan buyer may keep up to the rule set's cap, so a
   // larger figure has one obvious correction, and is clamped to it.

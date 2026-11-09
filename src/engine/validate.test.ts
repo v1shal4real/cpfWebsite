@@ -16,7 +16,7 @@ const HDB_PURCHASE: ProjectionDraft = {
   housingPlan: 'hdb-loan',
   propertyPrice: 50_000_000,
   purchaseAge: 32,
-  downpayment: 10_000_000,
+  downpayment: 12_500_000,
   downpaymentShareFromOrdinaryAccount: 0.75,
   loanTenureYears: 25,
 };
@@ -67,16 +67,16 @@ describe('a complete draft', () => {
     expect(input.housing).toEqual({
       purchaseAge: 32,
       price: 50_000_000,
-      downpaymentFromOrdinaryAccount: 7_500_000,
-      downpaymentFromCash: 2_500_000,
-      loan: { kind: 'hdb-concessionary', principal: 40_000_000, tenureYears: 25 },
+      downpaymentFromOrdinaryAccount: 9_375_000,
+      downpaymentFromCash: 3_125_000,
+      loan: { kind: 'hdb-concessionary', principal: 37_500_000, tenureYears: 25 },
       instalmentsPaidFrom: 'ordinary-account',
     });
   });
 
   it('carries a bank loan’s own rate', () => {
     const { input } = valid(validateProjectionInput(BANK_PURCHASE));
-    expect(input.housing?.loan).toEqual({ kind: 'bank', principal: 40_000_000, tenureYears: 30, interestRate: 0.03 });
+    expect(input.housing?.loan).toEqual({ kind: 'bank', principal: 37_500_000, tenureYears: 30, interestRate: 0.03 });
   });
 });
 
@@ -181,13 +181,14 @@ describe('housing fields', () => {
   });
 
   it('keeps tenure within the bounds for the kind of loan', () => {
-    const hdbMax = INPUT_LIMITS.maximumTenureYears['hdb-concessionary'];
-    const bankMax = INPUT_LIMITS.maximumTenureYears.bank;
+    const hdbMax = CURRENT_RULE_SET.housing.hdbLoanLimits.maximumTenureYears;
+    const bankMax = CURRENT_RULE_SET.housing.bankLoanLimits.maximumTenureYears;
     expect(validateProjectionInput({ ...HDB_PURCHASE, loanTenureYears: hdbMax }).ok).toBe(true);
     expect(errorsOf(validateProjectionInput({ ...HDB_PURCHASE, loanTenureYears: hdbMax + 1 }))).toEqual([
       expect.objectContaining({ field: 'loanTenureYears', code: 'above-maximum', limit: hdbMax }),
     ]);
-    expect(validateProjectionInput({ ...BANK_PURCHASE, loanTenureYears: bankMax }).ok).toBe(true);
+    // Above 30 years the reduced bank limits apply: 45% down, 10% of the price in cash.
+    expect(validateProjectionInput({ ...BANK_PURCHASE, downpayment: 22_500_000, downpaymentShareFromOrdinaryAccount: 0.5, loanTenureYears: bankMax }).ok).toBe(true);
     expect(codeFor(validateProjectionInput({ ...BANK_PURCHASE, loanTenureYears: 0 }), 'loanTenureYears')).toBe('below-minimum');
   });
 
@@ -280,11 +281,59 @@ describe('projecting a draft', () => {
       for (const base of [NO_HOUSING, HDB_PURCHASE, BANK_PURCHASE]) {
         // Buy at 32, or now if older; never after the projection ends.
         const endAge = Math.max(INPUT_LIMITS.projectionEndAge, currentAge);
-        const draft = { ...base, currentAge, purchaseAge: Math.min(Math.max(currentAge, 32), endAge) };
+        // Late bank buyers run past 65 and meet the reduced limits, so they put 50% down.
+        const late = base.housingPlan === 'bank-loan' ? { downpayment: 25_000_000, downpaymentShareFromOrdinaryAccount: 0.5 } : {};
+        const draft = { ...base, ...late, currentAge, purchaseAge: Math.min(Math.max(currentAge, 32), endAge) };
         const outcome = projectDraft(draft);
         expect(outcome.ok, `${base.housingPlan} at ${currentAge}`).toBe(true);
         if (outcome.ok) expect(outcome.result.months.length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('loan-to-value and minimum cash limits', () => {
+  const limits = CURRENT_RULE_SET.housing;
+
+  it('requires the downpayment to cover the price above the LTV limit', () => {
+    expect(limits.hdbLoanLimits.maximumLoanToValue).toBe(0.75);
+    expect(validateProjectionInput({ ...HDB_PURCHASE, downpayment: 12_500_000 }).ok).toBe(true);
+    const result = validateProjectionInput({ ...HDB_PURCHASE, downpayment: 12_499_900 });
+    expect(errorsOf(result)).toEqual([
+      expect.objectContaining({ field: 'downpayment', code: 'below-minimum-downpayment', limit: 12_500_000 }),
+    ]);
+  });
+
+  it('lets an HDB loan downpayment come wholly from the Ordinary Account', () => {
+    expect(limits.hdbLoanLimits.minimumCashDownpayment).toBe(0);
+    expect(validateProjectionInput({ ...HDB_PURCHASE, downpaymentShareFromOrdinaryAccount: 1 }).ok).toBe(true);
+  });
+
+  it('requires 5% of the price in cash with a bank loan', () => {
+    // $500,000 price, $125,000 down: at most 80% of the downpayment from the OA.
+    expect(validateProjectionInput({ ...BANK_PURCHASE, downpaymentShareFromOrdinaryAccount: 0.8 }).ok).toBe(true);
+    expect(errorsOf(validateProjectionInput({ ...BANK_PURCHASE, downpaymentShareFromOrdinaryAccount: 0.85 }))).toEqual([
+      expect.objectContaining({ field: 'downpaymentShareFromOrdinaryAccount', code: 'below-minimum-cash', limit: 0.8 }),
+    ]);
+  });
+
+  it('applies the reduced bank limits above 30 years or past age 65', () => {
+    const long = validateProjectionInput({ ...BANK_PURCHASE, loanTenureYears: 31 });
+    expect(errorsOf(long)).toEqual([
+      expect.objectContaining({ field: 'downpayment', code: 'below-minimum-downpayment', limit: 22_500_000 }),
+    ]);
+    const pastSixtyFive = validateProjectionInput({ ...BANK_PURCHASE, purchaseAge: 40, loanTenureYears: 30 });
+    expect(codeFor(pastSixtyFive, 'downpayment')).toBe('below-minimum-downpayment');
+  });
+
+  it('does not apply the reduced limits to an HDB loan', () => {
+    expect(validateProjectionInput({ ...HDB_PURCHASE, purchaseAge: 45 }).ok).toBe(true);
+  });
+});
+
+describe('messages', () => {
+  it('writes dollar amounts with thousands separators', () => {
+    const result = validateProjectionInput({ ...HDB_PURCHASE, downpayment: 10_000_000 });
+    expect(errorsOf(result)[0]?.message).toContain('$125,000');
   });
 });

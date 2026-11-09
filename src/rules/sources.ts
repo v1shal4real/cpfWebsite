@@ -21,7 +21,7 @@ export interface Source {
   id: string;
   /** Title as it appears on the page, so a user can confirm they landed right. */
   title: string;
-  publisher: 'CPF Board' | 'Ministry of Health' | 'HDB';
+  publisher: 'CPF Board' | 'Ministry of Health' | 'HDB' | 'MAS';
   url: string;
   /** ISO date this tool last read the figure off the page. */
   retrievedOn: string;
@@ -198,7 +198,7 @@ export const SOURCES = {
    */
   specialAccountClosure: {
     id: 'specialAccountClosure',
-    title: 'Closure of Special Account for members aged 55 and above in the second half of January 2025',
+    title: 'Closure of Special Account for members aged 55 and above in Jan 2025',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/member/infohub/educational-resources/closure-of-special-account-for-members-aged-55-and-above-in-early-2025',
     retrievedOn: '2026-10-08',
@@ -234,10 +234,39 @@ export const SOURCES = {
   },
   housingLoanRetention: {
     id: 'housingLoanRetention',
-    title: 'Retain $20,000 in your Ordinary Account if you are taking a housing loan',
+    title: 'Retain $20,000 in your OA if you are taking a housing loan',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/member/home-ownership/using-your-cpf-to-buy-a-home/retain-20000-in-your-oa-if-you-are-taking-a-housing-loan',
     retrievedOn: '2026-10-11',
+  },
+  housingLoanComparison: {
+    id: 'housingLoanComparison',
+    title: 'HDB loan or bank loan? 3 differences you should know',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/member/infohub/educational-resources/3-differences-between-hdb-loan-and-bank-loan',
+    retrievedOn: '2026-11-09',
+  },
+  /**
+   * States the 75% and 55% LTV limits for a first housing loan from a
+   * financial institution, the 5% and 10% minimum cash down payments that go
+   * with them, the 30-year (HDB flat) and 35-year (other property) maximum
+   * tenures, and that the lower limit applies above 30 years (25 for an HDB
+   * flat) or past age 65.
+   */
+  bankLoanLimits: {
+    id: 'bankLoanLimits',
+    title: 'Loan Tenure and Loan-to-Value Limits',
+    publisher: 'MAS',
+    url: 'https://www.mas.gov.sg/regulation/explainers/new-housing-loans/loan-tenure-and-loan-to-value-limits',
+    retrievedOn: '2026-11-09',
+  },
+  /** States that the HDB loan LTV limit is 75% from the October 2024 BTO exercise. */
+  hdbLoanToValue: {
+    id: 'hdbLoanToValue',
+    title: 'Annex B: Administrative details for November 2026 BTO sales exercise',
+    publisher: 'HDB',
+    url: 'https://www.hdb.gov.sg/-/media/hdb-pulse/news/2026/hdb-launches-7964-flats-across-seven-projects-in-nov-2026-bto-sales-exercise/Annex-B---Nov-2026-BTO---Final.pdf',
+    retrievedOn: '2026-11-09',
   },
   housingRefund: {
     id: 'housingRefund',
