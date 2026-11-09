@@ -64,6 +64,7 @@ const NUMERIC_KEYS = {
   ordinaryAccountSharePercent: 'os',
   loanTenureYears: 't',
   bankLoanRatePercent: 'br',
+  retainedOrdinaryAccount: 'rt',
 } as const satisfies Partial<Record<FormField, string>>;
 
 type NumericField = keyof typeof NUMERIC_KEYS;
@@ -75,6 +76,7 @@ const HOUSING_FIELDS: readonly NumericField[] = [
   'ordinaryAccountSharePercent',
   'loanTenureYears',
   'bankLoanRatePercent',
+  'retainedOrdinaryAccount',
 ];
 
 const PLAN_CODES: Record<HousingPlanChoice, string> = { none: 'n', 'hdb-loan': 'hdb', 'bank-loan': 'bank' };
@@ -94,6 +96,7 @@ const FIELD_NAMES: Record<FormField, string> = {
   ordinaryAccountSharePercent: 'share of the downpayment from the Ordinary Account',
   loanTenureYears: 'loan tenure',
   bankLoanRatePercent: 'bank loan rate',
+  retainedOrdinaryAccount: 'Ordinary Account kept back',
 };
 
 const ALL_KEYS = new Set<string>(['v', 'r', 'm', 'h', ...Object.values(NUMERIC_KEYS)]);

@@ -70,6 +70,8 @@ describe('round trip: state -> URL -> state', () => {
       ordinaryAccountSharePercent: fc.integer({ min: 0, max: 20 }).map((step) => step * 5),
       loanTenureYears: fc.integer({ min: 1, max: 25 }),
       bankLoanRatePercent: fc.integer({ min: 0, max: 800 }).map((hundredths) => hundredths / 100),
+      // Within the HDB cap, so the validator never clamps it and the round trip stays exact.
+      retainedOrdinaryAccount: fc.option(fc.integer({ min: 0, max: 20_000 }), { nil: null }),
     });
     fc.assert(
       fc.property(
@@ -79,7 +81,7 @@ describe('round trip: state -> URL -> state', () => {
           // and a bank rate without a bank loan, are not part of the state.
           const applicable: FormValues =
             form.housingPlan === 'none'
-              ? { ...form, propertyPrice: null, purchaseAge: null, downpayment: null, ordinaryAccountSharePercent: DEFAULT_FORM.ordinaryAccountSharePercent, loanTenureYears: null, bankLoanRatePercent: null }
+              ? { ...form, propertyPrice: null, purchaseAge: null, downpayment: null, ordinaryAccountSharePercent: DEFAULT_FORM.ordinaryAccountSharePercent, loanTenureYears: null, bankLoanRatePercent: null, retainedOrdinaryAccount: null }
               : form.housingPlan === 'hdb-loan'
                 ? { ...form, bankLoanRatePercent: null }
                 : form;
