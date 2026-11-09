@@ -13,6 +13,7 @@ import type { MonthStamp, ProjectionResult } from '@/engine/types';
 import { INPUT_LIMITS, type FieldError } from '@/engine/validate';
 import { cn } from '@/lib/cn';
 import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
+import { AssumptionsPanel } from './projection/AssumptionsPanel';
 import { BalanceChart } from './projection/BalanceChart';
 import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
@@ -220,6 +221,7 @@ function ResultsRegion({ result }: { result: ProjectionResult }) {
         onHoverAge={(age) => setScrubbed(age * 12)}
       />
       <Timeline result={result} ageInMonths={ageInMonths} onAgeChange={setScrubbed} />
+      <AssumptionsPanel result={result} />
     </section>
   );
 }
