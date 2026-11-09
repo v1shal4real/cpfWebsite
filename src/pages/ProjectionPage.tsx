@@ -6,17 +6,15 @@ import {
   CardBody,
   CardHeader,
   CopyLinkButton,
-  Money,
-  StatTile,
 } from '@/components/ui';
 import { Container } from '@/components/layout/AppShell';
-import { RulesStamp } from '@/components/layout/RulesStamp';
 import { projectDraft } from '@/engine/project';
-import type { AccountAmounts, MonthStamp, ProjectionResult } from '@/engine/types';
+import type { MonthStamp, ProjectionResult } from '@/engine/types';
 import { INPUT_LIMITS, type FieldError } from '@/engine/validate';
 import { cn } from '@/lib/cn';
 import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
 import { BalanceChart } from './projection/BalanceChart';
+import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
 import { Timeline } from './projection/Timeline';
 import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormValues } from './projection/form';
@@ -45,14 +43,6 @@ import { encodeUrlState } from './projection/urlState';
  * assumptions panel are each a slot their own ticket fills; the headline
  * tiles here are a first cut.
  */
-
-function centsToDollars(cents: number): number {
-  return cents / 100;
-}
-
-function totalOf(balances: AccountAmounts): number {
-  return balances.ordinary + balances.special + balances.medisave + balances.retirement;
-}
 
 export interface ProjectionPageProps {
   /** The month the projection starts from, supplied by the app so the engine never reads the clock. */
@@ -122,7 +112,7 @@ export function ProjectionPage({
         <div className="flex min-w-0 flex-col gap-4 lg:[grid-area:headline]">
           <LinkNotice notices={linkNotices} />
           {outcome.ok ? null : <StaleNotice errors={outcome.errors} hasEarlierResult={shown !== null} />}
-          {shown ? <HeadlineRegion result={shown} ruleSet={ruleSet} /> : null}
+          {shown ? <HeadlineRow result={shown} ruleSet={ruleSet} /> : null}
         </div>
         <InputsRegion form={form} onChange={onChange} errors={errors} startMonth={startMonth} ruleSet={ruleSet} />
         {shown ? <ResultsRegion result={shown} /> : null}
@@ -175,38 +165,6 @@ function StaleNotice({ errors, hasEarlierResult }: { errors: readonly FieldError
         ))}
       </ul>
     </Callout>
-  );
-}
-
-function HeadlineRegion({ result, ruleSet }: { result: ProjectionResult; ruleSet: RuleSet }) {
-  const { summary, input } = result;
-  const atEnd = centsToDollars(totalOf(summary.atEnd.balances));
-  return (
-    <section aria-labelledby="headline-heading" className="flex min-w-0 flex-col gap-3 lg:[grid-area:headline]">
-      <h2 id="headline-heading" className="sr-only-abs">
-        Headline figures
-      </h2>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {summary.atAge55 ? (
-          <StatTile
-            size="lg"
-            label="Projected balances at 55"
-            value={<Money value={centsToDollars(totalOf(summary.atAge55.balances))} />}
-            animationKey={totalOf(summary.atAge55.balances)}
-            context="All accounts, once the Retirement Account is formed"
-            source={<RulesStamp compact ruleSet={ruleSet} />}
-          />
-        ) : null}
-        <StatTile
-          size="lg"
-          label={`Projected balances at ${input.endAge}`}
-          value={<Money value={atEnd} />}
-          animationKey={atEnd}
-          context="All accounts, at the end of the projection"
-          source={<RulesStamp compact ruleSet={ruleSet} />}
-        />
-      </div>
-    </section>
   );
 }
 
