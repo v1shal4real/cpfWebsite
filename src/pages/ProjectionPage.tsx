@@ -8,22 +8,15 @@ import {
   CopyLinkButton,
   Money,
   StatTile,
-  TBody,
-  THead,
-  Table,
-  Td,
-  Th,
-  Tr,
 } from '@/components/ui';
 import { Container } from '@/components/layout/AppShell';
 import { RulesStamp } from '@/components/layout/RulesStamp';
 import { projectDraft } from '@/engine/project';
-import type { AccountAmounts, AccountName, MonthStamp, ProjectionResult } from '@/engine/types';
+import type { AccountAmounts, MonthStamp, ProjectionResult } from '@/engine/types';
 import { INPUT_LIMITS, type FieldError } from '@/engine/validate';
-import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
-import { SERIES, type SeriesKey } from '@/theme/series';
+import { BalanceChart } from './projection/BalanceChart';
 import { InputPanel } from './projection/InputPanel';
 import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormValues } from './projection/form';
 import { encodeUrlState } from './projection/urlState';
@@ -49,24 +42,8 @@ import { encodeUrlState } from './projection/urlState';
  * The page owns the form values. The input panel edits them, and the
  * projection recomputes on every change. The headline, chart, timeline and
  * assumptions panel are each a slot their own ticket fills; the headline
- * tiles and balances table here are first cuts.
+ * tiles here are a first cut.
  */
-
-const AGE_55 = 55;
-
-/** The balance columns, in the series registry's order, and the engine account each reads. */
-const BALANCE_COLUMNS: readonly { key: SeriesKey; account: AccountName }[] = [
-  { key: 'oa', account: 'ordinary' },
-  { key: 'sa', account: 'special' },
-  { key: 'ma', account: 'medisave' },
-  { key: 'ra', account: 'retirement' },
-];
-
-/** Balances, in dollars, at the end of the month the member reaches each age. */
-interface AgeRow {
-  age: number;
-  balances: AccountAmounts;
-}
 
 function centsToDollars(cents: number): number {
   return cents / 100;
@@ -74,20 +51,6 @@ function centsToDollars(cents: number): number {
 
 function totalOf(balances: AccountAmounts): number {
   return balances.ordinary + balances.special + balances.medisave + balances.retirement;
-}
-
-/** One row every five years, plus 55 and the final age, from the projection's months. */
-function rowsAtMilestones(result: ProjectionResult): AgeRow[] {
-  const { startAge, endAge } = result.input;
-  const ages = new Set<number>([startAge, endAge]);
-  for (let age = Math.ceil(startAge / 5) * 5; age <= endAge; age += 5) ages.add(age);
-  if (startAge <= AGE_55 && AGE_55 <= endAge) ages.add(AGE_55);
-  return [...ages]
-    .sort((a, b) => a - b)
-    .flatMap((age) => {
-      const month = result.months.find((each) => each.ageInMonths === age * 12);
-      return month ? [{ age, balances: month.closingBalances }] : [];
-    });
 }
 
 export interface ProjectionPageProps {
@@ -281,51 +244,12 @@ function InputsRegion({
 }
 
 function ResultsRegion({ result }: { result: ProjectionResult }) {
-  const rows = rowsAtMilestones(result);
   return (
     <section aria-labelledby="results-heading" className="flex min-w-0 flex-col gap-6 lg:[grid-area:results]">
       <h2 id="results-heading" className="sr-only-abs">
         Projection detail
       </h2>
-      <Card>
-        <CardHeader
-          as="h3"
-          title="Account balances by age"
-          description="At the end of the month you reach each age. The Special Account closes and the Retirement Account opens at 55."
-        />
-        <CardBody>
-          <Table caption="Projected account balances by age" captionHidden density="compact" stickyFirstColumn>
-            <THead>
-              <tr>
-                <Th>Age</Th>
-                {BALANCE_COLUMNS.map(({ key }) => (
-                  <Th key={key} numeric>
-                    <abbr title={SERIES[key].label} className="no-underline">
-                      {SERIES[key].short}
-                    </abbr>
-                  </Th>
-                ))}
-                <Th numeric>Total</Th>
-              </tr>
-            </THead>
-            <TBody>
-              {rows.map((row) => (
-                <Tr key={row.age} highlighted={row.age === AGE_55}>
-                  <Th scope="row" className="font-normal text-ink">
-                    {row.age}
-                  </Th>
-                  {BALANCE_COLUMNS.map(({ key, account }) => (
-                    <Td key={key} numeric>
-                      {formatMoney(centsToDollars(row.balances[account]))}
-                    </Td>
-                  ))}
-                  <Td numeric>{formatMoney(centsToDollars(totalOf(row.balances)))}</Td>
-                </Tr>
-              ))}
-            </TBody>
-          </Table>
-        </CardBody>
-      </Card>
+      <BalanceChart result={result} />
     </section>
   );
 }
