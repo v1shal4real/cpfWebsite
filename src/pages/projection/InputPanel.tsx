@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
+  Badge,
   Callout,
   Field,
   MoneyInput,
@@ -41,9 +42,22 @@ export interface InputPanelProps {
   errors: FormErrors;
   /** The rule set the projection is pinned to, for the figures in hints. */
   rules: RuleSet;
+  /** While editing scenario B: the fields that differ from scenario A, each marked. */
+  changed?: ReadonlySet<FormField> | undefined;
 }
 
-export function InputPanel({ values, onChange, errors, rules }: InputPanelProps) {
+export function InputPanel({ values, onChange, errors, rules, changed }: InputPanelProps) {
+  /** A visible, announced mark on a field B has changed from A, next to anything already in the label row. */
+  const mark = (field: FormField, existing?: ReactNode): ReactNode => {
+    const isChanged = changed?.has(field) ?? false;
+    if (!isChanged) return existing;
+    return (
+      <span className="flex items-center gap-1.5">
+        <ChangedMark />
+        {existing}
+      </span>
+    );
+  };
   const { wageCeilings, contributionRates } = rules;
   const [touched, setTouched] = useState<ReadonlySet<FormField>>(new Set());
 
@@ -71,6 +85,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
           label="Current age"
           hint={`${INPUT_LIMITS.minimumAge} to ${INPUT_LIMITS.maximumAge}.`}
           required
+          labelAside={mark('currentAge')}
           error={errorFor('currentAge')}
         >
           <NumericInput
@@ -88,7 +103,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
           label="Gross monthly salary"
           hint={`Ordinary Wages only. Contributions stop at the ${formatMoney(wageCeilings.ordinaryWageCeiling)} Ordinary Wage ceiling.`}
           required
-          labelAside={<SourceLink sourceId={sourceFor(contributionRates)} variant="chip" />}
+          labelAside={mark('monthlySalary', <SourceLink sourceId={sourceFor(contributionRates)} variant="chip" />)}
           error={errorFor('monthlySalary')}
         >
           <MoneyInput
@@ -104,6 +119,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
           label="Expected salary growth a year"
           hint={`Default ${DEFAULT_SALARY_GROWTH_PERCENT}%: assumes your salary stays as it is today. Enter your own expectation to see the effect of pay rises; ${INPUT_LIMITS.minimumSalaryGrowthPercent}% to ${INPUT_LIMITS.maximumSalaryGrowthPercent}%.`}
           required
+          labelAside={mark('salaryGrowthPercent')}
           error={errorFor('salaryGrowthPercent')}
         >
           <PercentInput
@@ -117,7 +133,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
       </Group>
 
       <Group legend="Current CPF balances" description="Optional. Leave a field blank for zero.">
-        <Field label="Ordinary Account" error={errorFor('ordinaryBalance')}>
+        <Field label="Ordinary Account" labelAside={mark('ordinaryBalance')} error={errorFor('ordinaryBalance')}>
           <MoneyInput
             value={values.ordinaryBalance}
             onValueChange={(ordinaryBalance) => onChange({ ordinaryBalance })}
@@ -125,7 +141,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
             min={0}
           />
         </Field>
-        <Field label="Special Account" error={errorFor('specialBalance')}>
+        <Field label="Special Account" labelAside={mark('specialBalance')} error={errorFor('specialBalance')}>
           <MoneyInput
             value={values.specialBalance}
             onValueChange={(specialBalance) => onChange({ specialBalance })}
@@ -133,7 +149,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
             min={0}
           />
         </Field>
-        <Field label="MediSave Account" error={errorFor('medisaveBalance')}>
+        <Field label="MediSave Account" labelAside={mark('medisaveBalance')} error={errorFor('medisaveBalance')}>
           <MoneyInput
             value={values.medisaveBalance}
             onValueChange={(medisaveBalance) => onChange({ medisaveBalance })}
@@ -144,6 +160,11 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
       </Group>
 
       <Group legend="Property">
+        {changed?.has('housingPlan') ? (
+          <span className="-mb-2 self-start">
+            <ChangedMark what="Housing plan" />
+          </span>
+        ) : null}
         <SegmentedControl<HousingPlanChoice>
           label="Housing plan"
           labelHidden={false}
@@ -160,7 +181,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
         {/* Only with a plan: hidden fields are neither shown nor validated. */}
         {housing ? (
           <>
-            <Field label="Property price" required error={errorFor('propertyPrice')}>
+            <Field label="Property price" required labelAside={mark('propertyPrice')} error={errorFor('propertyPrice')}>
               <MoneyInput
                 value={values.propertyPrice}
                 onValueChange={(propertyPrice) => onChange({ propertyPrice })}
@@ -174,6 +195,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
               label="Age at purchase"
               hint="From your current age up to the end of the projection."
               required
+              labelAside={mark('purchaseAge')}
               error={errorFor('purchaseAge')}
             >
               <NumericInput
@@ -189,6 +211,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
               label="Downpayment"
               hint={`The whole downpayment, at least ${pct(1 - loanLimits.maximumLoanToValue)} of the price: ${values.housingPlan === 'bank-loan' ? 'a bank loan' : 'an HDB loan'} covers up to ${pct(loanLimits.maximumLoanToValue)}. The loan is the price less this.`}
               required
+              labelAside={mark('downpayment')}
               error={errorFor('downpayment')}
             >
               <MoneyInput
@@ -207,6 +230,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
                   ? `The rest is paid in cash. With a bank loan, at least ${pct(loanLimits.minimumCashDownpayment)} of the price must be cash. ${shareInterestHint()}`
                   : `The rest is paid in cash. An HDB loan downpayment may come wholly from the Ordinary Account. ${shareInterestHint()}`
               }
+              labelAside={mark('ordinaryAccountSharePercent')}
               error={errorFor('ordinaryAccountSharePercent')}
             >
               <Slider
@@ -225,6 +249,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
             <Field
               label="Ordinary Account to set aside"
               hint={retentionHint(rules, values.housingPlan)}
+              labelAside={mark('retainedOrdinaryAccount')}
               error={errorFor('retainedOrdinaryAccount')}
             >
               <MoneyInput
@@ -242,6 +267,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
             <Field
               label="Loan tenure"
               hint={`Up to ${maxTenure} years for ${values.housingPlan === 'bank-loan' ? 'a bank loan' : 'an HDB loan'}. Not needed if the downpayment covers the price.`}
+              labelAside={mark('loanTenureYears')}
               error={errorFor('loanTenureYears')}
             >
               <Select
@@ -263,6 +289,7 @@ export function InputPanel({ values, onChange, errors, rules }: InputPanelProps)
                 label="Bank loan interest rate"
                 hint="Your own figure, held for the whole tenure. HDB loans take their rate from CPF's published peg instead."
                 required
+                labelAside={mark('bankLoanRatePercent')}
                 error={errorFor('bankLoanRatePercent')}
               >
                 <PercentInput
@@ -313,5 +340,14 @@ function RetentionNoteCallout({ rules, plan }: { rules: RuleSet; plan: FormValue
         <SourceLink sourceId={sourceFor(rules.interest, 'extraInterestCountingOrder')} variant="chip" />
       </p>
     </Callout>
+  );
+}
+
+/** The mark on a scenario B field that differs from scenario A. Text, not colour alone. */
+function ChangedMark({ what }: { what?: string }) {
+  return (
+    <Badge tone="info" className="whitespace-nowrap">
+      {what ? `${what}: changed from A` : 'Changed from A'}
+    </Badge>
   );
 }

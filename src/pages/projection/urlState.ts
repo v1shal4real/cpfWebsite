@@ -22,6 +22,13 @@
  *
  * Empty fields are left out; housing keys appear only with a housing plan.
  *
+ * Scenario B, when there is one:
+ *
+ *   B    1 when the link carries a scenario B
+ *   b.*  B's value for any key above (h, a, s, ... rt) where it differs from
+ *        A; an empty value means B leaves that field empty. Keys B shares
+ *        with A are not repeated, so a B that changes one field adds two keys.
+ *
  * Reading a link never fails. Anything missing, malformed, from an unknown
  * schema version or rule set, or out of the range the engine accepts falls
  * back to its default, and each fallback adds a plain-language notice for the
@@ -33,6 +40,7 @@ import { CURRENT_RULE_SET, ruleSetById } from '@/rules';
 import type { MonthStamp } from '@/engine/types';
 import { validateProjectionInput, type HousingPlanChoice } from '@/engine/validate';
 import { DEFAULT_FORM, errorsByField, toDraft, type FormField, type FormValues } from './form';
+import { singleScenario, type Scenarios } from './scenarios';
 
 export const URL_SCHEMA_VERSION = '1';
 
@@ -99,7 +107,8 @@ const FIELD_NAMES: Record<FormField, string> = {
   retainedOrdinaryAccount: 'Ordinary Account kept back',
 };
 
-const ALL_KEYS = new Set<string>(['v', 'r', 'm', 'h', ...Object.values(NUMERIC_KEYS)]);
+const ALL_KEYS = new Set<string>(['v', 'r', 'm', 'h', 'B', ...Object.values(NUMERIC_KEYS)]);
+const B_PREFIX = 'b.';
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
 
@@ -200,7 +209,10 @@ function fallBackWhereInvalid(
   startMonth: MonthStamp,
   rulesAsAt: string,
   notices: string[],
+  fallback: FormValues = DEFAULT_FORM,
+  label = '',
 ): FormValues {
+  const say = (sentence: string) => notices.push(label ? `${label}: ${sentence}` : sentence);
   const validate = (values: FormValues) => validateProjectionInput({ ...toDraft(values, startMonth), rulesAsAt });
 
   const first = validate(form);
@@ -214,16 +226,101 @@ function fallBackWhereInvalid(
   if (invalid.some((field) => (HOUSING_FIELDS as readonly string[]).includes(field))) {
     repaired.housingPlan = 'none';
     for (const field of HOUSING_FIELDS) (repaired as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
-    notices.push('The property details in this link could not be used, so the projection shows no property.');
+    say('The property details in this link could not be used, so the projection shows no property.');
   }
   for (const field of invalid) {
     if ((HOUSING_FIELDS as readonly string[]).includes(field)) continue;
     (repaired as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
-    notices.push(`The ${FIELD_NAMES[field]} in this link is outside what the projection supports, so the default is used.`);
+    say(`The ${FIELD_NAMES[field]} in this link is outside what the projection supports, so the default is used.`);
   }
 
   if (validate(repaired).ok) return repaired;
   // Only reachable if the defaults themselves combine badly with what is left.
-  notices.push('The rest of this link could not be used together, so the projection shows the default inputs.');
-  return DEFAULT_FORM;
+  say('The rest of this link could not be used together, so the projection shows the default inputs.');
+  return fallback;
+}
+
+/* Scenarios A and B ------------------------------------------------------ */
+
+export interface ScenariosUrlState {
+  scenarios: Scenarios;
+  startMonth: MonthStamp;
+  rulesAsAt: string;
+}
+
+export interface DecodedScenariosUrlState {
+  state: ScenariosUrlState;
+  notices: string[];
+  fromLink: boolean;
+}
+
+/** A as a link carries it: the values a decoded A would hold. */
+function normalised(form: FormValues): FormValues {
+  const out: FormValues = { ...form };
+  for (const field of Object.keys(NUMERIC_KEYS) as NumericField[]) {
+    if (form.housingPlan === 'none' && HOUSING_FIELDS.includes(field)) (out as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
+    if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan') out.bankLoanRatePercent = DEFAULT_FORM.bankLoanRatePercent;
+  }
+  return out;
+}
+
+/** The query string for both scenarios. Without a B it is exactly `encodeUrlState` for A. */
+export function encodeScenariosUrl({ scenarios, startMonth, rulesAsAt }: ScenariosUrlState): string {
+  const base = encodeUrlState({ form: scenarios.a, startMonth, rulesAsAt });
+  const { b } = scenarios;
+  if (!b) return base;
+  const a = normalised(scenarios.a);
+  const params = new URLSearchParams(base);
+  params.set('B', '1');
+  if (b.housingPlan !== a.housingPlan) params.set(`${B_PREFIX}h`, PLAN_CODES[b.housingPlan]);
+  for (const [field, key] of Object.entries(NUMERIC_KEYS) as [NumericField, string][]) {
+    if (b[field] === a[field]) continue;
+    params.set(`${B_PREFIX}${key}`, b[field] === null ? '' : compact(b[field]));
+  }
+  return `?${params.toString()}`;
+}
+
+/** Reads both scenarios. Never throws; B's notices are labelled "Scenario B". */
+export function decodeScenariosUrl(
+  search: string,
+  fallback: { startMonth: MonthStamp; rulesAsAt?: string },
+): DecodedScenariosUrlState {
+  const decodedA = decodeUrlState(search, fallback);
+  const { form: a, startMonth, rulesAsAt } = decodedA.state;
+  const params = new URLSearchParams(search);
+  const notices = [...decodedA.notices];
+  if (!decodedA.fromLink || params.get('B') !== '1' || params.get('v') !== URL_SCHEMA_VERSION) {
+    return { state: { scenarios: singleScenario(a), startMonth, rulesAsAt }, notices, fromLink: decodedA.fromLink };
+  }
+
+  const label = 'Scenario B';
+  const b: FormValues = { ...normalised(a) };
+  const planCode = params.get(`${B_PREFIX}h`);
+  if (planCode !== null) {
+    const plan = (Object.entries(PLAN_CODES) as [HousingPlanChoice, string][]).find(([, code]) => code === planCode)?.[0];
+    if (plan) b.housingPlan = plan;
+    else notices.push(`${label}: the housing plan in this link could not be read, so it keeps scenario A's.`);
+  }
+  for (const [field, key] of Object.entries(NUMERIC_KEYS) as [NumericField, string][]) {
+    const raw = params.get(`${B_PREFIX}${key}`);
+    if (raw === null) continue;
+    if (raw === '') {
+      b[field] = null as never;
+      continue;
+    }
+    if (!NUMBER_PATTERN.test(raw)) {
+      notices.push(`${label}: the ${FIELD_NAMES[field]} in this link could not be read, so scenario A's is used.`);
+      continue;
+    }
+    b[field] = Number(raw);
+  }
+  // ordinaryAccountSharePercent is never empty in the form; an empty value falls back to A's.
+  if (b.ordinaryAccountSharePercent === null) b.ordinaryAccountSharePercent = a.ordinaryAccountSharePercent;
+
+  const checkedB = fallBackWhereInvalid(b, startMonth, rulesAsAt, notices, a, label);
+  return {
+    state: { scenarios: { a, b: checkedB, active: 'a' }, startMonth, rulesAsAt },
+    notices,
+    fromLink: true,
+  };
 }
