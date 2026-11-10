@@ -18,8 +18,16 @@ import { BalanceChart } from './projection/BalanceChart';
 import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
 import { Timeline } from './projection/Timeline';
-import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormValues } from './projection/form';
-import { encodeUrlState } from './projection/urlState';
+import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormField, type FormValues } from './projection/form';
+import { encodeScenariosUrl } from './projection/urlState';
+import { ScenarioBar } from './projection/ScenarioBar';
+import {
+  activeForm,
+  changedFields,
+  singleScenario,
+  updateActive,
+  type Scenarios,
+} from './projection/scenarios';
 
 /**
  * The projection page: the product's landing view.
@@ -50,6 +58,8 @@ export interface ProjectionPageProps {
   startMonth: MonthStamp;
   /** The values the panel opens with: the stated defaults unless a test or a shared link says otherwise. */
   initialForm?: FormValues;
+  /** Both scenarios, when a shared link carries a B. Takes precedence over `initialForm`. */
+  initialScenarios?: Scenarios;
   /** The rule set id the projection is pinned to; a shared link carries its own. */
   rulesAsAt?: string;
   /** What a shared link carried that could not be used, one sentence each. */
@@ -59,10 +69,16 @@ export interface ProjectionPageProps {
 export function ProjectionPage({
   startMonth,
   initialForm = DEFAULT_FORM,
+  initialScenarios,
   rulesAsAt = CURRENT_RULE_SET.id,
   linkNotices = [],
 }: ProjectionPageProps) {
-  const [form, setForm] = useState<FormValues>(initialForm);
+  const [scenarios, setScenarios] = useState<Scenarios>(initialScenarios ?? singleScenario(initialForm));
+  const form = activeForm(scenarios);
+  const changed = useMemo(
+    () => (scenarios.active === 'b' && scenarios.b ? changedFields(scenarios.a, scenarios.b) : undefined),
+    [scenarios],
+  );
   const ruleSet = ruleSetById(rulesAsAt) ?? CURRENT_RULE_SET;
   const draft = useMemo(() => ({ ...toDraft(form, startMonth), rulesAsAt }), [form, startMonth, rulesAsAt]);
 
@@ -70,10 +86,10 @@ export function ProjectionPage({
   // replacing the history entry so Back leaves the page rather than stepping
   // through keystrokes. No storage, no cookie, no server call.
   useEffect(() => {
-    const query = encodeUrlState({ form, startMonth, rulesAsAt });
+    const query = encodeScenariosUrl({ scenarios, startMonth, rulesAsAt });
     const { pathname, hash } = window.location;
     window.history.replaceState(window.history.state, '', `${pathname}${query}${hash}`);
-  }, [form, startMonth, rulesAsAt]);
+  }, [scenarios, startMonth, rulesAsAt]);
   // The engine is pure and well inside its 50ms budget, so the page simply
   // recomputes on every change.
   const outcome = useMemo(() => projectDraft(draft), [draft]);
@@ -86,7 +102,7 @@ export function ProjectionPage({
   if (outcome.ok) lastResult.current = outcome.result;
   const shown = outcome.ok ? outcome.result : lastResult.current;
 
-  const onChange = (patch: Partial<FormValues>) => setForm((previous) => ({ ...previous, ...patch }));
+  const onChange = (patch: Partial<FormValues>) => setScenarios((previous) => updateActive(previous, patch));
 
   return (
     <Container className="flex flex-col gap-6 py-6 sm:gap-8 sm:py-10">
@@ -115,7 +131,16 @@ export function ProjectionPage({
           {outcome.ok ? null : <StaleNotice errors={outcome.errors} hasEarlierResult={shown !== null} />}
           {shown ? <HeadlineRow result={shown} ruleSet={ruleSet} /> : null}
         </div>
-        <InputsRegion form={form} onChange={onChange} errors={errors} startMonth={startMonth} ruleSet={ruleSet} />
+        <InputsRegion
+          form={form}
+          onChange={onChange}
+          errors={errors}
+          startMonth={startMonth}
+          ruleSet={ruleSet}
+          scenarios={scenarios}
+          onScenariosChange={setScenarios}
+          changed={changed}
+        />
         {shown ? <ResultsRegion result={shown} /> : null}
       </div>
     </Container>
@@ -175,12 +200,18 @@ function InputsRegion({
   errors,
   startMonth,
   ruleSet,
+  scenarios,
+  onScenariosChange,
+  changed,
 }: {
   form: FormValues;
   onChange: (patch: Partial<FormValues>) => void;
   errors: FormErrors;
   startMonth: MonthStamp;
   ruleSet: RuleSet;
+  scenarios: Scenarios;
+  onScenariosChange: (next: Scenarios) => void;
+  changed: ReadonlySet<FormField> | undefined;
 }) {
   return (
     <aside
@@ -195,8 +226,9 @@ function InputsRegion({
           title={<span id="inputs-heading">Your inputs</span>}
           description={`Every figure follows from these. The projection starts in ${startMonth}.`}
         />
-        <CardBody>
-          <InputPanel values={form} onChange={onChange} errors={errors} rules={ruleSet} />
+        <CardBody className="flex flex-col gap-5">
+          <ScenarioBar scenarios={scenarios} onChange={onScenariosChange} changedCount={changed?.size ?? 0} />
+          <InputPanel values={form} onChange={onChange} errors={errors} rules={ruleSet} changed={changed} />
         </CardBody>
       </Card>
     </aside>
