@@ -96,8 +96,8 @@ function Footer({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
         <p className="max-w-2xl">
           This tool produces projections, not advice. Every figure is an illustrative calculation
           based on published CPF Board parameters and the inputs you provide. It makes no
-          recommendation and suggests no course of action. Rules change; check the current figures
-          with CPF Board before relying on any of them.
+          recommendation and suggests no course of action. Rules change; the rules-as-at date shows
+          which CPF Board figures were used, and each figure links to the page it was published on.
         </p>
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
           <RulesStamp ruleSet={ruleSet} />

@@ -1,7 +1,7 @@
 # CPF Projection Tool
 
 A browser-based tool that projects how Singapore CPF balances evolve over a
-working lifetime, and shows what a housing decision costs in retirement terms.
+working lifetime, and shows how a housing decision changes them at retirement.
 
 Illustrative projections only. Not financial advice.
 
