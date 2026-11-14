@@ -15,6 +15,7 @@ import { cn } from '@/lib/cn';
 import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
 import { AssumptionsPanel } from './projection/AssumptionsPanel';
 import { BalanceChart } from './projection/BalanceChart';
+import { ComparisonView } from './projection/ComparisonView';
 import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
 import { Timeline } from './projection/Timeline';
@@ -102,6 +103,23 @@ export function ProjectionPage({
   if (outcome.ok) lastResult.current = outcome.result;
   const shown = outcome.ok ? outcome.result : lastResult.current;
 
+  // With a scenario B, the one not being edited is projected too, for the
+  // side-by-side view. Its inputs were valid when last edited or decoded.
+  const other = useMemo(() => {
+    if (!scenarios.b) return null;
+    const otherForm = scenarios.active === 'a' ? scenarios.b : scenarios.a;
+    const result = projectDraft({ ...toDraft(otherForm, startMonth), rulesAsAt });
+    return result.ok ? result.result : null;
+  }, [scenarios, startMonth, rulesAsAt]);
+  const comparison =
+    scenarios.b && shown
+      ? scenarios.active === 'a'
+        ? { resultA: shown, resultB: other }
+        : other
+          ? { resultA: other, resultB: shown }
+          : null
+      : null;
+
   const onChange = (patch: Partial<FormValues>) => setScenarios((previous) => updateActive(previous, patch));
 
   return (
@@ -129,7 +147,11 @@ export function ProjectionPage({
         <div className="flex min-w-0 flex-col gap-4 lg:[grid-area:headline]">
           <LinkNotice notices={linkNotices} />
           {outcome.ok ? null : <StaleNotice errors={outcome.errors} hasEarlierResult={shown !== null} />}
-          {shown ? <HeadlineRow result={shown} ruleSet={ruleSet} /> : null}
+          {comparison ? (
+            <ComparisonView {...comparison} active={scenarios.active} ruleSet={ruleSet} />
+          ) : shown ? (
+            <HeadlineRow result={shown} ruleSet={ruleSet} />
+          ) : null}
         </div>
         <InputsRegion
           form={form}
@@ -141,7 +163,12 @@ export function ProjectionPage({
           onScenariosChange={setScenarios}
           changed={changed}
         />
-        {shown ? <ResultsRegion result={shown} /> : null}
+        {shown ? (
+          <ResultsRegion
+            result={shown}
+            scenarioLabel={scenarios.b ? `Scenario ${scenarios.active.toUpperCase()}` : undefined}
+          />
+        ) : null}
       </div>
     </Container>
   );
@@ -235,7 +262,7 @@ function InputsRegion({
   );
 }
 
-function ResultsRegion({ result }: { result: ProjectionResult }) {
+function ResultsRegion({ result, scenarioLabel }: { result: ProjectionResult; scenarioLabel?: string | undefined }) {
   const { startAge, endAge } = result.input;
   const fallback = (startAge <= 55 && 55 <= endAge ? 55 : endAge) * 12;
   const [scrubbed, setScrubbed] = useState(fallback);
@@ -244,8 +271,8 @@ function ResultsRegion({ result }: { result: ProjectionResult }) {
 
   return (
     <section aria-labelledby="results-heading" className="flex min-w-0 flex-col gap-6 lg:[grid-area:results]">
-      <h2 id="results-heading" className="sr-only-abs">
-        Projection detail
+      <h2 id="results-heading" className={scenarioLabel ? 'text-[0.9375rem] font-semibold text-ink' : 'sr-only-abs'}>
+        {scenarioLabel ? `Detail for ${scenarioLabel}, the scenario being edited` : 'Projection detail'}
       </h2>
       <BalanceChart
         result={result}
