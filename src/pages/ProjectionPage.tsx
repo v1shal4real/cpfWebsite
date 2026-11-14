@@ -166,6 +166,7 @@ export function ProjectionPage({
         {shown ? (
           <ResultsRegion
             result={shown}
+            compare={comparison?.resultB ? { resultA: comparison.resultA, resultB: comparison.resultB } : undefined}
             scenarioLabel={scenarios.b ? `Scenario ${scenarios.active.toUpperCase()}` : undefined}
           />
         ) : null}
@@ -262,7 +263,15 @@ function InputsRegion({
   );
 }
 
-function ResultsRegion({ result, scenarioLabel }: { result: ProjectionResult; scenarioLabel?: string | undefined }) {
+function ResultsRegion({
+  result,
+  scenarioLabel,
+  compare,
+}: {
+  result: ProjectionResult;
+  scenarioLabel?: string | undefined;
+  compare?: { resultA: ProjectionResult; resultB: ProjectionResult } | undefined;
+}) {
   const { startAge, endAge } = result.input;
   const fallback = (startAge <= 55 && 55 <= endAge ? 55 : endAge) * 12;
   const [scrubbed, setScrubbed] = useState(fallback);
@@ -276,6 +285,7 @@ function ResultsRegion({ result, scenarioLabel }: { result: ProjectionResult; sc
       </h2>
       <BalanceChart
         result={result}
+        compare={compare}
         cursorAgeInMonths={ageInMonths}
         onHoverAge={(age) => setScrubbed(age * 12)}
       />

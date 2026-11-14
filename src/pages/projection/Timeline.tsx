@@ -3,7 +3,7 @@ import { Card, CardBody, CardHeader, DefinitionList, LiveRegion, Slider } from '
 import type { ProjectionResult } from '@/engine/types';
 import { formatAgeMonths, formatMoney, formatPercent } from '@/lib/format';
 import { SERIES } from '@/theme/series';
-import { AGE_55 } from './BalanceChart';
+import { AGE_55 } from './balanceData';
 import { nextAgeInMonths, readoutAt, type TimelineReadout } from './timelineState';
 
 /**

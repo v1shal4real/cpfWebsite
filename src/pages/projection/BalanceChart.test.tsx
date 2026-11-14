@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { projectDraft } from '@/engine/project';
 import { formatMoney } from '@/lib/format';
 import { DEFAULT_FORM, toDraft } from './form';
-import { AGE_55, BalanceChart, chartPoints, yearlyRows } from './BalanceChart';
+import { BalanceChart } from './BalanceChart';
+import { AGE_55, chartPoints, yearlyRows } from './balanceData';
 
 const outcome = projectDraft(toDraft(DEFAULT_FORM, '2026-10'));
 if (!outcome.ok) throw new Error('default form should project');

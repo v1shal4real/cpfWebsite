@@ -87,7 +87,10 @@ export const SERIES: Record<SeriesKey, SeriesMeta> = {
  * Account do not overlap in time — SA closes at the moment RA opens — so they
  * sit next to each other here without ever appearing together.
  */
-export const BALANCE_SERIES: readonly SeriesKey[] = ['oa', 'sa', 'ma', 'ra'];
+/** The four account balances, as opposed to the accrued-interest liability. */
+export type BalanceSeriesKey = Exclude<SeriesKey, 'accrued'>;
+
+export const BALANCE_SERIES: readonly BalanceSeriesKey[] = ['oa', 'sa', 'ma', 'ra'];
 
 /** Every series, including the accrued-interest liability. */
 export const ALL_SERIES: readonly SeriesKey[] = ['oa', 'sa', 'ma', 'ra', 'accrued'];
