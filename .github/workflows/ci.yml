@@ -1,0 +1,47 @@
+# Typecheck, tests and production build on every push and pull request.
+#
+# The engine validation suite (CPF Board worked examples, property and
+# invariant tests, the 50ms performance budget) runs as part of `npm test`,
+# so a change that breaks a projection cannot merge unnoticed (spec §5).
+#
+# To block pull requests on failure, mark the "checks" job as a required
+# status check in the repository's branch protection rule for main.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A newer push to the same branch makes an older run redundant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Typecheck, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
