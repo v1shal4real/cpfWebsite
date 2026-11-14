@@ -47,3 +47,23 @@ export const referenceLineProps = {
   strokeWidth: 1,
   strokeDasharray: '3 3',
 } as const;
+
+/** The dash for a chart's second scenario: the secondary encoding, so no new hue is needed. */
+export const SECONDARY_DASH = '6 4';
+
+/**
+ * Props for one series line. Spread onto a Recharts `<Line>`, which must be a
+ * direct child of the chart, so this is props rather than a wrapper component.
+ */
+export function seriesLineProps(color: string, dash?: string) {
+  return {
+    type: 'monotone' as const,
+    stroke: color,
+    strokeWidth: LINE_WIDTH,
+    strokeDasharray: dash,
+    dot: false,
+    activeDot: { ...activeDotProps, fill: color },
+    connectNulls: false,
+    isAnimationActive: false,
+  };
+}

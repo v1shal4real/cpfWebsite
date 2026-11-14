@@ -2,89 +2,34 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import {
   ChartFrame,
   ChartTooltip,
+  ComparisonTooltip,
   Legend,
-  LINE_WIDTH,
+  LineStyleKey,
+  SECONDARY_DASH,
   Y_AXIS_WIDTH,
-  activeDotProps,
   axisLine,
   axisTick,
   chartMargin,
   cursorProps,
   gridProps,
   referenceLineProps,
+  seriesLineProps,
 } from '@/components/chart';
-import { TBody, THead, Table, Td, Th, Tr } from '@/components/ui';
-import type { AccountAmounts, AccountName, ProjectionResult } from '@/engine/types';
-import { formatMoney, formatMoneyCompact } from '@/lib/format';
-import { BALANCE_SERIES, SERIES, type SeriesKey } from '@/theme/series';
+import type { ProjectionResult } from '@/engine/types';
+import { formatMoneyCompact } from '@/lib/format';
+import { BALANCE_SERIES, SERIES } from '@/theme/series';
+import { AGE_55, ageTicks, chartPoints, comparisonPoints, scenarioBKey, yearlyRows } from './balanceData';
+import { BalanceTable, ComparisonTable } from './BalanceTables';
 
 /**
  * OA, SA, MA and RA balances over age, with the age-55 transition marked and
- * a yearly table as the alternative view.
+ * a yearly table as the alternative view. With a scenario B, both scenarios
+ * share the chart: colour stays with the account, and B is drawn dashed.
  *
- * Colours come only from the series registry. The Special Account line ends
- * the year before 55 and the Retirement Account line starts at 55, because
- * the two accounts never exist at the same time; a zero would draw a false
- * drop to the axis.
+ * This file is the chart's composition only. Its data lives in
+ * `balanceData.ts`, its tables in `BalanceTables.tsx`, and the generic parts
+ * (tooltips, the line-style key, line props) in `components/chart`.
  */
-
-export const AGE_55 = 55;
-
-const ACCOUNT_OF: Record<(typeof BALANCE_SERIES)[number], AccountName> = {
-  oa: 'ordinary',
-  sa: 'special',
-  ma: 'medisave',
-  ra: 'retirement',
-  accrued: 'ordinary', // not a balance series; never read
-};
-
-/** Balances, in dollars, at the end of the month the member reaches each age. */
-export interface YearRow {
-  age: number;
-  balances: AccountAmounts;
-  total: number;
-}
-
-/** A chart point: dollars per series, `null` where the account does not exist at that age. */
-export type ChartPoint = { age: number } & Partial<Record<SeriesKey, number | null>>;
-
-const toDollars = (cents: number) => cents / 100;
-
-/** One row per whole year of age, from the start age to the end age. */
-export function yearlyRows(result: ProjectionResult): YearRow[] {
-  const byAgeInMonths = new Map(result.months.map((month) => [month.ageInMonths, month]));
-  const rows: YearRow[] = [];
-  for (let age = result.input.startAge; age <= result.input.endAge; age += 1) {
-    const month = byAgeInMonths.get(age * 12);
-    if (!month) continue;
-    const b = month.closingBalances;
-    const balances: AccountAmounts = {
-      ordinary: toDollars(b.ordinary),
-      special: toDollars(b.special),
-      medisave: toDollars(b.medisave),
-      retirement: toDollars(b.retirement),
-    };
-    rows.push({ age, balances, total: balances.ordinary + balances.special + balances.medisave + balances.retirement });
-  }
-  return rows;
-}
-
-export function chartPoints(rows: readonly YearRow[]): ChartPoint[] {
-  return rows.map(({ age, balances }) => ({
-    age,
-    oa: balances.ordinary,
-    sa: age < AGE_55 ? balances.special : null,
-    ma: balances.medisave,
-    ra: age >= AGE_55 ? balances.retirement : null,
-  }));
-}
-
-/** The start age, every multiple of five after it, and the end age. */
-function ageTicks(startAge: number, endAge: number): number[] {
-  const ticks = new Set([startAge, endAge]);
-  for (let age = Math.ceil(startAge / 5) * 5; age < endAge; age += 5) ticks.add(age);
-  return [...ticks].sort((a, b) => a - b);
-}
 
 export interface BalanceChartProps {
   result: ProjectionResult;
@@ -92,29 +37,52 @@ export interface BalanceChartProps {
   cursorAgeInMonths?: number;
   /** Called with the hovered age, in whole years, so the timeline follows the pointer. */
   onHoverAge?: (age: number) => void;
+  /**
+   * With a scenario B: both scenarios on one chart. `result` is still the
+   * scenario being edited, for the crosshair.
+   */
+  compare?: { resultA: ProjectionResult; resultB: ProjectionResult } | undefined;
 }
 
-export function BalanceChart({ result, cursorAgeInMonths, onHoverAge }: BalanceChartProps) {
-  const rows = yearlyRows(result);
-  const points = chartPoints(rows);
-  const { startAge, endAge } = result.input;
+const LEGEND_ITEMS = BALANCE_SERIES.map((key) => ({
+  key,
+  label: key === 'ra' ? `${SERIES.ra.label} (from 55)` : key === 'sa' ? `${SERIES.sa.label} (to 55)` : undefined,
+}));
+
+const SCENARIO_STYLES = [
+  { label: 'Scenario A: solid' },
+  { label: 'Scenario B: dashed', dash: SECONDARY_DASH },
+];
+
+export function BalanceChart({ result, cursorAgeInMonths, onHoverAge, compare }: BalanceChartProps) {
+  const rowsA = yearlyRows(compare ? compare.resultA : result);
+  const rowsB = compare ? yearlyRows(compare.resultB) : [];
+  const points = compare ? comparisonPoints(rowsA, rowsB) : chartPoints(rowsA);
+  const inputs = compare ? [compare.resultA.input, compare.resultB.input] : [result.input];
+  const startAge = Math.min(...inputs.map((input) => input.startAge));
+  const endAge = Math.max(...inputs.map((input) => input.endAge));
   const shows55 = startAge <= AGE_55 && AGE_55 <= endAge;
+
+  const summary = [
+    `Projected Ordinary, Special, MediSave and Retirement Account balances from age ${startAge} to ${endAge}`,
+    compare ? ', scenario A as solid lines and scenario B as dashed lines in the same account colours' : '',
+    '.',
+    shows55 ? ' At 55 the Special Account closes and the Retirement Account opens.' : '',
+  ].join('');
 
   return (
     <ChartFrame
       title="Account balances by age"
-      summary={`Projected Ordinary, Special, MediSave and Retirement Account balances from age ${startAge} to ${endAge}.${
-        shows55 ? ' At 55 the Special Account closes and the Retirement Account opens.' : ''
-      }`}
+      summary={summary}
       legend={
-        <Legend
-          items={BALANCE_SERIES.map((key) => ({
-            key,
-            label: key === 'ra' ? `${SERIES.ra.label} (from 55)` : key === 'sa' ? `${SERIES.sa.label} (to 55)` : undefined,
-          }))}
-        />
+        <div className="flex flex-col gap-1.5">
+          <Legend items={LEGEND_ITEMS} />
+          {compare ? <LineStyleKey label="Scenarios" items={SCENARIO_STYLES} /> : null}
+        </div>
       }
-      renderTable={({ visible }) => <BalanceTable rows={rows} visible={visible} />}
+      renderTable={({ visible }) =>
+        compare ? <ComparisonTable rowsA={rowsA} rowsB={rowsB} visible={visible} /> : <BalanceTable rows={rowsA} visible={visible} />
+      }
     >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
@@ -145,7 +113,13 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge }: BalanceC
           />
           <Tooltip
             cursor={cursorProps}
-            content={({ active, payload, label }) => <ChartTooltip active={active} payload={payload} label={label} />}
+            content={({ active, payload, label }) =>
+              compare ? (
+                <ComparisonTooltip active={active} payload={payload} label={label} series={BALANCE_SERIES} secondKey={scenarioBKey} />
+              ) : (
+                <ChartTooltip active={active} payload={payload} label={label} />
+              )
+            }
           />
           {shows55 ? (
             <ReferenceLine
@@ -157,63 +131,22 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge }: BalanceC
           {cursorAgeInMonths !== undefined ? (
             <ReferenceLine x={cursorAgeInMonths / 12} stroke="var(--ink)" strokeWidth={1} ifOverflow="hidden" />
           ) : null}
+          {/* Recharts reads <Line> as direct children, so the lines are mapped here rather than wrapped. */}
           {BALANCE_SERIES.map((key) => (
-            <Line
-              key={key}
-              dataKey={key}
-              name={SERIES[key].label}
-              type="monotone"
-              stroke={SERIES[key].color}
-              strokeWidth={LINE_WIDTH}
-              dot={false}
-              activeDot={{ ...activeDotProps, fill: SERIES[key].color }}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
+            <Line key={key} dataKey={key} name={SERIES[key].label} {...seriesLineProps(SERIES[key].color)} />
           ))}
+          {compare
+            ? BALANCE_SERIES.map((key) => (
+                <Line
+                  key={scenarioBKey(key)}
+                  dataKey={scenarioBKey(key)}
+                  name={`${SERIES[key].label}, scenario B`}
+                  {...seriesLineProps(SERIES[key].color, SECONDARY_DASH)}
+                />
+              ))
+            : null}
         </LineChart>
       </ResponsiveContainer>
     </ChartFrame>
-  );
-}
-
-function BalanceTable({ rows, visible }: { rows: readonly YearRow[]; visible: boolean }) {
-  return (
-    <Table
-      caption="Projected account balances by age"
-      captionHidden
-      focusable={visible}
-      density="compact"
-      stickyFirstColumn
-    >
-      <THead>
-        <tr>
-          <Th>Age</Th>
-          {BALANCE_SERIES.map((key) => (
-            <Th key={key} numeric>
-              <abbr title={SERIES[key].label} className="no-underline">
-                {SERIES[key].short}
-              </abbr>
-            </Th>
-          ))}
-          <Th numeric>Total</Th>
-        </tr>
-      </THead>
-      <TBody>
-        {rows.map((row) => (
-          <Tr key={row.age} highlighted={row.age === AGE_55}>
-            <Th scope="row" className="font-normal text-ink">
-              {row.age}
-            </Th>
-            {BALANCE_SERIES.map((key) => (
-              <Td key={key} numeric>
-                {formatMoney(row.balances[ACCOUNT_OF[key]])}
-              </Td>
-            ))}
-            <Td numeric>{formatMoney(row.total)}</Td>
-          </Tr>
-        ))}
-      </TBody>
-    </Table>
   );
 }
