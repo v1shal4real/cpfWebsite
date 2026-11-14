@@ -21,6 +21,9 @@ all computation runs client-side.
 | `npm run typecheck` | Type-check only |
 | `npm run bench` | Engine benchmarks (timings only; the budget is asserted by `npm test`) |
 
+CI (`.github/workflows/ci.yml`) runs `npm ci`, then typecheck, tests and build,
+on Node 22 (`.nvmrc`), for every push and pull request.
+
 ## Layout
 
 ```
