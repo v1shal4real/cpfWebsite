@@ -1,7 +1,7 @@
 import { useId, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { clamp } from '@/lib/format';
-import { useFieldControl } from './Field';
+import { useFieldControl } from './fieldContext';
 
 /**
  * A range slider built on the native `input[type=range]`.
@@ -17,8 +17,7 @@ import { useFieldControl } from './Field';
  * Account" is not. It feeds `aria-valuetext`.
  */
 
-export interface SliderProps
-  extends Omit<ComponentPropsWithRef<'input'>, 'value' | 'onChange' | 'type'> {
+export interface SliderProps extends Omit<ComponentPropsWithRef<'input'>, 'value' | 'onChange' | 'type'> {
   value: number;
   onValueChange: (value: number) => void;
   min: number;
@@ -67,10 +66,7 @@ export function Slider({
       <div className="relative flex h-5 items-center">
         {/* Track and fill. Painted behind the input, which is transparent. */}
         <div aria-hidden="true" className="absolute inset-x-0 h-1.5 rounded-full bg-surface-3">
-          <div
-            className="h-full rounded-full bg-surface-inverse"
-            style={{ width: `${fraction * 100}%` }}
-          />
+          <div className="h-full rounded-full bg-surface-inverse" style={{ width: `${fraction * 100}%` }} />
         </div>
 
         {ticks?.length ? (
@@ -97,8 +93,7 @@ export function Slider({
           disabled={disabled}
           aria-valuetext={valueLabel}
           aria-describedby={
-            [field['aria-describedby'], ticks?.length ? ticksId : null].filter(Boolean).join(' ') ||
-            undefined
+            [field['aria-describedby'], ticks?.length ? ticksId : null].filter(Boolean).join(' ') || undefined
           }
           onChange={(event) => onValueChange(Number(event.target.value))}
           className={cn(
@@ -126,8 +121,7 @@ export function Slider({
 
       {ticks?.length ? (
         <span id={ticksId} className="sr-only-abs">
-          Marked points:{' '}
-          {ticks.map((tick) => tick.label ?? String(tick.value)).join(', ')}.
+          Marked points: {ticks.map((tick) => tick.label ?? String(tick.value)).join(', ')}.
         </span>
       ) : null}
     </div>

@@ -101,10 +101,8 @@ export function contributionOnWage(
   const totalRate = rate(band.employee) + rate(band.employer);
 
   // Half up for the total, down for the employee's share.
-  const total =
-    Math.floor((wageSubjectToCpf * totalRate + DOLLAR / 2) / DOLLAR) * CENTS_PER_DOLLAR;
-  const employee =
-    Math.floor((wageSubjectToCpf * rate(band.employee)) / DOLLAR) * CENTS_PER_DOLLAR;
+  const total = Math.floor((wageSubjectToCpf * totalRate + DOLLAR / 2) / DOLLAR) * CENTS_PER_DOLLAR;
+  const employee = Math.floor((wageSubjectToCpf * rate(band.employee)) / DOLLAR) * CENTS_PER_DOLLAR;
 
   return { total, employee, employer: total - employee };
 }

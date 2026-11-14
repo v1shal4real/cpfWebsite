@@ -174,21 +174,22 @@ describe('derived housing fixtures', () => {
 describe('contribution fixtures', () => {
   const cases = CONTRIBUTION_FIXTURES.map((f) => [f.id, f] as const);
 
-  it.each(cases)('%s follows the published rounding steps', (_id, { assumes, wageSubjectToCpf, expected }) => {
-    const total = Math.floor((wageSubjectToCpf * bp(assumes.total) + DOLLAR / 2) / DOLLAR) * 100;
-    const employee = Math.floor((wageSubjectToCpf * bp(assumes.employee)) / DOLLAR) * 100;
-    expect(expected.total).toBe(total);
-    expect(expected.employee).toBe(employee);
-    expect(expected.employer).toBe(total - employee);
-  });
+  it.each(cases)(
+    '%s follows the published rounding steps',
+    (_id, { assumes, wageSubjectToCpf, expected }) => {
+      const total = Math.floor((wageSubjectToCpf * bp(assumes.total) + DOLLAR / 2) / DOLLAR) * 100;
+      const employee = Math.floor((wageSubjectToCpf * bp(assumes.employee)) / DOLLAR) * 100;
+      expect(expected.total).toBe(total);
+      expect(expected.employee).toBe(employee);
+      expect(expected.employer).toBe(total - employee);
+    },
+  );
 
   it.each(cases)('%s caps Ordinary Wages at the ceiling it assumes', (_id, fixture) => {
     if (fixture.component !== 'ordinary') return;
     expect(fixture.wageSubjectToCpf).toBeLessThanOrEqual(fixture.assumes.ordinaryWageCeiling);
     if (fixture.wagePaid !== undefined) {
-      expect(fixture.wageSubjectToCpf).toBe(
-        Math.min(fixture.wagePaid, fixture.assumes.ordinaryWageCeiling),
-      );
+      expect(fixture.wageSubjectToCpf).toBe(Math.min(fixture.wagePaid, fixture.assumes.ordinaryWageCeiling));
     }
   });
 

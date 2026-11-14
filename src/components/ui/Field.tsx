@@ -1,4 +1,5 @@
-import { createContext, useContext, useId, type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
+import { FieldContext } from './fieldContext';
 import { cn } from '@/lib/cn';
 
 /**
@@ -9,37 +10,6 @@ import { cn } from '@/lib/cn';
  * label, hint and error association automatically via context; the same input
  * used outside a `Field` still works and falls back to its own props.
  */
-
-interface FieldContextValue {
-  controlId: string;
-  describedBy: string | undefined;
-  invalid: boolean;
-  required: boolean;
-}
-
-const FieldContext = createContext<FieldContextValue | null>(null);
-
-/**
- * Read by input components. Returns the props an input must spread onto its
- * control element to be correctly associated with the surrounding `Field`.
- */
-export function useFieldControl(overrides?: {
-  id?: string;
-  'aria-describedby'?: string;
-  required?: boolean;
-}) {
-  const field = useContext(FieldContext);
-  const fallbackId = useId();
-  const describedBy =
-    [field?.describedBy, overrides?.['aria-describedby']].filter(Boolean).join(' ') || undefined;
-
-  return {
-    id: overrides?.id ?? field?.controlId ?? fallbackId,
-    'aria-describedby': describedBy,
-    'aria-invalid': field?.invalid ? (true as const) : undefined,
-    required: overrides?.required ?? field?.required ?? false,
-  };
-}
 
 export interface FieldProps {
   label: ReactNode;
@@ -82,12 +52,7 @@ export function Field({
       }}
     >
       <div className={cn('flex flex-col gap-1.5', className)}>
-        <div
-          className={cn(
-            'flex items-baseline justify-between gap-3',
-            labelHidden && 'sr-only-abs',
-          )}
-        >
+        <div className={cn('flex items-baseline justify-between gap-3', labelHidden && 'sr-only-abs')}>
           <label htmlFor={controlId} className="text-[0.8125rem] font-medium text-ink">
             {label}
             {required ? (

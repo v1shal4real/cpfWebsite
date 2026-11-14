@@ -26,7 +26,10 @@ export function AssumptionsPanel({ result }: { result: ProjectionResult }) {
           <Callout tone="info" title={`This projection uses ${ruleSets.length} rule sets`}>
             <p>
               CPF rules change during the projection. Each month uses the rules in force then:{' '}
-              {ruleSets.map((rules) => `${rules.label} (${effectiveRange(rules).toLowerCase()})`).join(', then ')}.
+              {ruleSets
+                .map((rules) => `${rules.label} (${effectiveRange(rules).toLowerCase()})`)
+                .join(', then ')}
+              .
             </p>
           </Callout>
         ) : null}
@@ -34,7 +37,11 @@ export function AssumptionsPanel({ result }: { result: ProjectionResult }) {
         <Group group={assumptionGroup(result.input, latest)} />
 
         {ruleSets.map((rules) => (
-          <section key={rules.id} aria-label={`CPF rules as at ${rules.label}`} className="flex flex-col gap-4">
+          <section
+            key={rules.id}
+            aria-label={`CPF rules as at ${rules.label}`}
+            className="flex flex-col gap-4"
+          >
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line pb-1">
               <h4 className="text-[0.9375rem] font-semibold text-ink">CPF rules as at {rules.label}</h4>
               <span className="text-[0.75rem] text-ink-subtle">{effectiveRange(rules)}</span>
@@ -60,7 +67,10 @@ function Group({ group }: { group: AssumptionGroup }) {
       </div>
       <dl className="flex flex-col">
         {group.rows.map((row) => (
-          <div key={row.label} className="flex flex-col gap-0.5 border-b border-line py-1.5 last:border-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+          <div
+            key={row.label}
+            className="flex flex-col gap-0.5 border-b border-line py-1.5 last:border-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+          >
             <dt className="text-[0.8125rem] text-ink-muted">{row.label}</dt>
             <dd className="flex flex-wrap items-baseline gap-2 text-[0.8125rem] text-ink sm:justify-end sm:text-right">
               <span data-numeric>{row.value}</span>

@@ -129,7 +129,10 @@ describe('ceilings', () => {
   it('stops contributions at the Annual Limit', () => {
     const limit = CURRENT_RULE_SET.wageCeilings.annualLimit * 100;
     const result = contributionForMonth(
-      request({ ordinaryWage: 800_000, yearToDate: { ordinaryWagesSubjectToCpf: 0, contributions: limit - 5_000 } }),
+      request({
+        ordinaryWage: 800_000,
+        yearToDate: { ordinaryWagesSubjectToCpf: 0, contributions: limit - 5_000 },
+      }),
     );
     expect(result.total).toBe(5_000);
     expect(result.employee + result.employer).toBe(result.total);
@@ -143,9 +146,7 @@ describe('ceilings', () => {
   it('refuses a wage the rule set has no rates for', () => {
     const threshold = CURRENT_RULE_SET.contributionRates.fullRatesFromMonthlyWage * 100;
     expect(() => contributionForMonth(request({ ordinaryWage: threshold }))).toThrow(RangeError);
-    expect(() => contributionForMonth(request({ ordinaryWage: 50_000 }))).toThrow(
-      /graduated rates/,
-    );
+    expect(() => contributionForMonth(request({ ordinaryWage: 50_000 }))).toThrow(/graduated rates/);
     // A dollar above the threshold is fine.
     expect(() => contributionForMonth(request({ ordinaryWage: threshold + 100 }))).not.toThrow();
   });

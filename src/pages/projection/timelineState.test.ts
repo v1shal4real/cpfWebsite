@@ -45,7 +45,10 @@ describe('readout', () => {
 
   it('reports balances, rates and allocation that add up', () => {
     const r = readoutAt(result, 40 * 12)!;
-    expect(r.total).toBeCloseTo(r.balances.ordinary + r.balances.special + r.balances.medisave + r.balances.retirement, 6);
+    expect(r.total).toBeCloseTo(
+      r.balances.ordinary + r.balances.special + r.balances.medisave + r.balances.retirement,
+      6,
+    );
     expect(r.contributionRate).toBeCloseTo((r.employeeRate ?? 0) + (r.employerRate ?? 0), 6);
     const s = r.allocationShares!;
     expect(s.ordinary + s.special + s.medisave + s.retirement).toBeCloseTo(1, 6);

@@ -35,7 +35,8 @@ describe('landing on the projection page', () => {
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     const { summary } = outcome.result;
-    const total = (balances: Record<string, number>) => Object.values(balances).reduce((a, b) => a + b, 0) / 100;
+    const total = (balances: Record<string, number>) =>
+      Object.values(balances).reduce((a, b) => a + b, 0) / 100;
     expect(text).toContain('Projected balances at 55');
     expect(text).toContain(formatMoney(total(summary.atAge55!.balances)));
     expect(text).toContain(formatMoney(total(summary.atEnd.balances)));
@@ -85,14 +86,26 @@ describe('the input panel', () => {
 
   it('hides every housing field until a housing plan is selected', () => {
     const { text } = render();
-    for (const label of ['Property price', 'Age at purchase', 'Downpayment', 'Loan tenure', 'Bank loan interest rate']) {
+    for (const label of [
+      'Property price',
+      'Age at purchase',
+      'Downpayment',
+      'Loan tenure',
+      'Bank loan interest rate',
+    ]) {
       expect(text, label).not.toContain(label);
     }
   });
 
   it('shows the housing fields for an HDB loan, without a rate', () => {
     const { text } = render(HDB);
-    for (const label of ['Property price', 'Age at purchase', 'Downpayment', 'Share of the downpayment from the Ordinary Account', 'Loan tenure']) {
+    for (const label of [
+      'Property price',
+      'Age at purchase',
+      'Downpayment',
+      'Share of the downpayment from the Ordinary Account',
+      'Loan tenure',
+    ]) {
       expect(text, label).toContain(label);
     }
     expect(text).not.toContain('Bank loan interest rate');
@@ -100,7 +113,12 @@ describe('the input panel', () => {
   });
 
   it('adds the rate for a bank loan, with its longer tenure', () => {
-    const { text } = render({ ...HDB, housingPlan: 'bank-loan', loanTenureYears: 30, bankLoanRatePercent: 3 });
+    const { text } = render({
+      ...HDB,
+      housingPlan: 'bank-loan',
+      loanTenureYears: 30,
+      bankLoanRatePercent: 3,
+    });
     expect(text).toContain('Bank loan interest rate');
     expect(text).toContain('Up to 35 years for a bank loan.');
   });
@@ -114,7 +132,8 @@ describe('the input panel', () => {
 
 describe('opening a shared link', () => {
   it('shows what the link carried that could not be used', () => {
-    const notice = 'The current age in this link is outside what the projection supports, so the default is used.';
+    const notice =
+      'The current age in this link is outside what the projection supports, so the default is used.';
     const html = renderToString(
       <ProjectionPage startMonth={START} initialForm={DEFAULT_FORM} linkNotices={[notice]} />,
     );
@@ -131,7 +150,10 @@ describe('opening a shared link', () => {
 describe('validation errors', () => {
   it('shows an engine guard error beside its field, as an alert linked to the control', () => {
     const { html } = render({ ...DEFAULT_FORM, monthlySalary: 100 });
-    const salaryField = html.slice(html.indexOf('Gross monthly salary'), html.indexOf('Expected salary growth'));
+    const salaryField = html.slice(
+      html.indexOf('Gross monthly salary'),
+      html.indexOf('Expected salary growth'),
+    );
     expect(salaryField).toMatch(/role="alert"[^>]*>.*graduated CPF rates/);
     expect(salaryField).toMatch(/aria-invalid="true"/);
   });

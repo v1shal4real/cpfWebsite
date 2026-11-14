@@ -69,7 +69,8 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
     shouldShowError(errors[field], touched.has(field)) ? errors[field]?.message : undefined;
 
   const housing = values.housingPlan !== 'none';
-  const loanLimits = values.housingPlan === 'bank-loan' ? rules.housing.bankLoanLimits : rules.housing.hdbLoanLimits;
+  const loanLimits =
+    values.housingPlan === 'bank-loan' ? rules.housing.bankLoanLimits : rules.housing.hdbLoanLimits;
   const maxTenure = loanLimits.maximumTenureYears;
   const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
 
@@ -103,7 +104,10 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
           label="Gross monthly salary"
           hint={`Ordinary Wages only. Contributions stop at the ${formatMoney(wageCeilings.ordinaryWageCeiling)} Ordinary Wage ceiling.`}
           required
-          labelAside={mark('monthlySalary', <SourceLink sourceId={sourceFor(contributionRates)} variant="chip" />)}
+          labelAside={mark(
+            'monthlySalary',
+            <SourceLink sourceId={sourceFor(contributionRates)} variant="chip" />,
+          )}
           error={errorFor('monthlySalary')}
         >
           <MoneyInput
@@ -133,7 +137,11 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
       </Group>
 
       <Group legend="Current CPF balances" description="Optional. Leave a field blank for zero.">
-        <Field label="Ordinary Account" labelAside={mark('ordinaryBalance')} error={errorFor('ordinaryBalance')}>
+        <Field
+          label="Ordinary Account"
+          labelAside={mark('ordinaryBalance')}
+          error={errorFor('ordinaryBalance')}
+        >
           <MoneyInput
             value={values.ordinaryBalance}
             onValueChange={(ordinaryBalance) => onChange({ ordinaryBalance })}
@@ -149,7 +157,11 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
             min={0}
           />
         </Field>
-        <Field label="MediSave Account" labelAside={mark('medisaveBalance')} error={errorFor('medisaveBalance')}>
+        <Field
+          label="MediSave Account"
+          labelAside={mark('medisaveBalance')}
+          error={errorFor('medisaveBalance')}
+        >
           <MoneyInput
             value={values.medisaveBalance}
             onValueChange={(medisaveBalance) => onChange({ medisaveBalance })}
@@ -181,7 +193,12 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
         {/* Only with a plan: hidden fields are neither shown nor validated. */}
         {housing ? (
           <>
-            <Field label="Property price" required labelAside={mark('propertyPrice')} error={errorFor('propertyPrice')}>
+            <Field
+              label="Property price"
+              required
+              labelAside={mark('propertyPrice')}
+              error={errorFor('propertyPrice')}
+            >
               <MoneyInput
                 value={values.propertyPrice}
                 onValueChange={(propertyPrice) => onChange({ propertyPrice })}
@@ -315,10 +332,20 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
  * fieldset's own flow; floating it puts it back in, so the description and
  * fields stack beneath it instead of under it.
  */
-function Group({ legend, description, children }: { legend: string; description?: string; children: ReactNode }) {
+function Group({
+  legend,
+  description,
+  children,
+}: {
+  legend: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
     <fieldset className="min-w-0">
-      <legend className="float-left w-full text-[0.9375rem] font-semibold leading-tight text-ink">{legend}</legend>
+      <legend className="float-left w-full text-[0.9375rem] font-semibold leading-tight text-ink">
+        {legend}
+      </legend>
       <div className="clear-left flex flex-col gap-4 pt-1">
         {description ? <p className="text-[0.8125rem] text-ink-muted">{description}</p> : null}
         {children}

@@ -1,6 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { useFieldControl } from './Field';
+import { useFieldControl } from './fieldContext';
 
 /**
  * Switch and Checkbox.

@@ -1,5 +1,6 @@
 export { Button, IconButton, type ButtonProps, type IconButtonProps } from './Button';
-export { Field, useFieldControl, type FieldProps } from './Field';
+export { Field, type FieldProps } from './Field';
+export { useFieldControl } from './fieldContext';
 export {
   TextInput,
   NumericInput,
@@ -9,22 +10,10 @@ export {
   type NumericInputProps,
 } from './Input';
 export { Select, type SelectOption, type SelectProps } from './Select';
-export {
-  SegmentedControl,
-  type SegmentedOption,
-  type SegmentedControlProps,
-} from './SegmentedControl';
+export { SegmentedControl, type SegmentedOption, type SegmentedControlProps } from './SegmentedControl';
 export { Slider, type SliderProps } from './Slider';
 export { Switch, Checkbox, type SwitchProps, type CheckboxProps } from './Toggle';
-export {
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  Section,
-  Divider,
-  type CardProps,
-} from './Card';
+export { Card, CardHeader, CardBody, CardFooter, Section, Divider, type CardProps } from './Card';
 export { Badge, Swatch, type BadgeTone } from './Badge';
 export { Callout, type CalloutTone } from './Callout';
 export { Tooltip, InfoTip } from './Tooltip';
@@ -34,12 +23,6 @@ export { Table, THead, TBody, TFoot, Tr, Th, Td } from './Table';
 export { Money, MoneyDelta, Percent } from './Value';
 export { StatTile, type StatTileProps } from './StatTile';
 export { SourceLink } from './SourceLink';
-export {
-  VisuallyHidden,
-  LiveRegion,
-  Skeleton,
-  DefinitionList,
-  Kbd,
-  type DefinitionItem,
-} from './Misc';
-export { CopyLinkButton, COPY_MESSAGES, type CopyLinkButtonProps, type CopyStatus } from './CopyLinkButton';
+export { VisuallyHidden, LiveRegion, Skeleton, DefinitionList, Kbd, type DefinitionItem } from './Misc';
+export { CopyLinkButton, type CopyLinkButtonProps } from './CopyLinkButton';
+export { COPY_MESSAGES, type CopyStatus } from './copyMessages';

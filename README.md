@@ -12,17 +12,20 @@ all computation runs client-side.
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Dev server |
-| `npm run build` | Type-check and production build |
-| `npm run preview` | Serve the production build |
-| `npm test` | Run the test suite once |
-| `npm run typecheck` | Type-check only |
-| `npm run bench` | Engine benchmarks (timings only; the budget is asserted by `npm test`) |
+| Command                | What it does                                                           |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`          | Dev server                                                             |
+| `npm run build`        | Type-check and production build                                        |
+| `npm run preview`      | Serve the production build                                             |
+| `npm test`             | Run the test suite once                                                |
+| `npm run typecheck`    | Type-check only                                                        |
+| `npm run lint`         | ESLint, with jsx-a11y and react-hooks rules; warnings fail             |
+| `npm run format`       | Format everything with Prettier                                        |
+| `npm run format:check` | Check formatting without changing files                                |
+| `npm run bench`        | Engine benchmarks (timings only; the budget is asserted by `npm test`) |
 
-CI (`.github/workflows/ci.yml`) runs `npm ci`, then typecheck, tests and build,
-on Node 22 (`.nvmrc`), for every push and pull request.
+CI (`.github/workflows/ci.yml`) runs `npm ci`, then typecheck, lint, format
+check, tests and build, on Node 22 (`.nvmrc`), for every push and pull request.
 
 ## Layout
 
@@ -97,18 +100,18 @@ Money is in whole cents. Every rate and threshold is read from the dated rule
 set in force for the month being computed; nothing in `src/engine` reads the
 clock.
 
-| Rule | How the engine applies it |
-|---|---|
-| Age bands | A new band's contribution rates and allocation ratios apply from the month after the birthday month. |
-| Contributions | Total rounded to the nearest dollar (50 cents up), employee share down to the dollar, employer pays the difference. |
-| Allocation | MediSave first, then Special (Retirement from 55, up to the cohort FRS), remainder to Ordinary. Shares rounded to the nearest cent, half up (provisional: no published rule). |
-| Base interest | Computed monthly on the month's opening balance less that month's withdrawals, so money received earns from the next month. Credited at the end of December and compounded annually. Kept exact through the year and rounded to the cent once, on crediting (provisional: no published rule). A year the projection ends partway through is not credited. |
-| Extra interest | Below 55: 1% on the first $60,000 of combined balances. From 55 (from the month after the 55th birthday month, as with the bands): 2% on the first $30,000 and 1% on the next $30,000. Accounts fill the tiers in the published order: RA, then OA up to $20,000, then SA, then MA; each earns on the part of itself counted. Extra interest on OA is credited to SA below 55 and to RA from 55, never to OA. Computed monthly on the same balances as base interest and credited with it in December. |
-| Basic Healthcare Sum | MediSave is held to the BHS for the year (from the escalation series) until the member turns 65, then to the BHS in force in the year they turned 65. Applied at the end of each month, after contributions and any December interest credit, so MediSave never closes a month above the cap. The excess goes to SA below 55, or RA from 55 (the month after the 55th birthday month), until that account holds the FRS, then to OA. Below 55 that is the FRS in force that year; from 55, the member's cohort FRS. A "BHS reached" event is recorded the first month MediSave reaches the cap. |
-| Age-55 transition | Runs once, at the end of the month the member turns 55, after that month's contribution, interest credit and MediSave cap. In order: (1) the RA is created; (2) SA savings move into it up to the cohort FRS; (3) OA savings top it up, keeping back the $5,000 a member short of the FRS may withdraw; (4) the SA closes and any remainder goes to OA; (5) the withdrawable amount is reported (all of OA with the FRS set aside, otherwise up to $5,000) and left in OA, never withdrawn; (6) the from-55 contribution rates, allocation ratios and extra-interest tiers apply from the following month. Interest the SA earned before closing is credited in December and moved on the same way. |
-| Housing loan | Drawn in the month the member reaches the purchase age; `tenureYears x 12` level monthly instalments from the month after. Monthly rest: each month's interest is a twelfth of the annual rate on the opening balance, rounded to the nearest cent; the instalment is rounded up to the cent and the last one clears the balance exactly (provisional: no published rule). HDB concessionary rate = the rule set's OA rate + the 0.1-point peg, resolved each month, with the instalment recomputed if the rate changes; a bank loan uses its own rate for the whole tenure. A "loan cleared" event marks the last instalment. |
-| Housing withdrawals | In the purchase month the member's chosen OA share of the downpayment comes from the OA and the rest is paid in cash; each later month the instalment comes from the OA or cash, as chosen. Payments draw on the OA after this month's contribution lands, never take it below the retained amount (up to $20,000 for an HDB loan, any amount for a bank loan) or below zero, and whatever the OA cannot cover is paid in cash and recorded as a shortfall. Withdrawals stop earning interest from the month they leave. Every OA withdrawal adds to the CPF principal used for housing. The loan is not resized to use all OA above the retention, as HDB does for its own loans; the OA share and the loan are inputs. |
-| Accrued housing interest | The CPF principal used for housing earns what it would have in the OA: a twelfth of the rule set's `housing.accruedInterestRate` each month on the cumulative principal plus interest credited in earlier years, credited each December, so it compounds annually. A withdrawal accrues from the month it is made, the month it stops earning OA interest. It keeps accruing after the loan is repaid. Each month records the accrued interest to date, including the year so far, and the refund due on a sale that month (principal plus accrued interest). Rounded to the cent once a year, on crediting (provisional). |
+| Rule                     | How the engine applies it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Age bands                | A new band's contribution rates and allocation ratios apply from the month after the birthday month.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Contributions            | Total rounded to the nearest dollar (50 cents up), employee share down to the dollar, employer pays the difference.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Allocation               | MediSave first, then Special (Retirement from 55, up to the cohort FRS), remainder to Ordinary. Shares rounded to the nearest cent, half up (provisional: no published rule).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Base interest            | Computed monthly on the month's opening balance less that month's withdrawals, so money received earns from the next month. Credited at the end of December and compounded annually. Kept exact through the year and rounded to the cent once, on crediting (provisional: no published rule). A year the projection ends partway through is not credited.                                                                                                                                                                                                                                                                                                                                                                |
+| Extra interest           | Below 55: 1% on the first $60,000 of combined balances. From 55 (from the month after the 55th birthday month, as with the bands): 2% on the first $30,000 and 1% on the next $30,000. Accounts fill the tiers in the published order: RA, then OA up to $20,000, then SA, then MA; each earns on the part of itself counted. Extra interest on OA is credited to SA below 55 and to RA from 55, never to OA. Computed monthly on the same balances as base interest and credited with it in December.                                                                                                                                                                                                                   |
+| Basic Healthcare Sum     | MediSave is held to the BHS for the year (from the escalation series) until the member turns 65, then to the BHS in force in the year they turned 65. Applied at the end of each month, after contributions and any December interest credit, so MediSave never closes a month above the cap. The excess goes to SA below 55, or RA from 55 (the month after the 55th birthday month), until that account holds the FRS, then to OA. Below 55 that is the FRS in force that year; from 55, the member's cohort FRS. A "BHS reached" event is recorded the first month MediSave reaches the cap.                                                                                                                          |
+| Age-55 transition        | Runs once, at the end of the month the member turns 55, after that month's contribution, interest credit and MediSave cap. In order: (1) the RA is created; (2) SA savings move into it up to the cohort FRS; (3) OA savings top it up, keeping back the $5,000 a member short of the FRS may withdraw; (4) the SA closes and any remainder goes to OA; (5) the withdrawable amount is reported (all of OA with the FRS set aside, otherwise up to $5,000) and left in OA, never withdrawn; (6) the from-55 contribution rates, allocation ratios and extra-interest tiers apply from the following month. Interest the SA earned before closing is credited in December and moved on the same way.                      |
+| Housing loan             | Drawn in the month the member reaches the purchase age; `tenureYears x 12` level monthly instalments from the month after. Monthly rest: each month's interest is a twelfth of the annual rate on the opening balance, rounded to the nearest cent; the instalment is rounded up to the cent and the last one clears the balance exactly (provisional: no published rule). HDB concessionary rate = the rule set's OA rate + the 0.1-point peg, resolved each month, with the instalment recomputed if the rate changes; a bank loan uses its own rate for the whole tenure. A "loan cleared" event marks the last instalment.                                                                                           |
+| Housing withdrawals      | In the purchase month the member's chosen OA share of the downpayment comes from the OA and the rest is paid in cash; each later month the instalment comes from the OA or cash, as chosen. Payments draw on the OA after this month's contribution lands, never take it below the retained amount (up to $20,000 for an HDB loan, any amount for a bank loan) or below zero, and whatever the OA cannot cover is paid in cash and recorded as a shortfall. Withdrawals stop earning interest from the month they leave. Every OA withdrawal adds to the CPF principal used for housing. The loan is not resized to use all OA above the retention, as HDB does for its own loans; the OA share and the loan are inputs. |
+| Accrued housing interest | The CPF principal used for housing earns what it would have in the OA: a twelfth of the rule set's `housing.accruedInterestRate` each month on the cumulative principal plus interest credited in earlier years, credited each December, so it compounds annually. A withdrawal accrues from the month it is made, the month it stops earning OA interest. It keeps accruing after the loan is repaid. Each month records the accrued interest to date, including the year so far, and the refund due on a sale that month (principal plus accrued interest). Rounded to the cent once a year, on crediting (provisional).                                                                                               |
 
 Sources for the interest conventions: CPF Board, [How is my CPF interest computed
 and credited into my accounts?](https://www.cpf.gov.sg/service/article/how-is-my-cpf-interest-computed-and-credited-into-my-accounts)
@@ -151,15 +154,15 @@ the page rather than stepping through keystrokes.
 Schema version 1. Values are in the form's units, dollars and percentage
 points; empty fields are left out, and housing keys appear only with a plan.
 
-| Key | Value | Key | Value |
-|---|---|---|---|
-| `v` | schema version, `1` | `h` | housing plan: `n`, `hdb`, `bank` |
-| `r` | rule set id, e.g. `sg-cpf-2026-01` | `p` | property price ($) |
-| `m` | start month, `YYYY-MM` | `pa` | age at purchase |
-| `a` | current age | `d` | downpayment ($) |
-| `s` | monthly salary ($) | `os` | OA share of the downpayment (%) |
-| `g` | salary growth (%) | `t` | loan tenure (years) |
-| `ob` `sb` `mb` | OA, SA, MA balances ($) | `br` | bank loan rate (%) |
+| Key            | Value                              | Key  | Value                            |
+| -------------- | ---------------------------------- | ---- | -------------------------------- |
+| `v`            | schema version, `1`                | `h`  | housing plan: `n`, `hdb`, `bank` |
+| `r`            | rule set id, e.g. `sg-cpf-2026-01` | `p`  | property price ($)               |
+| `m`            | start month, `YYYY-MM`             | `pa` | age at purchase                  |
+| `a`            | current age                        | `d`  | downpayment ($)                  |
+| `s`            | monthly salary ($)                 | `os` | OA share of the downpayment (%)  |
+| `g`            | salary growth (%)                  | `t`  | loan tenure (years)              |
+| `ob` `sb` `mb` | OA, SA, MA balances ($)            | `br` | bank loan rate (%)               |
 
 A link renders the same figures whenever it is opened:
 
@@ -187,17 +190,17 @@ and returns either `{ ok: true, result, adjustments }` or
 message and, where there is one, the bound that was crossed, so the form can
 show it in place. Nothing throws.
 
-| Check | Rule |
-|---|---|
-| Current age | Whole number, 16 to 70. The projection runs to 65, or from the current age if older. |
-| Monthly salary | Required, not negative, and above the rule set's graduated-rate threshold ($750): the engine does not model graduated rates. |
-| Salary growth | Required, -10% to 20% a year. Raise month 1 to 12, January by default. Rejected if a pay cut each year would take the salary down to the graduated-rate threshold before the projection ends (checked on the engine's own wage path in `salary.ts`). |
-| Opening balances | Optional, zero by default, never negative. |
-| Housing fields | Read only when a housing plan is selected, so leftovers in hidden fields never block a projection. Price, purchase age, downpayment and OA share are then required; tenure only if there is a loan; a rate only for a bank loan. |
-| Purchase age | Not before the current age, not after the projection ends. |
-| Downpayment | Not above the price; the loan is the price less the downpayment. OA share 0 to 100%. |
-| Loan tenure | 1 to 25 years for an HDB loan, 1 to 35 for a bank loan. Not yet verified against a primary source; the "source housing loan parameters" ticket should verify and move these into the rule set. |
-| OA retention | An HDB-loan figure above the rule set's $20,000 cap is clamped to it, with a notice returned as an adjustment. |
+| Check            | Rule                                                                                                                                                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current age      | Whole number, 16 to 70. The projection runs to 65, or from the current age if older.                                                                                                                                                                 |
+| Monthly salary   | Required, not negative, and above the rule set's graduated-rate threshold ($750): the engine does not model graduated rates.                                                                                                                         |
+| Salary growth    | Required, -10% to 20% a year. Raise month 1 to 12, January by default. Rejected if a pay cut each year would take the salary down to the graduated-rate threshold before the projection ends (checked on the engine's own wage path in `salary.ts`). |
+| Opening balances | Optional, zero by default, never negative.                                                                                                                                                                                                           |
+| Housing fields   | Read only when a housing plan is selected, so leftovers in hidden fields never block a projection. Price, purchase age, downpayment and OA share are then required; tenure only if there is a loan; a rate only for a bank loan.                     |
+| Purchase age     | Not before the current age, not after the projection ends.                                                                                                                                                                                           |
+| Downpayment      | Not above the price; the loan is the price less the downpayment. OA share 0 to 100%.                                                                                                                                                                 |
+| Loan tenure      | 1 to 25 years for an HDB loan, 1 to 35 for a bank loan. Not yet verified against a primary source; the "source housing loan parameters" ticket should verify and move these into the rule set.                                                       |
+| OA retention     | An HDB-loan figure above the rule set's $20,000 cap is clamped to it, with a notice returned as an adjustment.                                                                                                                                       |
 
 The other bounds (age 16 to 70, growth, bank rate up to 20%) are this tool's
 limits, not CPF rules, and live in `INPUT_LIMITS` so the form can use the same
@@ -212,13 +215,13 @@ opening balances, no housing, HDB and bank loans, retention, instalments from
 OA or cash, start years 2026 to 2030) and checks, for every month of every
 projection:
 
-| Invariant | What is checked |
-|---|---|
-| Conservation | Per account: opening + contributions + interest - housing withdrawals, plus the recorded moves between accounts (MediSave overflow, age-55 transfers), = closing. Across all accounts the moves cancel out. Each month opens where the last closed. Loans repay exactly what was drawn; refundable = principal + accrued interest. |
-| No negative balances | No account, contribution, interest, loan or housing figure below zero; balances are whole cents; housing withdrawals never go below the retained amount. |
-| Determinism | Repeated runs of the same input are identical, and the input is never changed. |
-| Allocation | Every contribution is allocated in full, with no negative share, at any age, amount and Retirement Account position. Employee and employer shares add up to whole-dollar totals within the wage ceiling. |
-| Rules | MediSave never closes above the BHS; no Special Account balance from the 55th birthday month; interest credited in December only; principal used for housing never falls; every month names a listed rule set. |
+| Invariant            | What is checked                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Conservation         | Per account: opening + contributions + interest - housing withdrawals, plus the recorded moves between accounts (MediSave overflow, age-55 transfers), = closing. Across all accounts the moves cancel out. Each month opens where the last closed. Loans repay exactly what was drawn; refundable = principal + accrued interest. |
+| No negative balances | No account, contribution, interest, loan or housing figure below zero; balances are whole cents; housing withdrawals never go below the retained amount.                                                                                                                                                                           |
+| Determinism          | Repeated runs of the same input are identical, and the input is never changed.                                                                                                                                                                                                                                                     |
+| Allocation           | Every contribution is allocated in full, with no negative share, at any age, amount and Retirement Account position. Employee and employer shares add up to whole-dollar totals within the wage ceiling.                                                                                                                           |
+| Rules                | MediSave never closes above the BHS; no Special Account balance from the 55th birthday month; interest credited in December only; principal used for housing never falls; every month names a listed rule set.                                                                                                                     |
 
 On a failure, fast-check shrinks the input to the smallest failing case and
 prints it with a seed to replay. Its first run found a real gap: a pay cut each
@@ -242,12 +245,12 @@ OA and one on a bank loan paid in cash, both validated and projected through
 
 Measured on 12 October 2026 on the development machine (Windows, Node 22):
 
-| Measurement | Result |
-|---|---|
-| Full recomputation, benchmark | mean 7.6ms, p99 17.5ms |
-| One projection, already validated | mean 2.6ms |
-| Validation of one scenario | mean 0.3ms |
-| Full recomputation, median in the test suite (other test files running in parallel) | 15 to 21ms |
+| Measurement                                                                         | Result                 |
+| ----------------------------------------------------------------------------------- | ---------------------- |
+| Full recomputation, benchmark                                                       | mean 7.6ms, p99 17.5ms |
+| One projection, already validated                                                   | mean 2.6ms             |
+| Validation of one scenario                                                          | mean 0.3ms             |
+| Full recomputation, median in the test suite (other test files running in parallel) | 15 to 21ms             |
 
 The budget is met with headroom, so no profiling was needed. The margin to
 watch is mobile: a mid-range phone can run JavaScript several times slower
@@ -267,10 +270,10 @@ for life. A 30-year-old's sums are therefore set decades from now, so a single
 that. Every figure is marked `published`, `assumed` or `before-published` so
 the interface can say which.
 
-| Sum | Published | Assumed after that | Basis |
-|---|---|---|---|
+| Sum                                  | Published               | Assumed after that                                              | Basis                                                                                                                                                 |
+| ------------------------------------ | ----------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Basic Retirement Sum (FRS = 2 x BRS) | By cohort, 2015 to 2027 | +3.5% a year, rounded to the nearest $100, from the 2028 cohort | The rate CPF Board applied to the 2023 to 2027 cohorts. Escalating the 2022 BRS this way reproduces every published figure from 2023 to 2027 exactly. |
-| Basic Healthcare Sum | By year, 2016 to 2026 | +4.7% a year, rounded to the nearest $100, from 2027 | Its average annual rise from 2016 ($49,800) to 2026 ($79,000). No rate is published in advance. |
+| Basic Healthcare Sum                 | By year, 2016 to 2026   | +4.7% a year, rounded to the nearest $100, from 2027            | Its average annual rise from 2016 ($49,800) to 2026 ($79,000). No rate is published in advance.                                                       |
 
 These are assumptions for illustration, not forecasts: future sums are set by
 the Government and the Ministry of Health. Sources: CPF Board, [How much is my

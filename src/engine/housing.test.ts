@@ -24,29 +24,45 @@ describe('retention', () => {
   });
 
   it('lets an HDB-loan buyer retain up to $20,000, and no more', () => {
-    expect(ordinaryAccountRetention(CURRENT_RULE_SET, plan({ ordinaryAccountRetention: 1_500_000 }))).toBe(1_500_000);
-    expect(ordinaryAccountRetention(CURRENT_RULE_SET, plan({ ordinaryAccountRetention: 5_000_000 }))).toBe(HDB_CAP);
+    expect(ordinaryAccountRetention(CURRENT_RULE_SET, plan({ ordinaryAccountRetention: 1_500_000 }))).toBe(
+      1_500_000,
+    );
+    expect(ordinaryAccountRetention(CURRENT_RULE_SET, plan({ ordinaryAccountRetention: 5_000_000 }))).toBe(
+      HDB_CAP,
+    );
   });
 
   it('lets a bank-loan buyer retain any amount', () => {
     expect(
-      ordinaryAccountRetention(CURRENT_RULE_SET, plan({ loan: bankLoan, ordinaryAccountRetention: 5_000_000 })),
+      ordinaryAccountRetention(
+        CURRENT_RULE_SET,
+        plan({ loan: bankLoan, ordinaryAccountRetention: 5_000_000 }),
+      ),
     ).toBe(5_000_000);
   });
 
   it('reads the HDB cap from the rule set', () => {
-    const rules = { ...CURRENT_RULE_SET, housing: { ...CURRENT_RULE_SET.housing, hdbLoanRetentionCap: 10_000 } };
+    const rules = {
+      ...CURRENT_RULE_SET,
+      housing: { ...CURRENT_RULE_SET.housing, hdbLoanRetentionCap: 10_000 },
+    };
     expect(ordinaryAccountRetention(rules, plan({ ordinaryAccountRetention: 5_000_000 }))).toBe(1_000_000);
   });
 });
 
 describe('paying from the Ordinary Account', () => {
   it('pays in full when the OA holds enough above the retained amount', () => {
-    expect(payFromOrdinaryAccount(100_000, 1_000_000, 0)).toEqual({ fromOrdinaryAccount: 100_000, shortfallToCash: 0 });
+    expect(payFromOrdinaryAccount(100_000, 1_000_000, 0)).toEqual({
+      fromOrdinaryAccount: 100_000,
+      shortfallToCash: 0,
+    });
   });
 
   it('pays what it can and records the rest as a shortfall to cash', () => {
-    expect(payFromOrdinaryAccount(100_000, 30_000, 0)).toEqual({ fromOrdinaryAccount: 30_000, shortfallToCash: 70_000 });
+    expect(payFromOrdinaryAccount(100_000, 30_000, 0)).toEqual({
+      fromOrdinaryAccount: 30_000,
+      shortfallToCash: 70_000,
+    });
   });
 
   it('never takes the OA below the retained amount', () => {
@@ -109,7 +125,11 @@ describe('housing payments in a month', () => {
       instalmentDue: 181_468,
       ordinaryAvailable: 1_000_000,
     });
-    expect(result).toMatchObject({ withdrawnFromOrdinaryAccount: 181_468, paidInCash: 0, shortfallToCash: 0 });
+    expect(result).toMatchObject({
+      withdrawnFromOrdinaryAccount: 181_468,
+      paidInCash: 0,
+      shortfallToCash: 0,
+    });
   });
 
   it('pays the instalment in cash when the member chose to, leaving the OA alone', () => {
@@ -120,7 +140,11 @@ describe('housing payments in a month', () => {
       instalmentDue: 181_468,
       ordinaryAvailable: 1_000_000,
     });
-    expect(result).toMatchObject({ withdrawnFromOrdinaryAccount: 0, paidInCash: 181_468, shortfallToCash: 0 });
+    expect(result).toMatchObject({
+      withdrawnFromOrdinaryAccount: 0,
+      paidInCash: 181_468,
+      shortfallToCash: 0,
+    });
   });
 
   it('asks nothing of anyone in a month with nothing due', () => {

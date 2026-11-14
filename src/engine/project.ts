@@ -62,12 +62,7 @@ import {
 } from '@/rules';
 import { allocateContribution } from './allocation';
 import { addMonths, monthToIsoDate, parseMonth } from './calendar';
-import {
-  NO_CONTRIBUTIONS_YET,
-  contributionForMonth,
-  onFrom55Rules,
-  type YearToDate,
-} from './contributions';
+import { NO_CONTRIBUTIONS_YET, contributionForMonth, onFrom55Rules, type YearToDate } from './contributions';
 import {
   CREDITING_MONTH,
   NOTHING_ACCRUED,
@@ -153,7 +148,10 @@ function monthTurning55(input: ProjectionInput): string {
  */
 function cohortRetirementSums(input: ProjectionInput): CohortRetirementSums {
   const month = monthTurning55(input);
-  return retirementSumsForCohort(resolveRuleSet(monthToIsoDate(month), input.rulesAsAt), parseMonth(month).year);
+  return retirementSumsForCohort(
+    resolveRuleSet(monthToIsoDate(month), input.rulesAsAt),
+    parseMonth(month).year,
+  );
 }
 
 /** The calendar year this member turns 65, when their Basic Healthcare Sum fixes. */
@@ -276,8 +274,7 @@ export function project(input: ProjectionInput): ProjectionResult {
       yearToDate,
     });
     yearToDate = {
-      ordinaryWagesSubjectToCpf:
-        yearToDate.ordinaryWagesSubjectToCpf + contribution.ordinaryWageSubjectToCpf,
+      ordinaryWagesSubjectToCpf: yearToDate.ordinaryWagesSubjectToCpf + contribution.ordinaryWageSubjectToCpf,
       contributions: yearToDate.contributions + contribution.total,
     };
 

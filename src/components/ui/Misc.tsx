@@ -33,11 +33,7 @@ export function LiveRegion({
  */
 export function Skeleton({ className, ...props }: ComponentPropsWithRef<'div'>) {
   return (
-    <div
-      aria-hidden="true"
-      className={cn('animate-pulse rounded-md bg-surface-3', className)}
-      {...props}
-    />
+    <div aria-hidden="true" className={cn('animate-pulse rounded-md bg-surface-3', className)} {...props} />
   );
 }
 
@@ -65,11 +61,7 @@ export function DefinitionList({
 }) {
   return (
     <dl
-      className={cn(
-        'grid gap-x-6',
-        columns === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
-        className,
-      )}
+      className={cn('grid gap-x-6', columns === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1', className)}
     >
       {items.map((item, index) => (
         <div

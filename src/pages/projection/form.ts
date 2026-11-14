@@ -74,7 +74,8 @@ export const DEFAULT_FORM: FormValues = {
   retainedOrdinaryAccount: null,
 };
 
-const cents = (dollars: number | null) => (dollars === null ? undefined : Math.round(dollars * CENTS_PER_DOLLAR));
+const cents = (dollars: number | null) =>
+  dollars === null ? undefined : Math.round(dollars * CENTS_PER_DOLLAR);
 const fraction = (percent: number | null) => (percent === null ? undefined : percent / PERCENT);
 const optional = <T>(value: T | null) => (value === null ? undefined : value);
 

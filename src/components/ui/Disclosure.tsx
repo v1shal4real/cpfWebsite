@@ -67,10 +67,7 @@ export function Disclosure({
           width="12"
           height="12"
           viewBox="0 0 12 12"
-          className={cn(
-            'shrink-0 text-ink-subtle transition-transform duration-150',
-            open && 'rotate-90',
-          )}
+          className={cn('shrink-0 text-ink-subtle transition-transform duration-150', open && 'rotate-90')}
         >
           <path
             d="M4.5 2.5 8 6l-3.5 3.5"

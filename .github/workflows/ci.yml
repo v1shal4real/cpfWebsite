@@ -1,4 +1,5 @@
-# Typecheck, tests and production build on every push and pull request.
+# Typecheck, lint, format check, tests and production build on every push
+# and pull request.
 #
 # The engine validation suite (CPF Board worked examples, property and
 # invariant tests, the 50ms performance budget) runs as part of `npm test`,
@@ -39,6 +40,13 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      # ESLint, including the jsx-a11y and react-hooks rules. Warnings fail too.
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
 
       - name: Test
         run: npm test

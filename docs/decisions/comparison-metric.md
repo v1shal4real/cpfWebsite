@@ -11,11 +11,11 @@ month the member turns 55, scenario B minus scenario A.
 
 ## Wording
 
-| Case | Sentence |
-|---|---|
-| B is higher | Combined balances at 55: $48,200 higher in scenario B than in scenario A. |
-| B is lower | Combined balances at 55: $48,200 lower in scenario B than in scenario A. |
-| Same, to the dollar | Combined balances at 55 are the same in both scenarios. |
+| Case                | Sentence                                                                  |
+| ------------------- | ------------------------------------------------------------------------- |
+| B is higher         | Combined balances at 55: $48,200 higher in scenario B than in scenario A. |
+| B is lower          | Combined balances at 55: $48,200 lower in scenario B than in scenario A.  |
+| Same, to the dollar | Combined balances at 55 are the same in both scenarios.                   |
 
 Rules:
 

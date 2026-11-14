@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useId,
-  useRef,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/cn';
 import { transition } from '@/theme/motion';
@@ -85,6 +78,8 @@ export function TabList({
 
   return (
     <LayoutGroup id={baseId}>
+      {/* Roving focus: the selected tab holds the tab stop, not the list (WAI-ARIA tabs pattern). */}
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus */}
       <div
         ref={listRef}
         role="tablist"

@@ -181,11 +181,17 @@ describe('allocation through the loop', () => {
         instalmentsPaidFrom: 'ordinary-account',
       },
     };
-    for (const [startAge, extra] of [[30, {}], [54, {}], [30, buyer]] as const) {
+    for (const [startAge, extra] of [
+      [30, {}],
+      [54, {}],
+      [30, buyer],
+    ] as const) {
       const result = project(input({ startAge, endAge: startAge + 2, ...extra }));
       for (const month of result.months) {
         const { allocation, total } = month.contribution;
-        expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(total);
+        expect(allocation.ordinary + allocation.special + allocation.medisave + allocation.retirement).toBe(
+          total,
+        );
         for (const account of ['ordinary', 'special', 'medisave', 'retirement'] as const) {
           // Interest lands in December; the MediSave overflow moves money out of
           // MediSave into the account it is routed to; the age-55 rules move
@@ -193,8 +199,15 @@ describe('allocation through the loop', () => {
           const overflow = month.medisaveOverflow;
           const moved = account === 'medisave' ? -overflow.amount : overflow.to[account];
           const housing = account === 'ordinary' ? (month.housing?.withdrawnFromOrdinaryAccount ?? 0) : 0;
-          expect(month.closingBalances[account] - month.openingBalances[account], `${month.month} ${account}`).toBe(
-            allocation[account] + month.interest.credited[account] + moved + month.retirementTransfers[account] - housing,
+          expect(
+            month.closingBalances[account] - month.openingBalances[account],
+            `${month.month} ${account}`,
+          ).toBe(
+            allocation[account] +
+              month.interest.credited[account] +
+              moved +
+              month.retirementTransfers[account] -
+              housing,
           );
         }
       }
@@ -266,10 +279,7 @@ describe('interest through the loop', () => {
         .reduce(
           (sum, each) =>
             sum +
-            ACCOUNTS.reduce(
-              (s, a) => s + each.interest.baseAccrued[a] + each.interest.extraAccruedTo[a],
-              0,
-            ),
+            ACCOUNTS.reduce((s, a) => s + each.interest.baseAccrued[a] + each.interest.extraAccruedTo[a], 0),
           0,
         );
       expect(credited, month.month).toBe(accrued);
@@ -350,10 +360,7 @@ describe('interest through the loop', () => {
       const openingBalances = { ordinary, special: 1_000_000, medisave: 500_000, retirement: 0 };
       return project(input({ startAge: 30, endAge: 31, openingBalances }))
         .months.filter((month) => month.month.startsWith('2026'))
-        .reduce(
-          (sum, month) => sum + ACCOUNTS.reduce((s, a) => s + month.interest.extraAccruedOn[a], 0),
-          0,
-        );
+        .reduce((sum, month) => sum + ACCOUNTS.reduce((s, a) => s + month.interest.extraAccruedOn[a], 0), 0);
     };
     // Above the cap, more OA earns no more extra interest; below it, less OA earns less.
     expect(firstYearExtra(3_000_000)).toBe(firstYearExtra(2_000_000));
@@ -439,9 +446,7 @@ describe('Basic Healthcare Sum through the loop', () => {
     // December's credit takes MediSave over as well, and is moved on with the contribution.
     const december = result.months.find((month) => month.month === '2026-12')!;
     expect(december.interest.credited.medisave).toBeGreaterThan(0);
-    expect(december.medisaveOverflow.amount).toBeGreaterThan(
-      december.contribution.allocation.medisave,
-    );
+    expect(december.medisaveOverflow.amount).toBeGreaterThan(december.contribution.allocation.medisave);
   });
 
   it('takes the BHS for each year from the escalation assumption', () => {
@@ -528,8 +533,12 @@ describe('age-55 transition through the loop', () => {
       from55RulesApplyFrom: '2027-02',
     });
     // Everything the SA held at the end of the month went in first, and the OA made up the rest.
-    expect(event.kind === 'age-55-transition' && event.transferredFromSpecial).toBe(-month.retirementTransfers.special);
-    expect(event.kind === 'age-55-transition' && event.transferredFromOrdinary).toBe(-month.retirementTransfers.ordinary);
+    expect(event.kind === 'age-55-transition' && event.transferredFromSpecial).toBe(
+      -month.retirementTransfers.special,
+    );
+    expect(event.kind === 'age-55-transition' && event.transferredFromOrdinary).toBe(
+      -month.retirementTransfers.ordinary,
+    );
     expect(month.retirementTransfers.retirement).toBe(COHORT_FRS);
     expect(month.closingBalances.retirement).toBe(COHORT_FRS);
   });
@@ -624,7 +633,11 @@ describe('housing loan through the loop', () => {
 
   it('draws the loan in the purchase month and starts instalments the month after', () => {
     expect(at('2027-12').loan).toBeUndefined();
-    expect(at('2028-01').loan).toMatchObject({ drawn: 40_000_000, instalment: 0, closingBalance: 40_000_000 });
+    expect(at('2028-01').loan).toMatchObject({
+      drawn: 40_000_000,
+      instalment: 0,
+      closingBalance: 40_000_000,
+    });
     expect(at('2028-02').loan).toMatchObject({ openingBalance: 40_000_000, instalment: 181_468 });
   });
 
@@ -649,7 +662,9 @@ describe('housing loan through the loop', () => {
 
   it('emits the loan cleared event once, with the last instalment', () => {
     const cleared = result.months.flatMap((month) =>
-      month.events.filter((event) => event.kind === 'housing-loan-cleared').map((event) => ({ month, event })),
+      month.events
+        .filter((event) => event.kind === 'housing-loan-cleared')
+        .map((event) => ({ month, event })),
     );
     expect(cleared).toHaveLength(1);
     expect(cleared[0]!.month.month).toBe('2053-01');
@@ -682,7 +697,6 @@ describe('housing loan through the loop', () => {
     const cash = project(input({ ...withLoan, housing: housing({ ...hdbLoan, principal: 0 }) }));
     expect(cash.months.some((month) => month.loan)).toBe(false);
   });
-
 });
 
 describe('housing withdrawals through the loop', () => {
@@ -751,7 +765,8 @@ describe('housing withdrawals through the loop', () => {
     expect(purchase.housing!.withdrawnFromOrdinaryAccount).toBe(purchase.contribution.allocation.ordinary);
     expect(purchase.housing!.shortfallToCash).toBe(3_000_000 - purchase.contribution.allocation.ordinary);
     expect(purchase.housing!.paidInCash).toBe(7_000_000 + purchase.housing!.shortfallToCash);
-    for (const month of broke.months) expect(month.closingBalances.ordinary, month.month).toBeGreaterThanOrEqual(0);
+    for (const month of broke.months)
+      expect(month.closingBalances.ordinary, month.month).toBeGreaterThanOrEqual(0);
     // Instalments larger than the monthly Ordinary share run short every month.
     expect(broke.months[1]!.housing!.shortfallToCash).toBeGreaterThan(0);
   });
@@ -762,7 +777,9 @@ describe('housing withdrawals through the loop', () => {
       expect(month.housing!.ordinaryAccountRetention).toBe(2_000_000);
       if (month.housing!.withdrawnFromOrdinaryAccount > 0) {
         const left = month.openingBalances.ordinary + month.contribution.allocation.ordinary;
-        expect(left - month.housing!.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(2_000_000);
+        expect(left - month.housing!.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(
+          2_000_000,
+        );
       }
     }
     // Retaining more leaves more in OA than paying from it freely does.
@@ -780,7 +797,9 @@ describe('housing withdrawals through the loop', () => {
       expect(month.housing!.ordinaryAccountRetention).toBe(5_000_000);
       if (month.housing!.withdrawnFromOrdinaryAccount > 0) {
         const left = month.openingBalances.ordinary + month.contribution.allocation.ordinary;
-        expect(left - month.housing!.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(5_000_000);
+        expect(left - month.housing!.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(
+          5_000_000,
+        );
       }
     }
   });
@@ -822,14 +841,18 @@ describe('housing withdrawals through the loop', () => {
       const accruedThisYear = current.accruedInterest - previous.accruedInterest;
       // The year's withdrawals also earn for the months they were out, so the
       // year earns at least a full year on what was already refundable.
-      expect(accruedThisYear, current.principalUsed.toString()).toBeGreaterThanOrEqual(Math.floor(yearOnPrevious));
+      expect(accruedThisYear, current.principalUsed.toString()).toBeGreaterThanOrEqual(
+        Math.floor(yearOnPrevious),
+      );
     }
   });
 
   it('keeps accruing after the loan is cleared', () => {
     const afterLoan = owning.filter((month) => month.month > '2053-01');
     for (let index = 1; index < afterLoan.length; index++) {
-      expect(afterLoan[index]!.housing!.accruedInterest).toBeGreaterThan(afterLoan[index - 1]!.housing!.accruedInterest);
+      expect(afterLoan[index]!.housing!.accruedInterest).toBeGreaterThan(
+        afterLoan[index - 1]!.housing!.accruedInterest,
+      );
     }
   });
 
@@ -890,7 +913,10 @@ describe('summary', () => {
         openingBalances: { ordinary: 0, special: 0, medisave: 0, retirement: 20_500_000 },
       }),
     );
-    const contributed = result.months.reduce((sum, month) => sum + month.contribution.allocation.retirement, 0);
+    const contributed = result.months.reduce(
+      (sum, month) => sum + month.contribution.allocation.retirement,
+      0,
+    );
     expect(contributed).toBe(80_000);
   });
 

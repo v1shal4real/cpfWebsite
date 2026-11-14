@@ -50,7 +50,9 @@ function publishedThrough(series: EscalatingSeries, lastYear: number): Escalatin
 describe('escalation data', () => {
   it.each(eachSet)('%s: published years run without gaps', (_id, set) => {
     for (const series of [set.escalation.basicRetirementSum, set.escalation.basicHealthcareSum]) {
-      const years = Object.keys(series.published).map(Number).sort((a, b) => a - b);
+      const years = Object.keys(series.published)
+        .map(Number)
+        .sort((a, b) => a - b);
       expect(years.at(-1)! - years[0]! + 1).toBe(years.length);
     }
   });
@@ -78,7 +80,9 @@ describe('escalation data', () => {
 
   it('assumes the BHS rises at its average from the first to the last published year', () => {
     const series = escalation.basicHealthcareSum;
-    const years = Object.keys(series.published).map(Number).sort((a, b) => a - b);
+    const years = Object.keys(series.published)
+      .map(Number)
+      .sort((a, b) => a - b);
     const first = years[0]!;
     const last = years.at(-1)!;
     const average = (series.published[last]! / series.published[first]!) ** (1 / (last - first)) - 1;
@@ -200,8 +204,16 @@ describe('assumptions for the panel', () => {
     const assumptions = escalationAssumptions(CURRENT_RULE_SET);
     expect(assumptions.map((assumption) => assumption.id)).toEqual(['retirementSums', 'basicHealthcareSum']);
     const [retirement, healthcare] = assumptions;
-    expect(retirement).toMatchObject({ appliesFrom: 2028, assumedAnnualRise: 0.035, sourceId: 'basicRetirementSum' });
-    expect(healthcare).toMatchObject({ appliesFrom: 2027, assumedAnnualRise: 0.047, sourceId: 'basicHealthcareSum' });
+    expect(retirement).toMatchObject({
+      appliesFrom: 2028,
+      assumedAnnualRise: 0.035,
+      sourceId: 'basicRetirementSum',
+    });
+    expect(healthcare).toMatchObject({
+      appliesFrom: 2027,
+      assumedAnnualRise: 0.047,
+      sourceId: 'basicHealthcareSum',
+    });
     for (const assumption of assumptions) {
       expect(SOURCES).toHaveProperty(assumption.sourceId);
       expect(assumption.basis.length).toBeGreaterThan(40);

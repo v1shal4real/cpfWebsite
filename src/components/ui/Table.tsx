@@ -49,10 +49,7 @@ export function Table({
       tabIndex={focusable ? 0 : undefined}
       role={focusable ? 'region' : undefined}
       aria-label={focusable && typeof caption === 'string' ? caption : undefined}
-      className={cn(
-        'relative overflow-auto rounded-md border border-line bg-surface',
-        containerClassName,
-      )}
+      className={cn('relative overflow-auto rounded-md border border-line bg-surface', containerClassName)}
       style={maxHeight ? { maxHeight } : undefined}
     >
       <table
@@ -87,10 +84,7 @@ export function Table({
 export function THead({ className, ...props }: ComponentPropsWithRef<'thead'>) {
   return (
     <thead
-      className={cn(
-        'sticky top-0 z-[2] bg-surface-2 [&_th]:border-b [&_th]:border-line',
-        className,
-      )}
+      className={cn('sticky top-0 z-[2] bg-surface-2 [&_th]:border-b [&_th]:border-line', className)}
       {...props}
     />
   );
@@ -111,10 +105,7 @@ export function TBody({ className, ...props }: ComponentPropsWithRef<'tbody'>) {
 
 export function TFoot({ className, ...props }: ComponentPropsWithRef<'tfoot'>) {
   return (
-    <tfoot
-      className={cn('border-t border-line-strong bg-surface-2 font-medium', className)}
-      {...props}
-    />
+    <tfoot className={cn('border-t border-line-strong bg-surface-2 font-medium', className)} {...props} />
   );
 }
 
@@ -161,11 +152,7 @@ export function Td({
 }: ComponentPropsWithRef<'td'> & { numeric?: boolean }) {
   return (
     <td
-      className={cn(
-        'whitespace-nowrap px-3 text-ink',
-        numeric && 'text-right tabular-nums',
-        className,
-      )}
+      className={cn('whitespace-nowrap px-3 text-ink', numeric && 'text-right tabular-nums', className)}
       {...props}
     />
   );

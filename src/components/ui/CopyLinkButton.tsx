@@ -2,15 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { copyText } from '@/lib/copyText';
 import { Button, type ButtonProps } from './Button';
 import { LiveRegion } from './Misc';
-
-export type CopyStatus = 'idle' | 'copied' | 'failed';
-
-/** What the live region announces, and what the button reads, for each status. */
-export const COPY_MESSAGES: Record<CopyStatus, string> = {
-  idle: '',
-  copied: 'Link copied to clipboard.',
-  failed: 'Could not copy automatically. Select the link below and copy it.',
-};
+import { COPY_MESSAGES, type CopyStatus } from './copyMessages';
 
 const RESET_AFTER_MS = 2500;
 

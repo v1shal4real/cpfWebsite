@@ -76,8 +76,12 @@ export function Timeline({ result, ageInMonths, onAgeChange }: TimelineProps) {
 }
 
 function spoken(readout: TimelineReadout): string {
-  const parts = [`Age ${formatAgeMonths(readout.ageInMonths)}.`, `Total balances ${formatMoney(readout.total)}.`];
-  if (readout.contributionRate !== null) parts.push(`Contribution rate ${formatPercent(readout.contributionRate, 1)}.`);
+  const parts = [
+    `Age ${formatAgeMonths(readout.ageInMonths)}.`,
+    `Total balances ${formatMoney(readout.total)}.`,
+  ];
+  if (readout.contributionRate !== null)
+    parts.push(`Contribution rate ${formatPercent(readout.contributionRate, 1)}.`);
   if (readout.housing) parts.push(`Owed to CPF on sale ${formatMoney(readout.housing.refundable)}.`);
   return parts.join(' ');
 }
@@ -133,7 +137,11 @@ function ReadoutPanel({ readout }: { readout: TimelineReadout }) {
           <DefinitionList
             items={[
               { term: 'CPF used for housing', value: formatMoney(housing.principalUsed) },
-              { term: 'Accrued interest', value: formatMoney(housing.accruedInterest), swatch: SERIES.accrued.color },
+              {
+                term: 'Accrued interest',
+                value: formatMoney(housing.accruedInterest),
+                swatch: SERIES.accrued.color,
+              },
               { term: 'Refundable on sale', value: formatMoney(housing.refundable) },
             ]}
           />

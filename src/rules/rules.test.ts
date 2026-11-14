@@ -78,8 +78,7 @@ describe('rule set data integrity', () => {
   });
 
   it('retirement sums keep their published ratios to the BRS', () => {
-    const { basicRetirementSum, fullRetirementSum, enhancedRetirementSum } =
-      CURRENT_RULE_SET.thresholds;
+    const { basicRetirementSum, fullRetirementSum, enhancedRetirementSum } = CURRENT_RULE_SET.thresholds;
     // FRS is double the BRS; ERS is double the current year's FRS.
     expect(fullRetirementSum).toBe(basicRetirementSum * 2);
     expect(enhancedRetirementSum).toBe(fullRetirementSum * 2);
@@ -136,8 +135,18 @@ describe('source registry', () => {
 
 describe('pinning a rule set for a shared link', () => {
   // A hypothetical 2027 set, to show what happens once a second one exists.
-  const RULES_2026: RuleSet = { ...CURRENT_RULE_SET, id: 'test-2026', effectiveFrom: '2026-01-01', effectiveTo: '2026-12-31' };
-  const RULES_2027: RuleSet = { ...CURRENT_RULE_SET, id: 'test-2027', effectiveFrom: '2027-01-01', effectiveTo: null };
+  const RULES_2026: RuleSet = {
+    ...CURRENT_RULE_SET,
+    id: 'test-2026',
+    effectiveFrom: '2026-01-01',
+    effectiveTo: '2026-12-31',
+  };
+  const RULES_2027: RuleSet = {
+    ...CURRENT_RULE_SET,
+    id: 'test-2027',
+    effectiveFrom: '2027-01-01',
+    effectiveTo: null,
+  };
   const SETS = [RULES_2026, RULES_2027];
 
   it('resolves by date when nothing is pinned', () => {

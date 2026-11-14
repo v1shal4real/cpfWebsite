@@ -20,11 +20,7 @@ export function Container({
 }: ComponentPropsWithRef<'div'> & { size?: 'narrow' | 'wide' }) {
   return (
     <div
-      className={cn(
-        'mx-auto w-full px-4 sm:px-6',
-        size === 'wide' ? 'max-w-7xl' : 'max-w-3xl',
-        className,
-      )}
+      className={cn('mx-auto w-full px-4 sm:px-6', size === 'wide' ? 'max-w-7xl' : 'max-w-3xl', className)}
       {...props}
     />
   );
@@ -65,7 +61,10 @@ function Header({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
       <Container className="flex h-14 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-inverse">
+          <span
+            aria-hidden="true"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-inverse"
+          >
             <LogoMark />
           </span>
           <div className="flex min-w-0 flex-col leading-tight">
@@ -94,10 +93,10 @@ function Footer({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
     <footer className="mt-16 border-t border-line bg-surface">
       <Container className="flex flex-col gap-3 py-6 text-[0.75rem] leading-relaxed text-ink-subtle sm:flex-row sm:items-start sm:justify-between">
         <p className="max-w-2xl">
-          This tool produces projections, not advice. Every figure is an illustrative calculation
-          based on published CPF Board parameters and the inputs you provide. It makes no
-          recommendation and suggests no course of action. Rules change; the rules-as-at date shows
-          which CPF Board figures were used, and each figure links to the page it was published on.
+          This tool produces projections, not advice. Every figure is an illustrative calculation based on
+          published CPF Board parameters and the inputs you provide. It makes no recommendation and suggests
+          no course of action. Rules change; the rules-as-at date shows which CPF Board figures were used, and
+          each figure links to the page it was published on.
         </p>
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
           <RulesStamp ruleSet={ruleSet} />

@@ -43,7 +43,9 @@ describe('below the Basic Healthcare Sum', () => {
 
 describe('below 55', () => {
   it('moves the excess to the Special Account while it is under the FRS', () => {
-    const result = capMedisave(request({ balances: balances({ special: 1_000_000, medisave: BHS + 50_000 }) }));
+    const result = capMedisave(
+      request({ balances: balances({ special: 1_000_000, medisave: BHS + 50_000 }) }),
+    );
     expect(result.overflow.to).toEqual(balances({ special: 50_000 }));
     expect(result.balances).toEqual(balances({ special: 1_050_000, medisave: BHS }));
   });
@@ -63,7 +65,9 @@ describe('below 55', () => {
 
   it('still uses the Special Account in the 55th birthday month', () => {
     // The from-55 rules start the month after, as every age band does.
-    const result = capMedisave(request({ ageInMonths: 55 * 12, balances: balances({ medisave: BHS + 100 }) }));
+    const result = capMedisave(
+      request({ ageInMonths: 55 * 12, balances: balances({ medisave: BHS + 100 }) }),
+    );
     expect(result.overflow.to).toEqual(balances({ special: 100 }));
   });
 });

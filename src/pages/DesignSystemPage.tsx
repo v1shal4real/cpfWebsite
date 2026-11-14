@@ -99,7 +99,7 @@ function placeholderSeries(): SampleRow[] {
 
 export function DesignSystemPage() {
   const reduceMotion = useReducedMotion();
-  const data = useMemo(placeholderSeries, []);
+  const data = useMemo(() => placeholderSeries(), []);
 
   const [hidden, setHidden] = useState<ReadonlySet<SeriesKey>>(new Set());
   const [age, setAge] = useState<number | null>(30);
@@ -128,16 +128,14 @@ export function DesignSystemPage() {
     <Container className="flex flex-col gap-12 py-8 sm:py-10">
       <header className="flex max-w-3xl flex-col gap-3">
         <Badge className="self-start">Design system preview</Badge>
-        <h1 className="text-[1.75rem] leading-tight text-ink sm:text-[2.125rem]">
-          Components and tokens
-        </h1>
+        <h1 className="text-[1.75rem] leading-tight text-ink sm:text-[2.125rem]">Components and tokens</h1>
         <p className="text-ink-muted">
-          Every shared building block for the CPF Projection Tool, rendered live. Switch theme in
-          the header and narrow the window to 360px to check both.
+          Every shared building block for the CPF Projection Tool, rendered live. Switch theme in the header
+          and narrow the window to 360px to check both.
         </p>
         <Callout tone="caution" title="Placeholder data">
-          Figures and curves on this page exist to exercise the components. They are not produced by
-          the projection engine. This page is reachable in development builds only;{' '}
+          Figures and curves on this page exist to exercise the components. They are not produced by the
+          projection engine. This page is reachable in development builds only;{' '}
           <a href="/" className="text-accent underline underline-offset-2">
             back to the projection
           </a>
@@ -153,8 +151,8 @@ export function DesignSystemPage() {
             recommendation and does not suggest a course of action.
           </Callout>
           <Callout tone="info" title="Why $20,000 keeps appearing">
-            HDB-loan buyers may retain up to $20,000 in the Ordinary Account, and the extra-interest
-            tier counts no more than $20,000 from it. The two figures are linked.
+            HDB-loan buyers may retain up to $20,000 in the Ordinary Account, and the extra-interest tier
+            counts no more than $20,000 from it. The two figures are linked.
           </Callout>
         </div>
       </PreviewSection>
@@ -170,8 +168,8 @@ export function DesignSystemPage() {
             context="Across the Ordinary, Special and MediSave accounts"
             info={
               <InfoTip label="projected balance at 55">
-                The sum of all account balances in the month the member turns 55, before the
-                Retirement Account is created.
+                The sum of all account balances in the month the member turns 55, before the Retirement
+                Account is created.
               </InfoTip>
             }
             source={<RulesStamp compact />}
@@ -186,7 +184,12 @@ export function DesignSystemPage() {
                 Full Retirement Sum of <Money value={CURRENT_RULE_SET.thresholds.fullRetirementSum} />
               </>
             }
-            source={<SourceLink sourceId={sourceFor(CURRENT_RULE_SET.thresholds, 'fullRetirementSum')} variant="chip" />}
+            source={
+              <SourceLink
+                sourceId={sourceFor(CURRENT_RULE_SET.thresholds, 'fullRetirementSum')}
+                variant="chip"
+              />
+            }
           />
           <StatTile
             size="lg"
@@ -200,23 +203,27 @@ export function DesignSystemPage() {
                 compounded
               </>
             }
-            source={<SourceLink sourceId={sourceFor(CURRENT_RULE_SET.housing, 'accruedInterestRate')} variant="chip" />}
+            source={
+              <SourceLink
+                sourceId={sourceFor(CURRENT_RULE_SET.housing, 'accruedInterestRate')}
+                variant="chip"
+              />
+            }
             className="sm:col-span-2 lg:col-span-1"
           />
         </div>
       </PreviewSection>
 
       {/* ------------------------------------------------------------------ */}
-      <PreviewSection title="Chart" description="Frame, legend, crosshair tooltip, reference line and table view.">
+      <PreviewSection
+        title="Chart"
+        description="Frame, legend, crosshair tooltip, reference line and table view."
+      >
         <ChartFrame
           title="Account balances over time"
           summary="Placeholder curves for the Ordinary, Special, MediSave and Retirement accounts from age 25 to 65, with the Special Account closing and the Retirement Account opening at 55."
           legend={
-            <Legend
-              items={BALANCE_SERIES.map((key) => ({ key }))}
-              hidden={hidden}
-              onToggle={toggleSeries}
-            />
+            <Legend items={BALANCE_SERIES.map((key) => ({ key }))} hidden={hidden} onToggle={toggleSeries} />
           }
           actions={
             <SegmentedControl
@@ -299,7 +306,12 @@ export function DesignSystemPage() {
               <ReferenceLine
                 x={55}
                 {...referenceLineProps}
-                label={{ value: 'Age 55', position: 'insideTopRight', fill: 'var(--ink-muted)', fontSize: 11 }}
+                label={{
+                  value: 'Age 55',
+                  position: 'insideTopRight',
+                  fill: 'var(--ink-muted)',
+                  fontSize: 11,
+                }}
               />
               <RechartsTooltip
                 cursor={cursorProps}
@@ -329,9 +341,19 @@ export function DesignSystemPage() {
       </PreviewSection>
 
       {/* ------------------------------------------------------------------ */}
-      <PreviewSection title="Timeline scrub" description="Native range input with ticks, readout and live values.">
+      <PreviewSection
+        title="Timeline scrub"
+        description="Native range input with ticks, readout and live values."
+      >
         <Card>
-          <Field label="Age on the timeline" labelAside={<span className="text-[0.75rem] text-ink-subtle"><Kbd>←</Kbd> <Kbd>→</Kbd> to step</span>}>
+          <Field
+            label="Age on the timeline"
+            labelAside={
+              <span className="text-[0.75rem] text-ink-subtle">
+                <Kbd>←</Kbd> <Kbd>→</Kbd> to step
+              </span>
+            }
+          >
             <Slider
               min={25}
               max={65}
@@ -355,13 +377,21 @@ export function DesignSystemPage() {
             {allocation ? (
               <DefinitionList
                 items={[
-                  { term: 'Allocation to Ordinary', value: formatPercent(allocation.ordinary), swatch: SERIES.oa.color },
+                  {
+                    term: 'Allocation to Ordinary',
+                    value: formatPercent(allocation.ordinary),
+                    swatch: SERIES.oa.color,
+                  },
                   {
                     term: scrubAge >= 55 ? 'Allocation to Retirement' : 'Allocation to Special',
                     value: formatPercent(allocation.specialOrRetirement),
                     swatch: scrubAge >= 55 ? SERIES.ra.color : SERIES.sa.color,
                   },
-                  { term: 'Allocation to MediSave', value: formatPercent(allocation.medisave), swatch: SERIES.ma.color },
+                  {
+                    term: 'Allocation to MediSave',
+                    value: formatPercent(allocation.medisave),
+                    swatch: SERIES.ma.color,
+                  },
                 ]}
               />
             ) : null}
@@ -370,7 +400,10 @@ export function DesignSystemPage() {
       </PreviewSection>
 
       {/* ------------------------------------------------------------------ */}
-      <PreviewSection title="Inputs" description="Every control is wired to its label, hint and error through Field.">
+      <PreviewSection
+        title="Inputs"
+        description="Every control is wired to its label, hint and error through Field."
+      >
         <Card>
           <div className="grid gap-5 md:grid-cols-2">
             <Field
@@ -465,14 +498,23 @@ export function DesignSystemPage() {
             <Button variant="link">View all assumptions</Button>
             <Button disabled>Disabled</Button>
             <IconButton label="Copy share link" variant="secondary">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <rect x="5" y="5" width="8.5" height="8.5" rx="1.5" />
                 <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
               </svg>
             </IconButton>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="primary">Small</Button>
+            <Button size="sm" variant="primary">
+              Small
+            </Button>
             <Button size="md">Medium</Button>
             <Button size="lg">Large</Button>
           </div>
@@ -502,8 +544,14 @@ export function DesignSystemPage() {
             <CardBody>
               <DefinitionList
                 items={[
-                  { term: 'Ordinary Wage ceiling', value: `${formatMoney(CURRENT_RULE_SET.wageCeilings.ordinaryWageCeiling)} / month` },
-                  { term: 'Annual salary ceiling', value: formatMoney(CURRENT_RULE_SET.wageCeilings.annualSalaryCeiling) },
+                  {
+                    term: 'Ordinary Wage ceiling',
+                    value: `${formatMoney(CURRENT_RULE_SET.wageCeilings.ordinaryWageCeiling)} / month`,
+                  },
+                  {
+                    term: 'Annual salary ceiling',
+                    value: formatMoney(CURRENT_RULE_SET.wageCeilings.annualSalaryCeiling),
+                  },
                   { term: 'CPF Annual Limit', value: formatMoney(CURRENT_RULE_SET.wageCeilings.annualLimit) },
                 ]}
               />
@@ -519,19 +567,35 @@ export function DesignSystemPage() {
               <Disclosure title="Base rates" summary="2.5% – 4%" defaultOpen>
                 <DefinitionList
                   items={[
-                    { term: 'Ordinary Account', value: formatPercent(CURRENT_RULE_SET.interest.ordinary, 1), swatch: SERIES.oa.color },
-                    { term: 'Special Account', value: formatPercent(CURRENT_RULE_SET.interest.special, 1), swatch: SERIES.sa.color },
-                    { term: 'MediSave Account', value: formatPercent(CURRENT_RULE_SET.interest.medisave, 1), swatch: SERIES.ma.color },
-                    { term: 'Retirement Account', value: formatPercent(CURRENT_RULE_SET.interest.retirement, 1), swatch: SERIES.ra.color },
+                    {
+                      term: 'Ordinary Account',
+                      value: formatPercent(CURRENT_RULE_SET.interest.ordinary, 1),
+                      swatch: SERIES.oa.color,
+                    },
+                    {
+                      term: 'Special Account',
+                      value: formatPercent(CURRENT_RULE_SET.interest.special, 1),
+                      swatch: SERIES.sa.color,
+                    },
+                    {
+                      term: 'MediSave Account',
+                      value: formatPercent(CURRENT_RULE_SET.interest.medisave, 1),
+                      swatch: SERIES.ma.color,
+                    },
+                    {
+                      term: 'Retirement Account',
+                      value: formatPercent(CURRENT_RULE_SET.interest.retirement, 1),
+                      swatch: SERIES.ra.color,
+                    },
                   ]}
                 />
               </Disclosure>
               <Disclosure title="Extra interest below 55" summary="+1% on $60,000">
                 <p>
-                  An extra 1% a year on the first {formatMoney(60_000)} of combined balances, of which
-                  no more than {formatMoney(CURRENT_RULE_SET.interest.ordinaryAccountExtraInterestCap)} may
-                  come from the Ordinary Account. Extra interest earned on Ordinary Account savings is
-                  credited to the Special Account.
+                  An extra 1% a year on the first {formatMoney(60_000)} of combined balances, of which no more
+                  than {formatMoney(CURRENT_RULE_SET.interest.ordinaryAccountExtraInterestCap)} may come from
+                  the Ordinary Account. Extra interest earned on Ordinary Account savings is credited to the
+                  Special Account.
                 </p>
               </Disclosure>
             </CardBody>
@@ -571,8 +635,14 @@ export function DesignSystemPage() {
             <CardBody className="flex flex-col gap-2.5">
               {ALL_SERIES.map((key) => (
                 <div key={key} className="flex items-center gap-3">
-                  <span className="h-8 w-12 shrink-0 rounded-sm" style={{ backgroundColor: SERIES[key].color }} />
-                  <span className="h-8 w-12 shrink-0 rounded-sm border border-line" style={{ backgroundColor: SERIES[key].soft }} />
+                  <span
+                    className="h-8 w-12 shrink-0 rounded-sm"
+                    style={{ backgroundColor: SERIES[key].color }}
+                  />
+                  <span
+                    className="h-8 w-12 shrink-0 rounded-sm border border-line"
+                    style={{ backgroundColor: SERIES[key].soft }}
+                  />
                   <span className="flex min-w-0 flex-col">
                     <span className="text-sm font-medium text-ink">{SERIES[key].label}</span>
                     <span className="truncate text-[0.75rem] text-ink-subtle">{SERIES[key].short}</span>
@@ -590,7 +660,10 @@ export function DesignSystemPage() {
                 ['surface-2', 'bg-surface-2'],
                 ['surface-3', 'bg-surface-3'],
               ].map(([name, cls]) => (
-                <div key={name} className={`flex h-12 items-end rounded-sm border border-line p-1.5 text-ink-muted ${cls}`}>
+                <div
+                  key={name}
+                  className={`flex h-12 items-end rounded-sm border border-line p-1.5 text-ink-muted ${cls}`}
+                >
                   {name}
                 </div>
               ))}

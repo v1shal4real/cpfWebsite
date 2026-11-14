@@ -25,14 +25,14 @@ obvious from the code. Read this before adding a component or a colour.
 Defined in `src/index.css` as raw variables under `:root` and `.dark`, then
 mapped into Tailwind with `@theme inline` so utilities resolve at runtime.
 
-| Group | Utilities | Use |
-|---|---|---|
+| Group    | Utilities                                                                   | Use                                                 |
+| -------- | --------------------------------------------------------------------------- | --------------------------------------------------- |
 | Surfaces | `bg-canvas` `bg-surface` `bg-surface-2` `bg-surface-3` `bg-surface-inverse` | Page, cards, insets, pressed states, primary button |
-| Ink | `text-ink` `text-ink-muted` `text-ink-subtle` `text-ink-inverse` | Primary, secondary, caption/tick text |
-| Lines | `border-line` `border-line-strong` | Dividers; input and raised-card borders |
-| Accent | `text-accent` `bg-accent-soft` `outline-focus` | Links, info callouts, focus ring |
-| Status | `good` `warning` `serious` `critical` and `*-ink` | State only. Always with a glyph or label |
-| Series | `oa` `sa` `ma` `ra` `accrued` and `*-soft` | Data only |
+| Ink      | `text-ink` `text-ink-muted` `text-ink-subtle` `text-ink-inverse`            | Primary, secondary, caption/tick text               |
+| Lines    | `border-line` `border-line-strong`                                          | Dividers; input and raised-card borders             |
+| Accent   | `text-accent` `bg-accent-soft` `outline-focus`                              | Links, info callouts, focus ring                    |
+| Status   | `good` `warning` `serious` `critical` and `*-ink`                           | State only. Always with a glyph or label            |
+| Series   | `oa` `sa` `ma` `ra` `accrued` and `*-soft`                                  | Data only                                           |
 
 In SVG and Recharts props, use the raw variables (`var(--series-oa)`) via
 `src/theme/series.ts` — never a hex value, never an index into an array.
@@ -44,13 +44,13 @@ data-viz palette, in that order, validated as a set against both surfaces with
 the palette validator (adjacent pairs, which is the correct pairlist for line
 and stacked-area charts).
 
-| Series | Slot | Light | Dark |
-|---|---|---|---|
-| Ordinary Account | 1 blue | `#2a78d6` | `#3987e5` |
-| Special Account | 2 orange | `#eb6834` | `#d95926` |
-| MediSave Account | 3 aqua | `#1baf7a` | `#199e70` |
+| Series             | Slot     | Light     | Dark      |
+| ------------------ | -------- | --------- | --------- |
+| Ordinary Account   | 1 blue   | `#2a78d6` | `#3987e5` |
+| Special Account    | 2 orange | `#eb6834` | `#d95926` |
+| MediSave Account   | 3 aqua   | `#1baf7a` | `#199e70` |
 | Retirement Account | 7 violet | `#4a3aa7` | `#9085e9` |
-| Accrued interest | 8 red | `#e34948` | `#e66767` |
+| Accrued interest   | 8 red    | `#e34948` | `#e66767` |
 
 Validator result (September 2026):
 
@@ -133,27 +133,27 @@ only, and is dropped from the production bundle.
 
 ## Component inventory
 
-| Component | File | Notes |
-|---|---|---|
-| `Button`, `IconButton` | `ui/Button.tsx` | primary / secondary / ghost / link |
-| `Field`, `useFieldControl` | `ui/Field.tsx` | Label, hint, error wiring |
-| `TextInput`, `NumericInput`, `MoneyInput`, `PercentInput` | `ui/Input.tsx` | Format on blur, clamp on blur |
-| `Select` | `ui/Select.tsx` | Native select |
-| `SegmentedControl` | `ui/SegmentedControl.tsx` | Radio group with sliding indicator |
-| `Slider` | `ui/Slider.tsx` | Native range; basis for the timeline scrub |
-| `Switch`, `Checkbox` | `ui/Toggle.tsx` | |
-| `Card`, `CardHeader`, `CardBody`, `CardFooter`, `Section`, `Divider` | `ui/Card.tsx` | |
-| `Badge`, `Swatch` | `ui/Badge.tsx` | |
-| `Callout` | `ui/Callout.tsx` | note / info / caution / critical |
-| `Tooltip`, `InfoTip` | `ui/Tooltip.tsx` | |
-| `Disclosure` | `ui/Disclosure.tsx` | For derivations, not for hiding assumptions |
-| `Tabs`, `TabList`, `Tab`, `TabPanel` | `ui/Tabs.tsx` | |
-| `Table`, `THead`, `TBody`, `TFoot`, `Tr`, `Th`, `Td` | `ui/Table.tsx` | |
-| `Money`, `MoneyDelta`, `Percent` | `ui/Value.tsx` | All figures render through these |
-| `StatTile` | `ui/StatTile.tsx` | Headline numbers |
-| `SourceLink` | `ui/SourceLink.tsx` | Per-figure attribution |
-| `VisuallyHidden`, `LiveRegion`, `Skeleton`, `DefinitionList`, `Kbd` | `ui/Misc.tsx` | |
-| `ChartFrame` | `chart/ChartFrame.tsx` | Title, summary, legend, chart/table views |
-| `Legend`, `ChartTooltip`, `ChartTextures`, chart theme | `chart/` | |
-| `AppShell`, `Container` | `layout/AppShell.tsx` | Skip link, header, footer |
-| `RulesStamp`, `ThemeToggle` | `layout/` | |
+| Component                                                            | File                      | Notes                                       |
+| -------------------------------------------------------------------- | ------------------------- | ------------------------------------------- |
+| `Button`, `IconButton`                                               | `ui/Button.tsx`           | primary / secondary / ghost / link          |
+| `Field`, `useFieldControl`                                           | `ui/Field.tsx`            | Label, hint, error wiring                   |
+| `TextInput`, `NumericInput`, `MoneyInput`, `PercentInput`            | `ui/Input.tsx`            | Format on blur, clamp on blur               |
+| `Select`                                                             | `ui/Select.tsx`           | Native select                               |
+| `SegmentedControl`                                                   | `ui/SegmentedControl.tsx` | Radio group with sliding indicator          |
+| `Slider`                                                             | `ui/Slider.tsx`           | Native range; basis for the timeline scrub  |
+| `Switch`, `Checkbox`                                                 | `ui/Toggle.tsx`           |                                             |
+| `Card`, `CardHeader`, `CardBody`, `CardFooter`, `Section`, `Divider` | `ui/Card.tsx`             |                                             |
+| `Badge`, `Swatch`                                                    | `ui/Badge.tsx`            |                                             |
+| `Callout`                                                            | `ui/Callout.tsx`          | note / info / caution / critical            |
+| `Tooltip`, `InfoTip`                                                 | `ui/Tooltip.tsx`          |                                             |
+| `Disclosure`                                                         | `ui/Disclosure.tsx`       | For derivations, not for hiding assumptions |
+| `Tabs`, `TabList`, `Tab`, `TabPanel`                                 | `ui/Tabs.tsx`             |                                             |
+| `Table`, `THead`, `TBody`, `TFoot`, `Tr`, `Th`, `Td`                 | `ui/Table.tsx`            |                                             |
+| `Money`, `MoneyDelta`, `Percent`                                     | `ui/Value.tsx`            | All figures render through these            |
+| `StatTile`                                                           | `ui/StatTile.tsx`         | Headline numbers                            |
+| `SourceLink`                                                         | `ui/SourceLink.tsx`       | Per-figure attribution                      |
+| `VisuallyHidden`, `LiveRegion`, `Skeleton`, `DefinitionList`, `Kbd`  | `ui/Misc.tsx`             |                                             |
+| `ChartFrame`                                                         | `chart/ChartFrame.tsx`    | Title, summary, legend, chart/table views   |
+| `Legend`, `ChartTooltip`, `ChartTextures`, chart theme               | `chart/`                  |                                             |
+| `AppShell`, `Container`                                              | `layout/AppShell.tsx`     | Skip link, header, footer                   |
+| `RulesStamp`, `ThemeToggle`                                          | `layout/`                 |                                             |

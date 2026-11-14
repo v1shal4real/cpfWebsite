@@ -20,7 +20,9 @@ describe('rule-set groups', () => {
   const groups = ruleSetGroups(CURRENT_RULE_SET);
 
   it('has a group for every parameter group in the rule set', () => {
-    const expected = Object.keys(CURRENT_RULE_SET).filter((key) => !META.has(key) && !SHOWN_AS_ASSUMPTIONS.has(key));
+    const expected = Object.keys(CURRENT_RULE_SET).filter(
+      (key) => !META.has(key) && !SHOWN_AS_ASSUMPTIONS.has(key),
+    );
     expect(groups.map((g) => g.id).sort()).toEqual(expected.sort());
   });
 
@@ -35,7 +37,10 @@ describe('rule-set groups', () => {
     const linked = new Set(groups.flatMap((g) => g.rows.map((r) => r.sourceId)).filter(Boolean));
     for (const key of Object.keys(CURRENT_RULE_SET)) {
       if (META.has(key) || SHOWN_AS_ASSUMPTIONS.has(key)) continue;
-      const group = CURRENT_RULE_SET[key as keyof RuleSet] as { sourceId: SourceId; fieldSources?: Record<string, SourceId> };
+      const group = CURRENT_RULE_SET[key as keyof RuleSet] as {
+        sourceId: SourceId;
+        fieldSources?: Record<string, SourceId>;
+      };
       for (const id of Object.values(group.fieldSources ?? {})) {
         if (id !== group.sourceId) expect(linked, `${key} → ${id}`).toContain(id);
       }
@@ -46,14 +51,20 @@ describe('rule-set groups', () => {
     const byId = Object.fromEntries(groups.map((g) => [g.id, g]));
     expect(byId.contributionRates!.rows).toHaveLength(CURRENT_RULE_SET.contributionRates.bands.length + 1);
     expect(byId.allocation!.rows).toHaveLength(CURRENT_RULE_SET.allocation.bands.length);
-    expect(byId.contributionRates!.rows[0]).toEqual({ label: 'Age 55 and below', value: '20% employee + 17% employer' });
+    expect(byId.contributionRates!.rows[0]).toEqual({
+      label: 'Age 55 and below',
+      value: '20% employee + 17% employer',
+    });
   });
 });
 
 describe('assumptions group', () => {
   it('states salary growth and both escalation assumptions with their sources', () => {
     const group = assumptionGroup(project(DEFAULT_FORM).input, CURRENT_RULE_SET);
-    expect(group.rows[0]).toMatchObject({ label: 'Salary growth (yours)', value: 'None: salary stays as it is today' });
+    expect(group.rows[0]).toMatchObject({
+      label: 'Salary growth (yours)',
+      value: 'None: salary stays as it is today',
+    });
     expect(group.rows.filter((r) => r.value.includes('(assumed)'))).toHaveLength(2);
     expect(group.rows.filter((r) => r.value.includes('(assumed)')).every((r) => r.sourceId)).toBe(true);
   });

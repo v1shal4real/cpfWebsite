@@ -123,7 +123,12 @@ describe('base interest: computation', () => {
     const { baseAccrued } = accrueInterest({
       rules: CURRENT_RULE_SET,
       ageInMonths: AGE_40,
-      earning: balances({ ordinary: 4_800_000, special: 3_000_000, medisave: 3_000_000, retirement: 3_000_000 }),
+      earning: balances({
+        ordinary: 4_800_000,
+        special: 3_000_000,
+        medisave: 3_000_000,
+        retirement: 3_000_000,
+      }),
       accruedThisYear: NOTHING_ACCRUED,
     });
     // $48,000 x 2.5% / 12 = $100; $30,000 x 4% / 12 = $100.
@@ -135,7 +140,12 @@ describe('base interest: computation', () => {
     const { baseAccrued } = accrueInterest({
       rules,
       ageInMonths: AGE_40,
-      earning: balances({ ordinary: 1_200_000, special: 1_200_000, medisave: 1_200_000, retirement: 1_200_000 }),
+      earning: balances({
+        ordinary: 1_200_000,
+        special: 1_200_000,
+        medisave: 1_200_000,
+        retirement: 1_200_000,
+      }),
       accruedThisYear: NOTHING_ACCRUED,
     });
     // A twelfth of a year on $12,000 at each rate: 3% -> $30, 5% -> $50, 6% -> $60, 1.2% -> $12.
@@ -220,7 +230,9 @@ describe('extra interest: derived fixtures', () => {
       for (const account of ACCOUNTS) {
         expect(counted[account], `counted: ${account}`).toBe(fixture.expectedCounted[account] ?? 0);
         expect(year.extraOn[account], `earned on: ${account}`).toBe(fixture.expectedEarnedOn[account] ?? 0);
-        expect(year.extraTo[account], `credited to: ${account}`).toBe(fixture.expectedCreditedTo[account] ?? 0);
+        expect(year.extraTo[account], `credited to: ${account}`).toBe(
+          fixture.expectedCreditedTo[account] ?? 0,
+        );
       }
     },
   );
@@ -249,7 +261,9 @@ describe('extra interest: tiers and counting order', () => {
 
   it('counts in the rule set’s order, whatever it is', () => {
     const held = balances({ ordinary: 2_000_000, special: 3_000_000, medisave: 3_000_000 });
-    const reordered = withInterest({ extraInterestCountingOrder: ['medisave', 'special', 'ordinary', 'retirement'] });
+    const reordered = withInterest({
+      extraInterestCountingOrder: ['medisave', 'special', 'ordinary', 'retirement'],
+    });
     const { counted } = countForExtraInterest(reordered, AGE_40, held);
     // MA $30,000, then SA $30,000, and the tier is full before OA is reached.
     expect(counted).toEqual(balances({ medisave: 3_000_000, special: 3_000_000 }));

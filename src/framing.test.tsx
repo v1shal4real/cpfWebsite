@@ -18,13 +18,23 @@ import { ThemeProvider } from '@/theme/ThemeProvider';
 const ADVICE =
   /\b(should|ought|recommend\w*|we suggest|suggested|advis(e|able)|best|better|worse|good|bad|smart|wise|optimal|ideal|on track|enough|afford\w*|cheap\w*|lose|losing|loss|gain\w*|benefit\w*|penalt\w*|waste\w*|save more|consider|top up|invest(ing|ment)? in)\b/i;
 /** Named lenders, insurers or products: no comparison or placement. */
-const PRODUCTS = /\b(DBS|POSB|OCBC|UOB|Maybank|HSBC|Standard Chartered|Citibank|Citi|CIMB|RHB|Bank of China|Syfe|Endowus|StashAway|Income|Great Eastern|Prudential|AIA)\b/;
+const PRODUCTS =
+  /\b(DBS|POSB|OCBC|UOB|Maybank|HSBC|Standard Chartered|Citibank|Citi|CIMB|RHB|Bank of China|Syfe|Endowus|StashAway|Income|Great Eastern|Prudential|AIA)\b/;
 
 /** Lines the footer and headline use to say the tool gives no advice; allowed by design. */
-const DISCLAIMERS = [/not advice/gi, /no recommendation/gi, /suggests no course of action/gi, /not financial advice/gi];
+const DISCLAIMERS = [
+  /not advice/gi,
+  /no recommendation/gi,
+  /suggests no course of action/gi,
+  /not financial advice/gi,
+];
 
 const textOf = (html: string) => {
-  let text = html.replace(/<[^>]+>/g, ' ').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ');
+  let text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ');
   for (const allowed of DISCLAIMERS) text = text.replace(allowed, ' ');
   return text;
 };
@@ -44,7 +54,9 @@ const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValu
   'two scenarios side by side': { form: DEFAULT_FORM, b: HDB },
   'default projection': { form: DEFAULT_FORM },
   'HDB loan': { form: HDB },
-  'bank loan': { form: { ...HDB, housingPlan: 'bank-loan', bankLoanRatePercent: 3, retainedOrdinaryAccount: null } },
+  'bank loan': {
+    form: { ...HDB, housingPlan: 'bank-loan', bankLoanRatePercent: 3, retainedOrdinaryAccount: null },
+  },
   'inputs that cannot be projected': { form: { ...DEFAULT_FORM, monthlySalary: null } },
   'housing errors': { form: { ...HDB, downpayment: 50_000 } },
   'link that could not be fully used': {
@@ -102,7 +114,9 @@ describe('the checks themselves', () => {
 
 describe('share preview', () => {
   const head = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const meta = [...head.matchAll(/<meta\s+(?:name|property)="(?:description|og:description)"\s+content="([^"]+)"/g)].map((m) => m[1]!);
+  const meta = [
+    ...head.matchAll(/<meta\s+(?:name|property)="(?:description|og:description)"\s+content="([^"]+)"/g),
+  ].map((m) => m[1]!);
 
   it('describes a projection, not advice, in every description', () => {
     expect(meta.length).toBeGreaterThanOrEqual(2);

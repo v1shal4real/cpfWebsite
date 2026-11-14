@@ -1,4 +1,13 @@
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import {
   ChartFrame,
   ChartTooltip,
@@ -46,7 +55,8 @@ export interface BalanceChartProps {
 
 const LEGEND_ITEMS = BALANCE_SERIES.map((key) => ({
   key,
-  label: key === 'ra' ? `${SERIES.ra.label} (from 55)` : key === 'sa' ? `${SERIES.sa.label} (to 55)` : undefined,
+  label:
+    key === 'ra' ? `${SERIES.ra.label} (from 55)` : key === 'sa' ? `${SERIES.sa.label} (to 55)` : undefined,
 }));
 
 const SCENARIO_STYLES = [
@@ -81,7 +91,11 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge, compare }:
         </div>
       }
       renderTable={({ visible }) =>
-        compare ? <ComparisonTable rowsA={rowsA} rowsB={rowsB} visible={visible} /> : <BalanceTable rows={rowsA} visible={visible} />
+        compare ? (
+          <ComparisonTable rowsA={rowsA} rowsB={rowsB} visible={visible} />
+        ) : (
+          <BalanceTable rows={rowsA} visible={visible} />
+        )
       }
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -115,7 +129,13 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge, compare }:
             cursor={cursorProps}
             content={({ active, payload, label }) =>
               compare ? (
-                <ComparisonTooltip active={active} payload={payload} label={label} series={BALANCE_SERIES} secondKey={scenarioBKey} />
+                <ComparisonTooltip
+                  active={active}
+                  payload={payload}
+                  label={label}
+                  series={BALANCE_SERIES}
+                  secondKey={scenarioBKey}
+                />
               ) : (
                 <ChartTooltip active={active} payload={payload} label={label} />
               )
@@ -129,7 +149,12 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge, compare }:
             />
           ) : null}
           {cursorAgeInMonths !== undefined ? (
-            <ReferenceLine x={cursorAgeInMonths / 12} stroke="var(--ink)" strokeWidth={1} ifOverflow="hidden" />
+            <ReferenceLine
+              x={cursorAgeInMonths / 12}
+              stroke="var(--ink)"
+              strokeWidth={1}
+              ifOverflow="hidden"
+            />
           ) : null}
           {/* Recharts reads <Line> as direct children, so the lines are mapped here rather than wrapped. */}
           {BALANCE_SERIES.map((key) => (

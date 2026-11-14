@@ -30,22 +30,10 @@ const PADDING = {
   lg: 'p-5 sm:p-7',
 } as const;
 
-export function Card({
-  tone = 'flat',
-  elevated = false,
-  padding = 'md',
-  className,
-  ...props
-}: CardProps) {
+export function Card({ tone = 'flat', elevated = false, padding = 'md', className, ...props }: CardProps) {
   return (
     <div
-      className={cn(
-        'rounded-lg',
-        TONES[tone],
-        PADDING[padding],
-        elevated && 'shadow-md',
-        className,
-      )}
+      className={cn('rounded-lg', TONES[tone], PADDING[padding], elevated && 'shadow-md', className)}
       {...props}
     />
   );
@@ -62,20 +50,12 @@ export interface CardHeaderProps {
   className?: string;
 }
 
-export function CardHeader({
-  title,
-  description,
-  actions,
-  as: Heading = 'h3',
-  className,
-}: CardHeaderProps) {
+export function CardHeader({ title, description, actions, as: Heading = 'h3', className }: CardHeaderProps) {
   return (
     <div className={cn('flex items-start justify-between gap-4', className)}>
       <div className="flex min-w-0 flex-col gap-1">
         <Heading className="text-[0.9375rem] leading-tight text-ink">{title}</Heading>
-        {description ? (
-          <p className="text-[0.8125rem] leading-snug text-ink-muted">{description}</p>
-        ) : null}
+        {description ? <p className="text-[0.8125rem] leading-snug text-ink-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
     </div>
@@ -105,14 +85,7 @@ export interface SectionProps {
 }
 
 /** A titled region of the page. Renders a real `<section>` with a label. */
-export function Section({
-  title,
-  description,
-  actions,
-  as = 'h2',
-  className,
-  children,
-}: SectionProps) {
+export function Section({ title, description, actions, as = 'h2', className, children }: SectionProps) {
   return (
     <section className={cn('flex flex-col gap-4', className)}>
       <CardHeader title={title} description={description} actions={actions} as={as} />
@@ -130,11 +103,7 @@ export function Divider({
     <div
       role="separator"
       aria-orientation={orientation}
-      className={cn(
-        'bg-line',
-        orientation === 'horizontal' ? 'h-px w-full' : 'h-full w-px',
-        className,
-      )}
+      className={cn('bg-line', orientation === 'horizontal' ? 'h-px w-full' : 'h-full w-px', className)}
       {...props}
     />
   );
