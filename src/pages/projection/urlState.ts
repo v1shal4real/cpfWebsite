@@ -181,7 +181,9 @@ export function decodeUrlState(
   const form: FormValues = { ...DEFAULT_FORM };
 
   const planCode = params.get('h') ?? PLAN_CODES.none;
-  const plan = (Object.entries(PLAN_CODES) as [HousingPlanChoice, string][]).find(([, code]) => code === planCode)?.[0];
+  const plan = (Object.entries(PLAN_CODES) as [HousingPlanChoice, string][]).find(
+    ([, code]) => code === planCode,
+  )?.[0];
   if (plan) {
     form.housingPlan = plan;
   } else {
@@ -213,7 +215,8 @@ function fallBackWhereInvalid(
   label = '',
 ): FormValues {
   const say = (sentence: string) => notices.push(label ? `${label}: ${sentence}` : sentence);
-  const validate = (values: FormValues) => validateProjectionInput({ ...toDraft(values, startMonth), rulesAsAt });
+  const validate = (values: FormValues) =>
+    validateProjectionInput({ ...toDraft(values, startMonth), rulesAsAt });
 
   const first = validate(form);
   if (first.ok) return form;
@@ -231,7 +234,9 @@ function fallBackWhereInvalid(
   for (const field of invalid) {
     if ((HOUSING_FIELDS as readonly string[]).includes(field)) continue;
     (repaired as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
-    say(`The ${FIELD_NAMES[field]} in this link is outside what the projection supports, so the default is used.`);
+    say(
+      `The ${FIELD_NAMES[field]} in this link is outside what the projection supports, so the default is used.`,
+    );
   }
 
   if (validate(repaired).ok) return repaired;
@@ -258,8 +263,10 @@ export interface DecodedScenariosUrlState {
 function normalised(form: FormValues): FormValues {
   const out: FormValues = { ...form };
   for (const field of Object.keys(NUMERIC_KEYS) as NumericField[]) {
-    if (form.housingPlan === 'none' && HOUSING_FIELDS.includes(field)) (out as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
-    if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan') out.bankLoanRatePercent = DEFAULT_FORM.bankLoanRatePercent;
+    if (form.housingPlan === 'none' && HOUSING_FIELDS.includes(field))
+      (out as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
+    if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan')
+      out.bankLoanRatePercent = DEFAULT_FORM.bankLoanRatePercent;
   }
   return out;
 }
@@ -290,14 +297,20 @@ export function decodeScenariosUrl(
   const params = new URLSearchParams(search);
   const notices = [...decodedA.notices];
   if (!decodedA.fromLink || params.get('B') !== '1' || params.get('v') !== URL_SCHEMA_VERSION) {
-    return { state: { scenarios: singleScenario(a), startMonth, rulesAsAt }, notices, fromLink: decodedA.fromLink };
+    return {
+      state: { scenarios: singleScenario(a), startMonth, rulesAsAt },
+      notices,
+      fromLink: decodedA.fromLink,
+    };
   }
 
   const label = 'Scenario B';
   const b: FormValues = { ...normalised(a) };
   const planCode = params.get(`${B_PREFIX}h`);
   if (planCode !== null) {
-    const plan = (Object.entries(PLAN_CODES) as [HousingPlanChoice, string][]).find(([, code]) => code === planCode)?.[0];
+    const plan = (Object.entries(PLAN_CODES) as [HousingPlanChoice, string][]).find(
+      ([, code]) => code === planCode,
+    )?.[0];
     if (plan) b.housingPlan = plan;
     else notices.push(`${label}: the housing plan in this link could not be read, so it keeps scenario A's.`);
   }
@@ -309,7 +322,9 @@ export function decodeScenariosUrl(
       continue;
     }
     if (!NUMBER_PATTERN.test(raw)) {
-      notices.push(`${label}: the ${FIELD_NAMES[field]} in this link could not be read, so scenario A's is used.`);
+      notices.push(
+        `${label}: the ${FIELD_NAMES[field]} in this link could not be read, so scenario A's is used.`,
+      );
       continue;
     }
     b[field] = Number(raw);

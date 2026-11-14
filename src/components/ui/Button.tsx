@@ -13,10 +13,8 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
  * wrong in a screenshot of the tool.
  */
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary:
-    'bg-surface-inverse text-ink-inverse border border-transparent hover:opacity-90 active:opacity-80',
-  secondary:
-    'bg-surface text-ink border border-line-strong hover:bg-surface-2 active:bg-surface-3',
+  primary: 'bg-surface-inverse text-ink-inverse border border-transparent hover:opacity-90 active:opacity-80',
+  secondary: 'bg-surface text-ink border border-line-strong hover:bg-surface-2 active:bg-surface-3',
   ghost: 'bg-transparent text-ink-muted border border-transparent hover:bg-surface-2 hover:text-ink',
   link: 'bg-transparent text-accent border border-transparent underline underline-offset-2 decoration-from-font hover:text-accent-hover px-0',
 };

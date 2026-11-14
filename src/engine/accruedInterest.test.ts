@@ -62,7 +62,9 @@ describe('accrual', () => {
   it('does not compound within the year', () => {
     // $100,000 from January: $208.33 a month, the same every month of the year.
     const { months } = runYears(1, [{ year: 1, amount: 10_000_000 }]);
-    const monthly = months.map((month, index) => month.accruedInterest - (months[index - 1]?.accruedInterest ?? 0));
+    const monthly = months.map(
+      (month, index) => month.accruedInterest - (months[index - 1]?.accruedInterest ?? 0),
+    );
     for (const amount of monthly) expect(Math.abs(amount - 20_833.33)).toBeLessThanOrEqual(1);
   });
 

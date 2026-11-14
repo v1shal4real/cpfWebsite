@@ -1,6 +1,6 @@
 import { useId, useState, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { useFieldControl } from './Field';
+import { useFieldControl } from './fieldContext';
 
 /**
  * Text and numeric inputs.
@@ -84,8 +84,10 @@ export function TextInput({
 
 /* -------------------------------------------------------------------------- */
 
-export interface NumericInputProps
-  extends Omit<ComponentPropsWithRef<'input'>, 'value' | 'onChange' | 'type' | 'prefix'> {
+export interface NumericInputProps extends Omit<
+  ComponentPropsWithRef<'input'>,
+  'value' | 'onChange' | 'type' | 'prefix'
+> {
   /** `null` means empty. An empty numeric field is a real state, not zero. */
   value: number | null;
   onValueChange: (value: number | null) => void;
@@ -219,13 +221,5 @@ export function MoneyInput(props: Omit<NumericInputProps, 'prefix' | 'unitDescri
 
 /** A percentage field. The value is in percentage points, not a fraction. */
 export function PercentInput(props: Omit<NumericInputProps, 'suffix' | 'unitDescription'>) {
-  return (
-    <NumericInput
-      suffix="%"
-      unitDescription="percent"
-      step={0.5}
-      groupDigits={false}
-      {...props}
-    />
-  );
+  return <NumericInput suffix="%" unitDescription="percent" step={0.5} groupDigits={false} {...props} />;
 }

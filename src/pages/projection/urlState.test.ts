@@ -55,7 +55,11 @@ describe('round trip: state -> URL -> state', () => {
   });
 
   it('is lossless for every valid form, generated', () => {
-    const money = (max: number) => fc.option(fc.integer({ min: 0, max: max * 100 }).map((cents) => cents / 100), { nil: null });
+    const money = (max: number) =>
+      fc.option(
+        fc.integer({ min: 0, max: max * 100 }).map((cents) => cents / 100),
+        { nil: null },
+      );
     const formArbitrary = fc.record<FormValues>({
       currentAge: fc.integer({ min: 16, max: 70 }),
       monthlySalary: fc.integer({ min: 75_100, max: 3_000_000 }).map((cents) => cents / 100),
@@ -81,7 +85,16 @@ describe('round trip: state -> URL -> state', () => {
           // and a bank rate without a bank loan, are not part of the state.
           const applicable: FormValues =
             form.housingPlan === 'none'
-              ? { ...form, propertyPrice: null, purchaseAge: null, downpayment: null, ordinaryAccountSharePercent: DEFAULT_FORM.ordinaryAccountSharePercent, loanTenureYears: null, bankLoanRatePercent: null, retainedOrdinaryAccount: null }
+              ? {
+                  ...form,
+                  propertyPrice: null,
+                  purchaseAge: null,
+                  downpayment: null,
+                  ordinaryAccountSharePercent: DEFAULT_FORM.ordinaryAccountSharePercent,
+                  loanTenureYears: null,
+                  bankLoanRatePercent: null,
+                  retainedOrdinaryAccount: null,
+                }
               : form.housingPlan === 'hdb-loan'
                 ? { ...form, bankLoanRatePercent: null }
                 : form;
@@ -97,7 +110,10 @@ describe('round trip: state -> URL -> state', () => {
   it('projects exactly the same figures from the decoded state', () => {
     const decoded = roundTrip(state(BANK));
     const before = projectDraft({ ...toDraft(BANK, START), rulesAsAt: RULES });
-    const after = projectDraft({ ...toDraft(decoded.state.form, decoded.state.startMonth), rulesAsAt: decoded.state.rulesAsAt });
+    const after = projectDraft({
+      ...toDraft(decoded.state.form, decoded.state.startMonth),
+      rulesAsAt: decoded.state.rulesAsAt,
+    });
     expect(after).toEqual(before);
   });
 });
@@ -197,7 +213,12 @@ describe('malformed and old links degrade gracefully', () => {
   it('always opens on something that can be projected', () => {
     const awful = '?v=1&r=x&m=nope&h=bank&a=-3&s=0&g=900&ob=-1&p=1&pa=10&d=99999999&os=500&t=0&br=abc';
     const decoded = decodeUrlState(awful, FALLBACK);
-    expect(projectDraft({ ...toDraft(decoded.state.form, decoded.state.startMonth), rulesAsAt: decoded.state.rulesAsAt }).ok).toBe(true);
+    expect(
+      projectDraft({
+        ...toDraft(decoded.state.form, decoded.state.startMonth),
+        rulesAsAt: decoded.state.rulesAsAt,
+      }).ok,
+    ).toBe(true);
     expect(decoded.notices.length).toBeGreaterThan(0);
   });
 
@@ -224,7 +245,11 @@ describe('no storage, cookies or server calls for projection state', () => {
       }
       if (!/\.tsx?$/.test(path) || /\.test\.tsx?$/.test(path)) return;
       const source = readFileSync(path, 'utf8');
-      if (/localStorage|sessionStorage|indexedDB|document\.cookie|\bfetch\(|XMLHttpRequest|sendBeacon/.test(source)) {
+      if (
+        /localStorage|sessionStorage|indexedDB|document\.cookie|\bfetch\(|XMLHttpRequest|sendBeacon/.test(
+          source,
+        )
+      ) {
         offenders.push(path);
       }
     };

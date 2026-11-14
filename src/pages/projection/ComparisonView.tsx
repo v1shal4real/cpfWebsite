@@ -5,7 +5,7 @@ import { formatMoney } from '@/lib/format';
 import type { RuleSet } from '@/rules';
 import { SERIES } from '@/theme/series';
 import { comparisonMetric } from './comparisonMetric';
-import { headlineFigures, retirementSumContext } from './HeadlineRow';
+import { headlineFigures, retirementSumContext } from './headlineFigures';
 import type { ScenarioId } from './scenarios';
 
 /**
@@ -48,15 +48,17 @@ export function ComparisonView({ resultA, resultB, active, ruleSet }: Comparison
         </p>
         {metric ? (
           <p className="mt-1 text-[0.8125rem] text-ink-muted">
-            Scenario A {formatMoney(metric.a)}, scenario B {formatMoney(metric.b)}: all four accounts, once the
-            Retirement Account is formed.
+            Scenario A {formatMoney(metric.a)}, scenario B {formatMoney(metric.b)}: all four accounts, once
+            the Retirement Account is formed.
           </p>
         ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ScenarioColumn id="a" result={resultA} editing={active === 'a'} ruleSet={ruleSet} />
-        {resultB ? <ScenarioColumn id="b" result={resultB} editing={active === 'b'} ruleSet={ruleSet} /> : null}
+        {resultB ? (
+          <ScenarioColumn id="b" result={resultB} editing={active === 'b'} ruleSet={ruleSet} />
+        ) : null}
       </div>
     </section>
   );

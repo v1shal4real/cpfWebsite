@@ -4,7 +4,8 @@ import { projectDraft } from '@/engine/project';
 import { formatMoney } from '@/lib/format';
 import { CURRENT_RULE_SET } from '@/rules';
 import { DEFAULT_FORM, toDraft, type FormValues } from './form';
-import { HeadlineRow, headlineFigures, retirementSumContext } from './HeadlineRow';
+import { HeadlineRow } from './HeadlineRow';
+import { headlineFigures, retirementSumContext } from './headlineFigures';
 
 const project = (form: FormValues) => {
   const outcome = projectDraft(toDraft(form, '2026-10'));
@@ -34,7 +35,9 @@ describe('retirement sum context', () => {
 
   it('never frames the gap as good or bad', () => {
     for (const ra of [0, 100_000, 220_400, 500_000]) {
-      expect(retirementSumContext(ra, 220_400, 2051)).not.toMatch(/good|bad|short|enough|on track|well done|warning/i);
+      expect(retirementSumContext(ra, 220_400, 2051)).not.toMatch(
+        /good|bad|short|enough|on track|well done|warning/i,
+      );
     }
   });
 });

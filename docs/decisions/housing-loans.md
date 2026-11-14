@@ -28,18 +28,18 @@ In code: `HousingPlan.instalmentsPaidFrom: 'ordinary-account' | 'cash'`.
 
 ## 3. Loan limits, sourced into the rule set
 
-| | HDB loan | Bank loan | Reduced bank limits |
-|---|---|---|---|
-| Maximum loan-to-value | 75% | 75% | 55% |
-| Minimum cash downpayment, of price | none | 5% | 10% |
-| Maximum tenure | 25 years | 35 years | — |
-| Reduced limits apply when | never | — | tenure is over 30 years, or the loan runs past age 65 |
+|                                    | HDB loan | Bank loan | Reduced bank limits                                   |
+| ---------------------------------- | -------- | --------- | ----------------------------------------------------- |
+| Maximum loan-to-value              | 75%      | 75%       | 55%                                                   |
+| Minimum cash downpayment, of price | none     | 5%        | 10%                                                   |
+| Maximum tenure                     | 25 years | 35 years  | —                                                     |
+| Reduced limits apply when          | never    | —         | tenure is over 30 years, or the loan runs past age 65 |
 
 Sources, as listed in `src/rules/sources.ts`:
 
 - `hdbLoanToValue`: HDB, Annex B to the November 2026 BTO exercise. It states the HDB loan LTV is 75% from the October 2024 exercise.
-- `bankLoanLimits`: MAS, *Loan Tenure and Loan-to-Value Limits*. It gives the 75%/55% LTV limits, the 5%/10% minimum cash, the tenure caps, and the conditions for the reduced limits.
-- `housingLoanComparison`: CPF Board, *HDB loan or bank loan? 3 differences you should know*. It says an HDB loan downpayment may be paid wholly from CPF, and a bank loan needs 5% in cash.
+- `bankLoanLimits`: MAS, _Loan Tenure and Loan-to-Value Limits_. It gives the 75%/55% LTV limits, the 5%/10% minimum cash, the tenure caps, and the conditions for the reduced limits.
+- `housingLoanComparison`: CPF Board, _HDB loan or bank loan? 3 differences you should know_. It says an HDB loan downpayment may be paid wholly from CPF, and a bank loan needs 5% in cash.
 
 Known simplifications:
 

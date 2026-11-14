@@ -61,11 +61,11 @@
   --critical-ink: #a32626;
 
   /* Data series — validated for the light surface */
-  --series-oa: #2a78d6;       /* slot 1, blue   */
-  --series-sa: #eb6834;       /* slot 2, orange */
-  --series-ma: #1baf7a;       /* slot 3, aqua   */
-  --series-ra: #4a3aa7;       /* slot 7, violet */
-  --series-accrued: #e34948;  /* slot 8, red    */
+  --series-oa: #2a78d6; /* slot 1, blue   */
+  --series-sa: #eb6834; /* slot 2, orange */
+  --series-ma: #1baf7a; /* slot 3, aqua   */
+  --series-ra: #4a3aa7; /* slot 7, violet */
+  --series-accrued: #e34948; /* slot 8, red    */
   /* Soft fills for area charts and swatched backgrounds */
   --series-oa-soft: #e3eefc;
   --series-sa-soft: #fdeade;
@@ -182,11 +182,10 @@
   --shadow-lg: var(--shadow-lg);
 
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    "Noto Sans", sans-serif;
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
+    sans-serif;
   --font-mono:
-    ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", "Roboto Mono", Menlo, Consolas,
-    monospace;
+    ui-monospace, 'SF Mono', SFMono-Regular, 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
 
   /* A tighter, more deliberate radius scale than the Tailwind default */
   --radius-xs: 0.1875rem;
@@ -228,7 +227,7 @@
   table,
   [data-numeric] {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" 1;
+    font-feature-settings: 'tnum' 1;
   }
 
   /* A single visible focus treatment, used everywhere, never removed. */
@@ -239,7 +238,7 @@
   }
 
   button,
-  [role="button"],
+  [role='button'],
   a,
   input,
   select,
@@ -254,7 +253,7 @@
   }
 
   /* Range inputs are restyled per-component; strip the UA chrome once here. */
-  input[type="range"] {
+  input[type='range'] {
     appearance: none;
     background: transparent;
   }

@@ -144,8 +144,7 @@ export interface FieldAdjustment {
 }
 
 export type ValidationResult =
-  | { ok: true; input: ProjectionInput; adjustments: FieldAdjustment[] }
-  | { ok: false; errors: FieldError[] };
+  { ok: true; input: ProjectionInput; adjustments: FieldAdjustment[] } | { ok: false; errors: FieldError[] };
 
 const PERCENT = 100;
 
@@ -172,7 +171,12 @@ class Checker {
   }
 
   /** A finite number, or an error. `label` names the field in the message. */
-  number(field: ProjectionField, value: number | undefined, label: string, required: boolean): number | undefined {
+  number(
+    field: ProjectionField,
+    value: number | undefined,
+    label: string,
+    required: boolean,
+  ): number | undefined {
     // Forms often hold an empty field as null rather than undefined.
     if (value === undefined || value === null) {
       return required ? this.fail(field, 'required', `${label} is needed for the projection.`) : undefined;
@@ -186,22 +190,37 @@ class Checker {
   wholeNumber(field: ProjectionField, value: number | undefined, label: string, required: boolean) {
     const checked = this.number(field, value, label, required);
     if (checked === undefined) return undefined;
-    if (!Number.isInteger(checked)) return this.fail(field, 'not-a-whole-number', `${label} must be a whole number.`);
+    if (!Number.isInteger(checked))
+      return this.fail(field, 'not-a-whole-number', `${label} must be a whole number.`);
     return checked;
   }
 
   /** An amount of money, never negative, rounded to the cent. */
-  money(field: ProjectionField, value: Cents | undefined, label: string, required: boolean): Cents | undefined {
+  money(
+    field: ProjectionField,
+    value: Cents | undefined,
+    label: string,
+    required: boolean,
+  ): Cents | undefined {
     const checked = this.number(field, value, label, required);
     if (checked === undefined) return undefined;
     if (checked < 0) return this.fail(field, 'below-minimum', `${label} cannot be negative.`, 0);
     return Math.round(checked);
   }
 
-  range(field: ProjectionField, value: number | undefined, min: number, max: number, describe: (n: number) => string, label: string) {
+  range(
+    field: ProjectionField,
+    value: number | undefined,
+    min: number,
+    max: number,
+    describe: (n: number) => string,
+    label: string,
+  ) {
     if (value === undefined) return undefined;
-    if (value < min) return this.fail(field, 'below-minimum', `${label} must be at least ${describe(min)}.`, min);
-    if (value > max) return this.fail(field, 'above-maximum', `${label} must be at most ${describe(max)}.`, max);
+    if (value < min)
+      return this.fail(field, 'below-minimum', `${label} must be at least ${describe(min)}.`, min);
+    if (value > max)
+      return this.fail(field, 'above-maximum', `${label} must be at most ${describe(max)}.`, max);
     return value;
   }
 }
@@ -266,13 +285,17 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     ) ?? (draft.salaryRaiseMonth === undefined ? 1 : undefined);
 
   // Opening balances, each optional and zero by default.
-  const ordinary = check.money('balances.ordinary', draft.balances?.ordinary, 'Ordinary Account balance', false) ?? 0;
-  const special = check.money('balances.special', draft.balances?.special, 'Special Account balance', false) ?? 0;
-  const medisave = check.money('balances.medisave', draft.balances?.medisave, 'MediSave Account balance', false) ?? 0;
+  const ordinary =
+    check.money('balances.ordinary', draft.balances?.ordinary, 'Ordinary Account balance', false) ?? 0;
+  const special =
+    check.money('balances.special', draft.balances?.special, 'Special Account balance', false) ?? 0;
+  const medisave =
+    check.money('balances.medisave', draft.balances?.medisave, 'MediSave Account balance', false) ?? 0;
 
   // Housing, only when a plan is selected: nothing below is read otherwise,
   // so leftover values in hidden fields cannot block a projection.
-  const housing = draft.housingPlan === 'none' ? undefined : validateHousing(draft, rules, check, age, endAge);
+  const housing =
+    draft.housingPlan === 'none' ? undefined : validateHousing(draft, rules, check, age, endAge);
 
   if (check.errors.length > 0 || age === undefined || endAge === undefined || salary === undefined) {
     return { ok: false, errors: check.errors };
@@ -319,7 +342,12 @@ function validateHousing(
 
   let purchaseAge = check.wholeNumber('purchaseAge', draft.purchaseAge, 'Purchase age', true);
   if (purchaseAge !== undefined && age !== undefined && purchaseAge < age) {
-    purchaseAge = check.fail('purchaseAge', 'before-current-age', 'Purchase age cannot be before your current age.', age);
+    purchaseAge = check.fail(
+      'purchaseAge',
+      'before-current-age',
+      'Purchase age cannot be before your current age.',
+      age,
+    );
   }
   if (purchaseAge !== undefined && endAge !== undefined && purchaseAge > endAge) {
     purchaseAge = check.fail(
@@ -332,12 +360,22 @@ function validateHousing(
 
   let downpayment = check.money('downpayment', draft.downpayment, 'Downpayment', true);
   if (downpayment !== undefined && price !== undefined && downpayment > price) {
-    downpayment = check.fail('downpayment', 'exceeds-property-price', 'The downpayment cannot be more than the price.', price);
+    downpayment = check.fail(
+      'downpayment',
+      'exceeds-property-price',
+      'The downpayment cannot be more than the price.',
+      price,
+    );
   }
 
   const share = check.range(
     'downpaymentShareFromOrdinaryAccount',
-    check.number('downpaymentShareFromOrdinaryAccount', draft.downpaymentShareFromOrdinaryAccount, 'Share from the Ordinary Account', true),
+    check.number(
+      'downpaymentShareFromOrdinaryAccount',
+      draft.downpaymentShareFromOrdinaryAccount,
+      'Share from the Ordinary Account',
+      true,
+    ),
     0,
     1,
     percent,
@@ -415,7 +453,12 @@ function validateHousing(
 
   // Retention: an HDB-loan buyer may keep up to the rule set's cap, so a
   // larger figure has one obvious correction, and is clamped to it.
-  let retention = check.money('ordinaryAccountRetention', draft.ordinaryAccountRetention, 'Retained amount', false);
+  let retention = check.money(
+    'ordinaryAccountRetention',
+    draft.ordinaryAccountRetention,
+    'Retained amount',
+    false,
+  );
   const retentionCap = rules.housing.hdbLoanRetentionCap * CENTS_PER_DOLLAR;
   if (retention !== undefined && kind === 'hdb-concessionary' && retention > retentionCap) {
     check.adjustments.push({

@@ -22,7 +22,10 @@ describe('yearly balance rows', () => {
 
   it('totals each row from its four accounts', () => {
     for (const { balances, total } of rows) {
-      expect(total).toBeCloseTo(balances.ordinary + balances.special + balances.medisave + balances.retirement, 6);
+      expect(total).toBeCloseTo(
+        balances.ordinary + balances.special + balances.medisave + balances.retirement,
+        6,
+      );
     }
   });
 });

@@ -26,7 +26,9 @@ describe('copyText', () => {
   it('uses the Clipboard API when it is available', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     const { doc, execCommand } = fakeDocument(true);
-    await expect(copyText(URL, { navigator: { clipboard: { writeText } }, document: doc })).resolves.toBe(true);
+    await expect(copyText(URL, { navigator: { clipboard: { writeText } }, document: doc })).resolves.toBe(
+      true,
+    );
     expect(writeText).toHaveBeenCalledWith(URL);
     expect(execCommand).not.toHaveBeenCalled();
   });
@@ -43,7 +45,9 @@ describe('copyText', () => {
   it('falls back when the Clipboard API rejects the write', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('denied'));
     const { doc, execCommand } = fakeDocument(true);
-    await expect(copyText(URL, { navigator: { clipboard: { writeText } }, document: doc })).resolves.toBe(true);
+    await expect(copyText(URL, { navigator: { clipboard: { writeText } }, document: doc })).resolves.toBe(
+      true,
+    );
     expect(execCommand).toHaveBeenCalledWith('copy');
   });
 

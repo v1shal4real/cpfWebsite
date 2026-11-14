@@ -39,10 +39,7 @@ export function Legend({ items, hidden, onToggle, className }: LegendProps) {
           <>
             <span
               aria-hidden="true"
-              className={cn(
-                'h-[3px] w-4 shrink-0 rounded-full transition-opacity',
-                isHidden && 'opacity-30',
-              )}
+              className={cn('h-[3px] w-4 shrink-0 rounded-full transition-opacity', isHidden && 'opacity-30')}
               style={{ backgroundColor: meta.color }}
             />
             <span className={cn('text-[0.8125rem] text-ink-muted', isHidden && 'line-through opacity-60')}>

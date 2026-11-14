@@ -15,16 +15,28 @@ const VERDICT =
 
 describe('comparison sentence', () => {
   it('states the difference as higher or lower in B than in A', () => {
-    expect(comparisonSentence(500_000, 548_200)).toBe('Combined balances at 55: $48,200 higher in scenario B than in scenario A.');
-    expect(comparisonSentence(548_200, 500_000)).toBe('Combined balances at 55: $48,200 lower in scenario B than in scenario A.');
+    expect(comparisonSentence(500_000, 548_200)).toBe(
+      'Combined balances at 55: $48,200 higher in scenario B than in scenario A.',
+    );
+    expect(comparisonSentence(548_200, 500_000)).toBe(
+      'Combined balances at 55: $48,200 lower in scenario B than in scenario A.',
+    );
   });
 
   it('says the same when the difference rounds to no dollars', () => {
-    expect(comparisonSentence(500_000, 500_000.4)).toBe('Combined balances at 55 are the same in both scenarios.');
+    expect(comparisonSentence(500_000, 500_000.4)).toBe(
+      'Combined balances at 55 are the same in both scenarios.',
+    );
   });
 
   it('never implies a better choice, whichever way the difference goes', () => {
-    for (const [a, b] of [[1, 2], [2, 1], [1, 1], [0, 1_000_000], [1_000_000, 0]] as const) {
+    for (const [a, b] of [
+      [1, 2],
+      [2, 1],
+      [1, 1],
+      [0, 1_000_000],
+      [1_000_000, 0],
+    ] as const) {
       expect(comparisonSentence(a, b)).not.toMatch(VERDICT);
     }
   });

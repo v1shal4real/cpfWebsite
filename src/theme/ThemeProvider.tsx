@@ -1,32 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-
-/**
- * Theme preference. `system` follows the OS and is the default, so a user who
- * has never touched the toggle gets whatever their device is set to.
- */
-export type ThemePreference = 'light' | 'dark' | 'system';
-export type ResolvedTheme = 'light' | 'dark';
-
-/** Keep in sync with the pre-paint script in index.html. */
-export const THEME_STORAGE_KEY = 'cpf-theme';
-
-interface ThemeContextValue {
-  /** What the user chose. */
-  preference: ThemePreference;
-  /** What is actually on screen after resolving `system`. */
-  theme: ResolvedTheme;
-  setPreference: (preference: ThemePreference) => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { THEME_STORAGE_KEY, ThemeContext, type ResolvedTheme, type ThemePreference } from './themeContext';
 
 function readStoredPreference(): ThemePreference {
   try {
@@ -76,16 +49,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo(
-    () => ({ preference, theme, setPreference }),
-    [preference, theme, setPreference],
-  );
+  const value = useMemo(() => ({ preference, theme, setPreference }), [preference, theme, setPreference]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
-
-export function useTheme(): ThemeContextValue {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error('useTheme must be used within a ThemeProvider');
-  return context;
 }

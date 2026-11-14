@@ -42,11 +42,21 @@ function MoneyCell({ value }: { value: number | undefined }) {
 }
 
 const totalOrAccount = (row: YearRow | undefined, id: string) =>
-  row === undefined ? undefined : id === 'total' ? row.total : row.balances[ACCOUNT_OF[id as keyof typeof ACCOUNT_OF]];
+  row === undefined
+    ? undefined
+    : id === 'total'
+      ? row.total
+      : row.balances[ACCOUNT_OF[id as keyof typeof ACCOUNT_OF]];
 
 export function BalanceTable({ rows, visible }: TableViewProps & { rows: readonly YearRow[] }) {
   return (
-    <Table caption="Projected account balances by age" captionHidden focusable={visible} density="compact" stickyFirstColumn>
+    <Table
+      caption="Projected account balances by age"
+      captionHidden
+      focusable={visible}
+      density="compact"
+      stickyFirstColumn
+    >
       <THead>
         <tr>
           <Th>Age</Th>

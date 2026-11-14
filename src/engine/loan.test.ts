@@ -43,7 +43,10 @@ describe('rate', () => {
   });
 
   it('agrees with the published HDB rate for the rule set', () => {
-    expect(loanRate(hdb(1, 1), CURRENT_RULE_SET)).toBeCloseTo(CURRENT_RULE_SET.housing.concessionaryLoanRate, 10);
+    expect(loanRate(hdb(1, 1), CURRENT_RULE_SET)).toBeCloseTo(
+      CURRENT_RULE_SET.housing.concessionaryLoanRate,
+      10,
+    );
   });
 
   it('uses a bank loan’s own rate, whatever the rules', () => {
@@ -72,7 +75,12 @@ describe('amortisation', () => {
   const { draw, repayments, last } = runLoan(hdb(40_000_000, 25));
 
   it('draws the loan in the month of purchase, with nothing due until the next', () => {
-    expect(draw).toMatchObject({ openingBalance: 0, drawn: 40_000_000, instalment: 0, closingBalance: 40_000_000 });
+    expect(draw).toMatchObject({
+      openingBalance: 0,
+      drawn: 40_000_000,
+      instalment: 0,
+      closingBalance: 40_000_000,
+    });
   });
 
   it('clears in exactly tenure x 12 monthly instalments', () => {

@@ -32,13 +32,7 @@ export interface TooltipProps {
   children: ReactNode;
 }
 
-export function Tooltip({
-  content,
-  side = 'top',
-  focusable = true,
-  className,
-  children,
-}: TooltipProps) {
+export function Tooltip({ content, side = 'top', focusable = true, className, children }: TooltipProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<number | undefined>(undefined);
@@ -72,6 +66,9 @@ export function Tooltip({
   return (
     <span
       className={cn('relative inline-flex', className)}
+      // A tooltip on plain text needs its own tab stop, or keyboard users can
+      // never open it. Pass `focusable={false}` when the child is a control.
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={focusable ? 0 : undefined}
       aria-describedby={open ? id : undefined}
       onPointerEnter={show}

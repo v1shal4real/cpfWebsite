@@ -47,10 +47,7 @@ export function SourceLink({
       <span>
         {variant === 'chip' ? src.publisher : `Source: ${src.publisher}, ${src.title}`}
         {showRetrieved ? (
-          <span className="text-ink-subtle">
-            {' '}
-            · checked {formatEffectiveDate(src.retrievedOn)}
-          </span>
+          <span className="text-ink-subtle"> · checked {formatEffectiveDate(src.retrievedOn)}</span>
         ) : null}
       </span>
       <svg

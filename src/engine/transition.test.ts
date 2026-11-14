@@ -29,9 +29,7 @@ describe('forming the Retirement Account', () => {
     expect(result.transferredFromOrdinary).toBe(0);
     // The $50,000 the RA had no room for goes to the OA as the SA closes.
     expect(result.specialAccountRemainderToOrdinary).toBe(5_000_000);
-    expect(result.balances).toEqual(
-      balances({ ordinary: 8_000_000, medisave: 4_000_000, retirement: FRS }),
-    );
+    expect(result.balances).toEqual(balances({ ordinary: 8_000_000, medisave: 4_000_000, retirement: FRS }));
     expect(result.fullRetirementSumSetAside).toBe(true);
   });
 
@@ -78,7 +76,11 @@ describe('forming the Retirement Account', () => {
     for (const special of [0, 1, 10_000_000, FRS, 40_000_000]) {
       for (const ordinary of [0, KEPT, 30_000_000]) {
         const before = balances({ special, ordinary, medisave: 6_000_000, retirement: 100 });
-        const result = formRetirementAccount({ rules: CURRENT_RULE_SET, balances: before, fullRetirementSum: FRS });
+        const result = formRetirementAccount({
+          rules: CURRENT_RULE_SET,
+          balances: before,
+          fullRetirementSum: FRS,
+        });
         expect(result.balances.special).toBe(0);
         expect(result.balances.medisave).toBe(6_000_000);
         // Conservation: the transition only moves money between accounts.
@@ -97,7 +99,11 @@ describe('forming the Retirement Account', () => {
 
 describe('the closed Special Account', () => {
   it('moves anything credited to it into the RA while the RA is under the FRS', () => {
-    const result = closeSpecialAccount(CURRENT_RULE_SET, balances({ special: 50_000, retirement: 1_000_000 }), FRS);
+    const result = closeSpecialAccount(
+      CURRENT_RULE_SET,
+      balances({ special: 50_000, retirement: 1_000_000 }),
+      FRS,
+    );
     expect(result).toEqual({
       balances: balances({ retirement: 1_050_000 }),
       toRetirement: 50_000,

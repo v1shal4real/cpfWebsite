@@ -81,9 +81,7 @@ export function StatTile({
         {value}
       </motion.div>
 
-      {context ? (
-        <div className="text-[0.8125rem] leading-snug text-ink-muted">{context}</div>
-      ) : null}
+      {context ? <div className="text-[0.8125rem] leading-snug text-ink-muted">{context}</div> : null}
 
       {source ? <div className="mt-1.5 text-[0.6875rem] text-ink-subtle">{source}</div> : null}
     </div>

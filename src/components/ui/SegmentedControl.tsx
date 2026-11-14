@@ -68,17 +68,19 @@ export function SegmentedControl<T extends string>({
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <span id={`${groupId}-label`} className={cn('text-[0.8125rem] font-medium text-ink', labelHidden && 'sr-only-abs')}>
+      <span
+        id={`${groupId}-label`}
+        className={cn('text-[0.8125rem] font-medium text-ink', labelHidden && 'sr-only-abs')}
+      >
         {label}
       </span>
       <LayoutGroup id={groupId}>
+        {/* Roving focus: the checked radio holds the tab stop, not the group (WAI-ARIA radio group pattern). */}
+        {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus */}
         <div
           role="radiogroup"
           aria-labelledby={`${groupId}-label`}
-          className={cn(
-            'inline-flex rounded-md border border-line bg-surface-2 p-0.5',
-            block && 'w-full',
-          )}
+          className={cn('inline-flex rounded-md border border-line bg-surface-2 p-0.5', block && 'w-full')}
           onKeyDown={(event) => {
             switch (event.key) {
               case 'ArrowRight':

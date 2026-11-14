@@ -25,14 +25,18 @@ describe('side-by-side comparison', () => {
   const { html, text } = render({ a: DEFAULT_FORM, b: HDB, active: 'b' });
 
   it('leads with a single difference statement', () => {
-    const statements = text.match(/Combined balances at 55: \$[\d,]+ (higher|lower) in scenario B than in scenario A\./g);
+    const statements = text.match(
+      /Combined balances at 55: \$[\d,]+ (higher|lower) in scenario B than in scenario A\./g,
+    );
     expect(statements).toHaveLength(1);
     // Before either scenario's figures.
     expect(text.indexOf(statements![0]!)).toBeLessThan(text.indexOf('Scenario A '));
   });
 
   it('shows both scenarios, each with the rules-as-at stamp', () => {
-    const columns = [...html.matchAll(/<section aria-label="Scenario (A|B)"[\s\S]*?<\/section>/g)].map((m) => m[0]);
+    const columns = [...html.matchAll(/<section aria-label="Scenario (A|B)"[\s\S]*?<\/section>/g)].map(
+      (m) => m[0],
+    );
     expect(columns).toHaveLength(2);
     for (const column of columns) expect(column).toContain(`Rules as at`);
     expect(text).toContain(CURRENT_RULE_SET.label);
@@ -54,6 +58,8 @@ describe('side-by-side comparison', () => {
   });
 
   it('says the same when B matches A', () => {
-    expect(render({ a: HDB, b: HDB, active: 'a' }).text).toContain('Combined balances at 55 are the same in both scenarios.');
+    expect(render({ a: HDB, b: HDB, active: 'a' }).text).toContain(
+      'Combined balances at 55 are the same in both scenarios.',
+    );
   });
 });

@@ -19,7 +19,13 @@ import { CURRENT_RULE_SET } from '@/rules';
 import { allocateContribution } from './allocation';
 import { NO_CONTRIBUTIONS_YET, contributionForMonth } from './contributions';
 import { project } from './project';
-import type { AccountAmounts, AccountName, ProjectionInput, ProjectionMonth, ProjectionResult } from './types';
+import type {
+  AccountAmounts,
+  AccountName,
+  ProjectionInput,
+  ProjectionMonth,
+  ProjectionResult,
+} from './types';
 import { INPUT_LIMITS, validateProjectionInput, type ProjectionDraft } from './validate';
 
 const ACCOUNTS: readonly AccountName[] = ['ordinary', 'special', 'medisave', 'retirement'];
@@ -54,7 +60,9 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
     ordinary: fc.integer({ min: 0, max: 50_000_000 }),
     special: fc.integer({ min: 0, max: 50_000_000 }),
     medisave: fc.integer({ min: 0, max: 10_000_000 }),
-    housingPlan: fc.constantFrom('none', 'hdb-loan', 'bank-loan') as fc.Arbitrary<ProjectionDraft['housingPlan']>,
+    housingPlan: fc.constantFrom('none', 'hdb-loan', 'bank-loan') as fc.Arbitrary<
+      ProjectionDraft['housingPlan']
+    >,
     propertyPrice: fc.integer({ min: 10_000_000, max: 200_000_000 }),
     purchaseAfterYears: fc.integer({ min: 0, max: 15 }),
     // At least 45% down and at most 75% of it from the OA, so every draft
@@ -64,11 +72,17 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
     tenure: fc.integer({ min: 1, max: 35 }),
     bankLoanRate: basisPoints(0, 800),
     ordinaryAccountRetention: fc.option(fc.integer({ min: 0, max: 5_000_000 }), { nil: undefined }),
-    instalmentsPaidFrom: fc.constantFrom('ordinary-account', 'cash') as fc.Arbitrary<'ordinary-account' | 'cash'>,
+    instalmentsPaidFrom: fc.constantFrom('ordinary-account', 'cash') as fc.Arbitrary<
+      'ordinary-account' | 'cash'
+    >,
   })
   .map((g): ProjectionDraft => {
     const endAge = Math.max(INPUT_LIMITS.projectionEndAge, g.currentAge);
-    const maxTenure = (g.housingPlan === 'hdb-loan' ? CURRENT_RULE_SET.housing.hdbLoanLimits : CURRENT_RULE_SET.housing.bankLoanLimits).maximumTenureYears;
+    const maxTenure = (
+      g.housingPlan === 'hdb-loan'
+        ? CURRENT_RULE_SET.housing.hdbLoanLimits
+        : CURRENT_RULE_SET.housing.bankLoanLimits
+    ).maximumTenureYears;
     return {
       startMonth: `${g.year}-${String(g.month).padStart(2, '0')}`,
       currentAge: g.currentAge,
@@ -169,7 +183,9 @@ describe('conservation', () => {
   it('repays exactly what was borrowed, and accrues on exactly what was withdrawn', () => {
     forEveryMonth((month) => {
       if (month.loan) {
-        expect(month.loan.closingBalance).toBe(month.loan.openingBalance + month.loan.drawn - month.loan.principal);
+        expect(month.loan.closingBalance).toBe(
+          month.loan.openingBalance + month.loan.drawn - month.loan.principal,
+        );
         expect(month.loan.instalment).toBe(month.loan.interest + month.loan.principal);
       }
       if (month.housing) {
@@ -200,7 +216,9 @@ describe('no negative balances', () => {
         ...ACCOUNTS.map((account) => month.interest.credited[account]),
         ...ACCOUNTS.map((account) => month.interest.baseAccrued[account]),
         month.medisaveOverflow.amount,
-        ...(month.loan ? [month.loan.openingBalance, month.loan.closingBalance, month.loan.interest, month.loan.principal] : []),
+        ...(month.loan
+          ? [month.loan.openingBalance, month.loan.closingBalance, month.loan.interest, month.loan.principal]
+          : []),
         ...(month.housing
           ? [
               month.housing.withdrawnFromOrdinaryAccount,
@@ -282,7 +300,9 @@ describe('allocation', () => {
           expect(total(allocation)).toBe(contribution);
           for (const account of ACCOUNTS) expect(allocation[account]).toBeGreaterThanOrEqual(0);
           // The Retirement Account share never takes it past the FRS.
-          expect(allocation.retirement).toBeLessThanOrEqual(Math.max(0, fullRetirementSum - retirementBalance));
+          expect(allocation.retirement).toBeLessThanOrEqual(
+            Math.max(0, fullRetirementSum - retirementBalance),
+          );
         },
       ),
       { numRuns: 2_000 },
@@ -320,7 +340,9 @@ describe('allocation', () => {
 describe('rules that hold for every input', () => {
   it('never lets MediSave close a month above the Basic Healthcare Sum', () => {
     forEveryMonth((month) => {
-      expect(month.closingBalances.medisave, month.month).toBeLessThanOrEqual(month.medisaveOverflow.basicHealthcareSum);
+      expect(month.closingBalances.medisave, month.month).toBeLessThanOrEqual(
+        month.medisaveOverflow.basicHealthcareSum,
+      );
     });
   });
 

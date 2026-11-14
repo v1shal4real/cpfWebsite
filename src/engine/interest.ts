@@ -278,8 +278,7 @@ export function accrueInterest({
 export function creditInterest(accruedThisYear: AccruedThisYear): AccountAmounts {
   const credited = zeroAmounts();
   for (const account of ACCOUNTS) {
-    credited[account] =
-      toCents(accruedThisYear.base[account]) + toCents(accruedThisYear.extraTo[account]);
+    credited[account] = toCents(accruedThisYear.base[account]) + toCents(accruedThisYear.extraTo[account]);
   }
   return credited;
 }

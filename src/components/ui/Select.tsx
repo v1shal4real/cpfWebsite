@@ -1,6 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { useFieldControl } from './Field';
+import { useFieldControl } from './fieldContext';
 
 /**
  * A native `<select>`, styled.
@@ -69,10 +69,7 @@ export function Select({
           </option>
         ))}
       </select>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute right-3 text-ink-subtle"
-      >
+      <span aria-hidden="true" className="pointer-events-none absolute right-3 text-ink-subtle">
         <ChevronDown />
       </span>
     </div>

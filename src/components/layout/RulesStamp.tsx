@@ -22,7 +22,9 @@ export function RulesStamp({
   className?: string;
 }) {
   return (
-    <span className={cn('inline-flex flex-wrap items-center gap-1.5 text-[0.75rem] text-ink-muted', className)}>
+    <span
+      className={cn('inline-flex flex-wrap items-center gap-1.5 text-[0.75rem] text-ink-muted', className)}
+    >
       <span>
         {compact ? 'Rules as at ' : 'CPF rules as at '}
         <time dateTime={ruleSet.effectiveFrom} className="font-medium text-ink">
@@ -33,9 +35,9 @@ export function RulesStamp({
         <>
           <Badge tone="warning">Unverified</Badge>
           <InfoTip label="unverified rules" side="bottom">
-            The parameters in this rule set were transcribed from the build specification and have
-            not yet been re-checked against the CPF Board pages they cite. Treat every figure as
-            provisional until this notice is gone.
+            The parameters in this rule set were transcribed from the build specification and have not yet
+            been re-checked against the CPF Board pages they cite. Treat every figure as provisional until
+            this notice is gone.
           </InfoTip>
         </>
       )}

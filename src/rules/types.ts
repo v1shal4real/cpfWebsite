@@ -118,10 +118,9 @@ export interface InterestRules extends Sourced<'extraInterestCountingOrder'> {
   extraInterestOnOrdinaryCreditedTo: 'special-or-retirement';
 }
 
-export interface Thresholds
-  extends Sourced<
-    'basicHealthcareSum' | 'basicRetirementSum' | 'enhancedRetirementSum' | 'medisaveOverflowTo'
-  > {
+export interface Thresholds extends Sourced<
+  'basicHealthcareSum' | 'basicRetirementSum' | 'enhancedRetirementSum' | 'medisaveOverflowTo'
+> {
   /** Cap on MediSave. Revised annually below 65, then fixed for life at 65. */
   basicHealthcareSum: number;
   /**
@@ -200,8 +199,9 @@ export interface Escalation extends Sourced<'basicHealthcareSum'> {
  * From then on, the Ordinary Account is withdrawable in full if the FRS has
  * been set aside, and up to a fixed amount if it has not.
  */
-export interface RetirementAccountRules
-  extends Sourced<'specialAccountRemainderTo' | 'withdrawableWithoutFullRetirementSum'> {
+export interface RetirementAccountRules extends Sourced<
+  'specialAccountRemainderTo' | 'withdrawableWithoutFullRetirementSum'
+> {
   /** The accounts the RA is filled from, first to last. */
   fundedFrom: readonly ('special' | 'ordinary')[];
   /** Where Special Account savings the RA has no room for go when it closes. */
@@ -235,10 +235,13 @@ export interface LoanLimits {
   };
 }
 
-export interface HousingRules
-  extends Sourced<
-    'hdbLoanRetentionCap' | 'concessionaryLoanRate' | 'concessionaryLoanSpread' | 'hdbLoanLimits' | 'bankLoanLimits'
-  > {
+export interface HousingRules extends Sourced<
+  | 'hdbLoanRetentionCap'
+  | 'concessionaryLoanRate'
+  | 'concessionaryLoanSpread'
+  | 'hdbLoanLimits'
+  | 'bankLoanLimits'
+> {
   /**
    * Rate at which CPF used for property accrues interest, compounded annually.
    * CPF Board defines it as what the savings would have earned had they stayed

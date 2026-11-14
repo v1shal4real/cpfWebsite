@@ -39,7 +39,10 @@ export function comparisonSentence(a: number, b: number): string {
   return `Combined balances at 55: ${formatMoney(Math.abs(difference))} ${direction} in scenario B than in scenario A.`;
 }
 
-export function comparisonMetric(resultA: ProjectionResult, resultB: ProjectionResult): ComparisonMetric | null {
+export function comparisonMetric(
+  resultA: ProjectionResult,
+  resultB: ProjectionResult,
+): ComparisonMetric | null {
   const a = combinedAt55(resultA);
   const b = combinedAt55(resultB);
   if (a === null || b === null) return null;

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { CURRENT_RULE_SET } from '@/rules';
 import { project, projectDraft } from './project';
-import { INPUT_LIMITS, validateProjectionInput, type ProjectionDraft, type ValidationResult } from './validate';
+import {
+  INPUT_LIMITS,
+  validateProjectionInput,
+  type ProjectionDraft,
+  type ValidationResult,
+} from './validate';
 
 const NO_HOUSING: ProjectionDraft = {
   startMonth: '2026-01',
@@ -76,26 +81,40 @@ describe('a complete draft', () => {
 
   it('carries a bank loan’s own rate', () => {
     const { input } = valid(validateProjectionInput(BANK_PURCHASE));
-    expect(input.housing?.loan).toEqual({ kind: 'bank', principal: 37_500_000, tenureYears: 30, interestRate: 0.03 });
+    expect(input.housing?.loan).toEqual({
+      kind: 'bank',
+      principal: 37_500_000,
+      tenureYears: 30,
+      interestRate: 0.03,
+    });
   });
 });
 
 describe('age', () => {
   it('accepts 16 to 70', () => {
-    for (const currentAge of [16, 45, 70]) expect(validateProjectionInput({ ...NO_HOUSING, currentAge }).ok).toBe(true);
+    for (const currentAge of [16, 45, 70])
+      expect(validateProjectionInput({ ...NO_HOUSING, currentAge }).ok).toBe(true);
   });
 
   it('rejects ages outside 16 to 70, naming the bound', () => {
     expect(errorsOf(validateProjectionInput({ ...NO_HOUSING, currentAge: 15 }))).toEqual([
       { field: 'currentAge', code: 'below-minimum', message: 'Current age must be at least 16.', limit: 16 },
     ]);
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: 71 }), 'currentAge')).toBe('above-maximum');
+    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: 71 }), 'currentAge')).toBe(
+      'above-maximum',
+    );
   });
 
   it('rejects a missing, fractional or non-numeric age', () => {
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: undefined }), 'currentAge')).toBe('required');
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: 30.5 }), 'currentAge')).toBe('not-a-whole-number');
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: Number.NaN }), 'currentAge')).toBe('not-a-number');
+    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: undefined }), 'currentAge')).toBe(
+      'required',
+    );
+    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: 30.5 }), 'currentAge')).toBe(
+      'not-a-whole-number',
+    );
+    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, currentAge: Number.NaN }), 'currentAge')).toBe(
+      'not-a-number',
+    );
   });
 
   it('projects to 65, or from the current age when older', () => {
@@ -109,7 +128,11 @@ describe('salary', () => {
     const threshold = CURRENT_RULE_SET.contributionRates.fullRatesFromMonthlyWage * 100;
     const result = validateProjectionInput({ ...NO_HOUSING, monthlySalary: threshold });
     expect(errorsOf(result)).toEqual([
-      expect.objectContaining({ field: 'monthlySalary', code: 'graduated-rates-not-modelled', limit: threshold }),
+      expect.objectContaining({
+        field: 'monthlySalary',
+        code: 'graduated-rates-not-modelled',
+        limit: threshold,
+      }),
     ]);
     expect(validateProjectionInput({ ...NO_HOUSING, monthlySalary: threshold + 1 }).ok).toBe(true);
   });
@@ -122,25 +145,39 @@ describe('salary', () => {
       expect.objectContaining({ field: 'salaryGrowthRate', code: 'graduated-rates-not-modelled' }),
     ]);
     // The same cut from a salary that stays above the threshold to 65 is fine.
-    expect(validateProjectionInput({ ...NO_HOUSING, monthlySalary: 500_000, salaryGrowthRate: -0.01 }).ok).toBe(true);
+    expect(
+      validateProjectionInput({ ...NO_HOUSING, monthlySalary: 500_000, salaryGrowthRate: -0.01 }).ok,
+    ).toBe(true);
   });
 
   it('rejects a negative or missing salary', () => {
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, monthlySalary: -1 }), 'monthlySalary')).toBe('below-minimum');
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, monthlySalary: undefined }), 'monthlySalary')).toBe('required');
+    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, monthlySalary: -1 }), 'monthlySalary')).toBe(
+      'below-minimum',
+    );
+    expect(
+      codeFor(validateProjectionInput({ ...NO_HOUSING, monthlySalary: undefined }), 'monthlySalary'),
+    ).toBe('required');
   });
 
   it('bounds salary growth and the raise month', () => {
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, salaryGrowthRate: 0.25 }), 'salaryGrowthRate')).toBe('above-maximum');
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, salaryGrowthRate: -0.2 }), 'salaryGrowthRate')).toBe('below-minimum');
+    expect(
+      codeFor(validateProjectionInput({ ...NO_HOUSING, salaryGrowthRate: 0.25 }), 'salaryGrowthRate'),
+    ).toBe('above-maximum');
+    expect(
+      codeFor(validateProjectionInput({ ...NO_HOUSING, salaryGrowthRate: -0.2 }), 'salaryGrowthRate'),
+    ).toBe('below-minimum');
     expect(validateProjectionInput({ ...NO_HOUSING, salaryGrowthRate: 0 }).ok).toBe(true);
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, salaryRaiseMonth: 13 }), 'salaryRaiseMonth')).toBe('above-maximum');
+    expect(
+      codeFor(validateProjectionInput({ ...NO_HOUSING, salaryRaiseMonth: 13 }), 'salaryRaiseMonth'),
+    ).toBe('above-maximum');
   });
 });
 
 describe('balances', () => {
   it('rejects a negative balance and rounds to the cent', () => {
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, balances: { special: -5 } }), 'balances.special')).toBe('below-minimum');
+    expect(
+      codeFor(validateProjectionInput({ ...NO_HOUSING, balances: { special: -5 } }), 'balances.special'),
+    ).toBe('below-minimum');
     const { input } = valid(validateProjectionInput({ ...NO_HOUSING, balances: { ordinary: 100.6 } }));
     expect(input.openingBalances.ordinary).toBe(101);
   });
@@ -149,7 +186,12 @@ describe('balances', () => {
 describe('housing fields', () => {
   it('ignores every housing field when no plan is selected', () => {
     // Leftovers in hidden fields, even invalid ones, cannot block a projection.
-    const result = validateProjectionInput({ ...HDB_PURCHASE, housingPlan: 'none', purchaseAge: 10, loanTenureYears: 99 });
+    const result = validateProjectionInput({
+      ...HDB_PURCHASE,
+      housingPlan: 'none',
+      purchaseAge: 10,
+      loanTenureYears: 99,
+    });
     expect(valid(result).input.housing).toBeUndefined();
   });
 
@@ -165,19 +207,32 @@ describe('housing fields', () => {
   });
 
   it('requires a rate for a bank loan only', () => {
-    expect(codeFor(validateProjectionInput({ ...BANK_PURCHASE, bankLoanRate: undefined }), 'bankLoanRate')).toBe('required');
+    expect(
+      codeFor(validateProjectionInput({ ...BANK_PURCHASE, bankLoanRate: undefined }), 'bankLoanRate'),
+    ).toBe('required');
     expect(validateProjectionInput({ ...HDB_PURCHASE, bankLoanRate: undefined }).ok).toBe(true);
   });
 
   it('rejects a purchase age before the current age or after the projection ends', () => {
-    expect(codeFor(validateProjectionInput({ ...HDB_PURCHASE, purchaseAge: 29 }), 'purchaseAge')).toBe('before-current-age');
-    expect(codeFor(validateProjectionInput({ ...HDB_PURCHASE, purchaseAge: 66 }), 'purchaseAge')).toBe('after-projection-end');
+    expect(codeFor(validateProjectionInput({ ...HDB_PURCHASE, purchaseAge: 29 }), 'purchaseAge')).toBe(
+      'before-current-age',
+    );
+    expect(codeFor(validateProjectionInput({ ...HDB_PURCHASE, purchaseAge: 66 }), 'purchaseAge')).toBe(
+      'after-projection-end',
+    );
     expect(validateProjectionInput({ ...HDB_PURCHASE, purchaseAge: 30 }).ok).toBe(true);
   });
 
   it('rejects a downpayment above the price and an OA share outside 0 to 100%', () => {
-    expect(codeFor(validateProjectionInput({ ...HDB_PURCHASE, downpayment: 60_000_000 }), 'downpayment')).toBe('exceeds-property-price');
-    expect(codeFor(validateProjectionInput({ ...HDB_PURCHASE, downpaymentShareFromOrdinaryAccount: 1.1 }), 'downpaymentShareFromOrdinaryAccount')).toBe('above-maximum');
+    expect(
+      codeFor(validateProjectionInput({ ...HDB_PURCHASE, downpayment: 60_000_000 }), 'downpayment'),
+    ).toBe('exceeds-property-price');
+    expect(
+      codeFor(
+        validateProjectionInput({ ...HDB_PURCHASE, downpaymentShareFromOrdinaryAccount: 1.1 }),
+        'downpaymentShareFromOrdinaryAccount',
+      ),
+    ).toBe('above-maximum');
   });
 
   it('keeps tenure within the bounds for the kind of loan', () => {
@@ -188,13 +243,27 @@ describe('housing fields', () => {
       expect.objectContaining({ field: 'loanTenureYears', code: 'above-maximum', limit: hdbMax }),
     ]);
     // Above 30 years the reduced bank limits apply: 45% down, 10% of the price in cash.
-    expect(validateProjectionInput({ ...BANK_PURCHASE, downpayment: 22_500_000, downpaymentShareFromOrdinaryAccount: 0.5, loanTenureYears: bankMax }).ok).toBe(true);
-    expect(codeFor(validateProjectionInput({ ...BANK_PURCHASE, loanTenureYears: 0 }), 'loanTenureYears')).toBe('below-minimum');
+    expect(
+      validateProjectionInput({
+        ...BANK_PURCHASE,
+        downpayment: 22_500_000,
+        downpaymentShareFromOrdinaryAccount: 0.5,
+        loanTenureYears: bankMax,
+      }).ok,
+    ).toBe(true);
+    expect(
+      codeFor(validateProjectionInput({ ...BANK_PURCHASE, loanTenureYears: 0 }), 'loanTenureYears'),
+    ).toBe('below-minimum');
   });
 
   it('needs no tenure or rate when the downpayment covers the whole price', () => {
     const cash = valid(
-      validateProjectionInput({ ...BANK_PURCHASE, downpayment: 50_000_000, loanTenureYears: undefined, bankLoanRate: undefined }),
+      validateProjectionInput({
+        ...BANK_PURCHASE,
+        downpayment: 50_000_000,
+        loanTenureYears: undefined,
+        bankLoanRate: undefined,
+      }),
     );
     expect(cash.input.housing?.loan.principal).toBe(0);
   });
@@ -204,7 +273,12 @@ describe('housing fields', () => {
     const result = valid(validateProjectionInput({ ...HDB_PURCHASE, ordinaryAccountRetention: 5_000_000 }));
     expect(result.input.housing?.ordinaryAccountRetention).toBe(cap);
     expect(result.adjustments).toEqual([
-      expect.objectContaining({ field: 'ordinaryAccountRetention', code: 'clamped-to-maximum', from: 5_000_000, to: cap }),
+      expect.objectContaining({
+        field: 'ordinaryAccountRetention',
+        code: 'clamped-to-maximum',
+        from: 5_000_000,
+        to: cap,
+      }),
     ]);
   });
 
@@ -222,9 +296,9 @@ describe('the pinned rule set', () => {
   });
 
   it('rejects an unknown rule set id as a typed error rather than guessing', () => {
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, rulesAsAt: 'sg-cpf-1999-01' }), 'rulesAsAt')).toBe(
-      'unknown-rule-set',
-    );
+    expect(
+      codeFor(validateProjectionInput({ ...NO_HOUSING, rulesAsAt: 'sg-cpf-1999-01' }), 'rulesAsAt'),
+    ).toBe('unknown-rule-set');
   });
 
   it('projects the same figures pinned to the current rules as unpinned', () => {
@@ -250,13 +324,21 @@ describe('the result the interface maps to fields', () => {
   });
 
   it('reports a malformed start month as an error rather than throwing', () => {
-    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, startMonth: '2026-13' }), 'startMonth')).toBe('invalid-month');
+    expect(codeFor(validateProjectionInput({ ...NO_HOUSING, startMonth: '2026-13' }), 'startMonth')).toBe(
+      'invalid-month',
+    );
   });
 
   it('never throws, whatever it is given', () => {
     const awkward = [undefined, null, Number.NaN, Number.POSITIVE_INFINITY, -1, 0, 1e15, 'text'] as unknown[];
     for (const value of awkward) {
-      for (const field of ['currentAge', 'monthlySalary', 'salaryGrowthRate', 'propertyPrice', 'downpayment'] as const) {
+      for (const field of [
+        'currentAge',
+        'monthlySalary',
+        'salaryGrowthRate',
+        'propertyPrice',
+        'downpayment',
+      ] as const) {
         expect(() => validateProjectionInput({ ...HDB_PURCHASE, [field]: value as number })).not.toThrow();
       }
     }
@@ -267,7 +349,8 @@ describe('projecting a draft', () => {
   it('returns the projection for a valid draft', () => {
     const outcome = projectDraft(HDB_PURCHASE);
     expect(outcome.ok).toBe(true);
-    if (outcome.ok) expect(outcome.result).toEqual(project(valid(validateProjectionInput(HDB_PURCHASE)).input));
+    if (outcome.ok)
+      expect(outcome.result).toEqual(project(valid(validateProjectionInput(HDB_PURCHASE)).input));
   });
 
   it('returns errors instead of throwing for a draft the engine could not run', () => {
@@ -282,8 +365,16 @@ describe('projecting a draft', () => {
         // Buy at 32, or now if older; never after the projection ends.
         const endAge = Math.max(INPUT_LIMITS.projectionEndAge, currentAge);
         // Late bank buyers run past 65 and meet the reduced limits, so they put 50% down.
-        const late = base.housingPlan === 'bank-loan' ? { downpayment: 25_000_000, downpaymentShareFromOrdinaryAccount: 0.5 } : {};
-        const draft = { ...base, ...late, currentAge, purchaseAge: Math.min(Math.max(currentAge, 32), endAge) };
+        const late =
+          base.housingPlan === 'bank-loan'
+            ? { downpayment: 25_000_000, downpaymentShareFromOrdinaryAccount: 0.5 }
+            : {};
+        const draft = {
+          ...base,
+          ...late,
+          currentAge,
+          purchaseAge: Math.min(Math.max(currentAge, 32), endAge),
+        };
         const outcome = projectDraft(draft);
         expect(outcome.ok, `${base.housingPlan} at ${currentAge}`).toBe(true);
         if (outcome.ok) expect(outcome.result.months.length).toBeGreaterThan(0);
@@ -306,14 +397,24 @@ describe('loan-to-value and minimum cash limits', () => {
 
   it('lets an HDB loan downpayment come wholly from the Ordinary Account', () => {
     expect(limits.hdbLoanLimits.minimumCashDownpayment).toBe(0);
-    expect(validateProjectionInput({ ...HDB_PURCHASE, downpaymentShareFromOrdinaryAccount: 1 }).ok).toBe(true);
+    expect(validateProjectionInput({ ...HDB_PURCHASE, downpaymentShareFromOrdinaryAccount: 1 }).ok).toBe(
+      true,
+    );
   });
 
   it('requires 5% of the price in cash with a bank loan', () => {
     // $500,000 price, $125,000 down: at most 80% of the downpayment from the OA.
-    expect(validateProjectionInput({ ...BANK_PURCHASE, downpaymentShareFromOrdinaryAccount: 0.8 }).ok).toBe(true);
-    expect(errorsOf(validateProjectionInput({ ...BANK_PURCHASE, downpaymentShareFromOrdinaryAccount: 0.85 }))).toEqual([
-      expect.objectContaining({ field: 'downpaymentShareFromOrdinaryAccount', code: 'below-minimum-cash', limit: 0.8 }),
+    expect(validateProjectionInput({ ...BANK_PURCHASE, downpaymentShareFromOrdinaryAccount: 0.8 }).ok).toBe(
+      true,
+    );
+    expect(
+      errorsOf(validateProjectionInput({ ...BANK_PURCHASE, downpaymentShareFromOrdinaryAccount: 0.85 })),
+    ).toEqual([
+      expect.objectContaining({
+        field: 'downpaymentShareFromOrdinaryAccount',
+        code: 'below-minimum-cash',
+        limit: 0.8,
+      }),
     ]);
   });
 

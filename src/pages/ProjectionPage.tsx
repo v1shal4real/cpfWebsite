@@ -1,12 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Button,
-  Callout,
-  Card,
-  CardBody,
-  CardHeader,
-  CopyLinkButton,
-} from '@/components/ui';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Callout, Card, CardBody, CardHeader, CopyLinkButton } from '@/components/ui';
 import { Container } from '@/components/layout/AppShell';
 import { projectDraft } from '@/engine/project';
 import type { MonthStamp, ProjectionResult } from '@/engine/types';
@@ -19,7 +12,14 @@ import { ComparisonView } from './projection/ComparisonView';
 import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
 import { Timeline } from './projection/Timeline';
-import { DEFAULT_FORM, errorsByField, toDraft, type FormErrors, type FormField, type FormValues } from './projection/form';
+import {
+  DEFAULT_FORM,
+  errorsByField,
+  toDraft,
+  type FormErrors,
+  type FormField,
+  type FormValues,
+} from './projection/form';
 import { encodeScenariosUrl } from './projection/urlState';
 import { ScenarioBar } from './projection/ScenarioBar';
 import {
@@ -99,9 +99,12 @@ export function ProjectionPage({
   // While the inputs cannot be projected, for instance halfway through typing
   // a number, the last projection that could stays on screen, marked as such,
   // rather than the figures vanishing under the visitor's cursor.
-  const lastResult = useRef<ProjectionResult | null>(null);
-  if (outcome.ok) lastResult.current = outcome.result;
-  const shown = outcome.ok ? outcome.result : lastResult.current;
+  // Kept in state, not a ref: React's documented pattern for remembering a
+  // value from an earlier render. Setting it during render is safe because
+  // the guard stops once it matches, and React re-renders before painting.
+  const [lastResult, setLastResult] = useState<ProjectionResult | null>(null);
+  if (outcome.ok && lastResult !== outcome.result) setLastResult(outcome.result);
+  const shown = outcome.ok ? outcome.result : lastResult;
 
   // With a scenario B, the one not being edited is projected too, for the
   // side-by-side view. Its inputs were valid when last edited or decoded.
@@ -129,8 +132,8 @@ export function ProjectionPage({
           Your CPF balances, projected to {shown ? shown.input.endAge : INPUT_LIMITS.projectionEndAge}
         </h1>
         <p className="text-ink-muted">
-          An illustrative calculation from published CPF Board parameters and the inputs below. It
-          is a projection, not advice, and suggests no course of action.
+          An illustrative calculation from published CPF Board parameters and the inputs below. It is a
+          projection, not advice, and suggests no course of action.
         </p>
         <CopyLinkButton label="Copy link to this projection" className="mt-1" />
       </header>
@@ -166,7 +169,9 @@ export function ProjectionPage({
         {shown ? (
           <ResultsRegion
             result={shown}
-            compare={comparison?.resultB ? { resultA: comparison.resultA, resultB: comparison.resultB } : undefined}
+            compare={
+              comparison?.resultB ? { resultA: comparison.resultA, resultB: comparison.resultB } : undefined
+            }
             scenarioLabel={scenarios.b ? `Scenario ${scenarios.active.toUpperCase()}` : undefined}
           />
         ) : null}
@@ -202,11 +207,21 @@ function LinkNotice({ notices }: { notices: readonly string[] }) {
  * screen, and lists every problem in one place, including any beside a field
  * the visitor has not reached yet.
  */
-function StaleNotice({ errors, hasEarlierResult }: { errors: readonly FieldError[]; hasEarlierResult: boolean }) {
+function StaleNotice({
+  errors,
+  hasEarlierResult,
+}: {
+  errors: readonly FieldError[];
+  hasEarlierResult: boolean;
+}) {
   return (
     <Callout
       tone="caution"
-      title={hasEarlierResult ? 'Showing your last complete projection' : 'This projection cannot be calculated yet'}
+      title={
+        hasEarlierResult
+          ? 'Showing your last complete projection'
+          : 'This projection cannot be calculated yet'
+      }
     >
       <p>
         {hasEarlierResult
@@ -280,7 +295,10 @@ function ResultsRegion({
 
   return (
     <section aria-labelledby="results-heading" className="flex min-w-0 flex-col gap-6 lg:[grid-area:results]">
-      <h2 id="results-heading" className={scenarioLabel ? 'text-[0.9375rem] font-semibold text-ink' : 'sr-only-abs'}>
+      <h2
+        id="results-heading"
+        className={scenarioLabel ? 'text-[0.9375rem] font-semibold text-ink' : 'sr-only-abs'}
+      >
         {scenarioLabel ? `Detail for ${scenarioLabel}, the scenario being edited` : 'Projection detail'}
       </h2>
       <BalanceChart

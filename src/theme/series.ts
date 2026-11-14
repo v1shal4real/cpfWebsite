@@ -37,8 +37,7 @@ export const SERIES: Record<SeriesKey, SeriesMeta> = {
     color: 'var(--series-oa)',
     soft: 'var(--series-oa-soft)',
     pattern: 'texture-oa',
-    description:
-      'Usable for housing, insurance, education and investment. Interest floor of 2.5% a year.',
+    description: 'Usable for housing, insurance, education and investment. Interest floor of 2.5% a year.',
   },
   sa: {
     key: 'sa',

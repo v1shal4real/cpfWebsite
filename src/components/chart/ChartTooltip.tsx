@@ -26,7 +26,15 @@ export interface PayloadEntry {
 }
 
 /** The box and its heading. `aside` sits at the right of the heading, e.g. a column key. */
-export function TooltipFrame({ heading, aside, children }: { heading: ReactNode; aside?: ReactNode; children: ReactNode }) {
+export function TooltipFrame({
+  heading,
+  aside,
+  children,
+}: {
+  heading: ReactNode;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className="min-w-44 rounded-md border border-line-strong bg-surface px-3 py-2 shadow-lg">
       <p className="mb-1.5 flex justify-between gap-4 text-[0.75rem] font-medium text-ink">
@@ -39,12 +47,24 @@ export function TooltipFrame({ heading, aside, children }: { heading: ReactNode;
 }
 
 /** One series: its swatch and name on the left, the figure in ink on the right. */
-export function TooltipRow({ series, label, value }: { series: SeriesKey; label?: ReactNode; value: ReactNode }) {
+export function TooltipRow({
+  series,
+  label,
+  value,
+}: {
+  series: SeriesKey;
+  label?: ReactNode;
+  value: ReactNode;
+}) {
   const meta = SERIES[series];
   return (
     <li className="flex items-center justify-between gap-4 text-[0.75rem]">
       <span className="flex items-center gap-1.5 text-ink-muted">
-        <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ backgroundColor: meta.color }} />
+        <span
+          aria-hidden="true"
+          className="size-2 shrink-0 rounded-full"
+          style={{ backgroundColor: meta.color }}
+        />
         {label ?? meta.label}
       </span>
       <span className="font-medium text-ink tabular-nums" data-numeric>

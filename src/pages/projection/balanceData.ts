@@ -31,7 +31,9 @@ export const scenarioBKey = (key: BalanceSeriesKey) => `b_${key}` as const;
  * A chart point: dollars per series, `null` where the account does not exist
  * at that age. With a comparison, scenario B's series sit under `b_` keys.
  */
-export type ChartPoint = { age: number } & Partial<Record<BalanceSeriesKey | ReturnType<typeof scenarioBKey>, number | null>>;
+export type ChartPoint = { age: number } & Partial<
+  Record<BalanceSeriesKey | ReturnType<typeof scenarioBKey>, number | null>
+>;
 
 const toDollars = (cents: number) => cents / 100;
 
@@ -49,7 +51,11 @@ export function yearlyRows(result: ProjectionResult): YearRow[] {
       medisave: toDollars(b.medisave),
       retirement: toDollars(b.retirement),
     };
-    rows.push({ age, balances, total: balances.ordinary + balances.special + balances.medisave + balances.retirement });
+    rows.push({
+      age,
+      balances,
+      total: balances.ordinary + balances.special + balances.medisave + balances.retirement,
+    });
   }
   return rows;
 }

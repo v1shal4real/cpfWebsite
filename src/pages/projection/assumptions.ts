@@ -48,7 +48,8 @@ function loanRows(name: string, limits: LoanLimits): AssumptionRow[] {
     { label: `${name}: maximum loan`, value: `${pct(limits.maximumLoanToValue)} of the price` },
     {
       label: `${name}: minimum cash downpayment`,
-      value: limits.minimumCashDownpayment > 0 ? `${pct(limits.minimumCashDownpayment)} of the price` : 'None',
+      value:
+        limits.minimumCashDownpayment > 0 ? `${pct(limits.minimumCashDownpayment)} of the price` : 'None',
     },
     { label: `${name}: longest tenure`, value: `${limits.maximumTenureYears} years` },
   ];
@@ -63,7 +64,15 @@ function loanRows(name: string, limits: LoanLimits): AssumptionRow[] {
 }
 
 export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
-  const { wageCeilings: w, contributionRates: c, allocation: a, interest: i, thresholds: t, retirementAccount: ra, housing: h } = rules;
+  const {
+    wageCeilings: w,
+    contributionRates: c,
+    allocation: a,
+    interest: i,
+    thresholds: t,
+    retirementAccount: ra,
+    housing: h,
+  } = rules;
   return [
     {
       id: 'wageCeilings',
@@ -111,13 +120,18 @@ export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
         { label: 'Retirement Account', value: `${pct(i.retirement)} a year` },
         {
           label: 'Extra interest below 55',
-          value: i.extraTiersBelow55.map((tier) => `${pct(tier.rate)} on the first ${formatMoney(tier.amount)}`).join(', '),
+          value: i.extraTiersBelow55
+            .map((tier) => `${pct(tier.rate)} on the first ${formatMoney(tier.amount)}`)
+            .join(', '),
           sourceId: own(i, 'extraInterestCountingOrder'),
         },
         {
           label: 'Extra interest from 55',
           value: i.extraTiersFrom55
-            .map((tier, n) => `${pct(tier.rate)} on the ${n === 0 ? 'first' : 'next'} ${formatMoney(tier.amount)}`)
+            .map(
+              (tier, n) =>
+                `${pct(tier.rate)} on the ${n === 0 ? 'first' : 'next'} ${formatMoney(tier.amount)}`,
+            )
             .join(', '),
           sourceId: own(i, 'extraInterestCountingOrder'),
         },
@@ -133,10 +147,22 @@ export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
       title: 'Retirement and healthcare sums',
       sourceId: t.sourceId,
       rows: [
-        { label: 'Basic Healthcare Sum', value: formatMoney(t.basicHealthcareSum), sourceId: own(t, 'basicHealthcareSum') },
-        { label: 'Basic Retirement Sum', value: formatMoney(t.basicRetirementSum), sourceId: own(t, 'basicRetirementSum') },
+        {
+          label: 'Basic Healthcare Sum',
+          value: formatMoney(t.basicHealthcareSum),
+          sourceId: own(t, 'basicHealthcareSum'),
+        },
+        {
+          label: 'Basic Retirement Sum',
+          value: formatMoney(t.basicRetirementSum),
+          sourceId: own(t, 'basicRetirementSum'),
+        },
         { label: 'Full Retirement Sum', value: formatMoney(t.fullRetirementSum) },
-        { label: 'Enhanced Retirement Sum', value: formatMoney(t.enhancedRetirementSum), sourceId: own(t, 'enhancedRetirementSum') },
+        {
+          label: 'Enhanced Retirement Sum',
+          value: formatMoney(t.enhancedRetirementSum),
+          sourceId: own(t, 'enhancedRetirementSum'),
+        },
         {
           label: 'MediSave above the BHS',
           value: 'Moves to the SA or RA until it holds the FRS, then to the OA',
@@ -149,7 +175,10 @@ export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
       title: 'At age 55',
       sourceId: ra.sourceId,
       rows: [
-        { label: 'Retirement Account formed from', value: 'Special Account first, then Ordinary Account, up to the FRS' },
+        {
+          label: 'Retirement Account formed from',
+          value: 'Special Account first, then Ordinary Account, up to the FRS',
+        },
         {
           label: 'Special Account savings above the FRS',
           value: 'Move to the Ordinary Account',
@@ -168,16 +197,43 @@ export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
       sourceId: h.sourceId,
       rows: [
         { label: 'Accrued interest on CPF used', value: `${pct(h.accruedInterestRate)} a year, compounded` },
-        { label: 'HDB loan rate', value: `${pct(h.concessionaryLoanRate)} a year (OA rate + ${pct(h.concessionaryLoanSpread)})`, sourceId: own(h, 'concessionaryLoanRate') },
-        { label: 'OA an HDB-loan buyer may retain', value: `Up to ${formatMoney(h.hdbLoanRetentionCap)}`, sourceId: own(h, 'hdbLoanRetentionCap') },
-        ...loanRows('HDB loan', h.hdbLoanLimits).map((row) => ({ ...row, sourceId: own(h, 'hdbLoanLimits') })),
-        ...loanRows('Bank loan', h.bankLoanLimits).map((row) => ({ ...row, sourceId: own(h, 'bankLoanLimits') })),
+        {
+          label: 'HDB loan rate',
+          value: `${pct(h.concessionaryLoanRate)} a year (OA rate + ${pct(h.concessionaryLoanSpread)})`,
+          sourceId: own(h, 'concessionaryLoanRate'),
+        },
+        {
+          label: 'OA an HDB-loan buyer may retain',
+          value: `Up to ${formatMoney(h.hdbLoanRetentionCap)}`,
+          sourceId: own(h, 'hdbLoanRetentionCap'),
+        },
+        ...loanRows('HDB loan', h.hdbLoanLimits).map((row) => ({
+          ...row,
+          sourceId: own(h, 'hdbLoanLimits'),
+        })),
+        ...loanRows('Bank loan', h.bankLoanLimits).map((row) => ({
+          ...row,
+          sourceId: own(h, 'bankLoanLimits'),
+        })),
       ],
     },
   ];
 }
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
 /** The user's own assumptions and the rule set's escalation assumptions. */
 export function assumptionGroup(input: ProjectionInput, rules: RuleSet): AssumptionGroup {
@@ -192,7 +248,10 @@ export function assumptionGroup(input: ProjectionInput, rules: RuleSet): Assumpt
     },
   ];
   if (housing?.loan.kind === 'bank') {
-    rows.push({ label: 'Bank loan rate (yours)', value: `${pct(housing.loan.interestRate, 2)} a year, for the whole tenure` });
+    rows.push({
+      label: 'Bank loan rate (yours)',
+      value: `${pct(housing.loan.interestRate, 2)} a year, for the whole tenure`,
+    });
   }
   for (const a of escalationAssumptions(rules)) {
     rows.push({

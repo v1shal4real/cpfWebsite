@@ -4,7 +4,8 @@ import { DEFAULT_FORM, toDraft } from './form';
 import { retentionHint, retentionNote, shareInterestHint } from './retentionCopy';
 
 /** Words that would turn a statement of the rules into advice or a verdict. */
-const FRAMING = /\b(should|recommend|advis|best|better|worse|good|bad|smart|wise|optimal|ideal|must keep|we suggest|you need to|don't|avoid|lose|losing|gain|benefit|penalt|waste)/i;
+const FRAMING =
+  /\b(should|recommend|advis|best|better|worse|good|bad|smart|wise|optimal|ideal|must keep|we suggest|you need to|don't|avoid|lose|losing|gain|benefit|penalt|waste)/i;
 
 const allCopy = (plan: 'hdb-loan' | 'bank-loan') => {
   const note = retentionNote(CURRENT_RULE_SET, plan);
@@ -13,7 +14,9 @@ const allCopy = (plan: 'hdb-loan' | 'bank-loan') => {
 
 describe('retention copy', () => {
   it('explains that the HDB cap and the extra-interest sub-cap are the same figure', () => {
-    expect(CURRENT_RULE_SET.housing.hdbLoanRetentionCap).toBe(CURRENT_RULE_SET.interest.ordinaryAccountExtraInterestCap);
+    expect(CURRENT_RULE_SET.housing.hdbLoanRetentionCap).toBe(
+      CURRENT_RULE_SET.interest.ordinaryAccountExtraInterestCap,
+    );
     const note = retentionNote(CURRENT_RULE_SET, 'hdb-loan');
     expect(note.title).toBe('Why $20,000?');
     expect(note.paragraphs.join(' ')).toContain('The two limits are the same figure, $20,000, by design.');
@@ -42,7 +45,9 @@ describe('retention copy', () => {
 
 describe('retention input', () => {
   it('reaches the engine draft in cents, and empty means none', () => {
-    expect(toDraft({ ...DEFAULT_FORM, retainedOrdinaryAccount: 20_000 }, '2026-10').ordinaryAccountRetention).toBe(2_000_000);
+    expect(
+      toDraft({ ...DEFAULT_FORM, retainedOrdinaryAccount: 20_000 }, '2026-10').ordinaryAccountRetention,
+    ).toBe(2_000_000);
     expect(toDraft(DEFAULT_FORM, '2026-10').ordinaryAccountRetention).toBeUndefined();
   });
 });

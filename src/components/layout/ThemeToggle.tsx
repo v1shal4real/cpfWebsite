@@ -1,5 +1,5 @@
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { useTheme, type ThemePreference } from '@/theme/ThemeProvider';
+import { useTheme, type ThemePreference } from '@/theme/themeContext';
 
 /** Light / System / Dark. Icons are labelled for assistive tech via `srLabel`. */
 export function ThemeToggle({ className }: { className?: string }) {
