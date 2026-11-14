@@ -40,7 +40,8 @@ const HDB: FormValues = {
   retainedOrdinaryAccount: 20_000,
 };
 
-const VIEWS: Record<string, { form: FormValues; notices?: string[] }> = {
+const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValues }> = {
+  'two scenarios side by side': { form: DEFAULT_FORM, b: HDB },
   'default projection': { form: DEFAULT_FORM },
   'HDB loan': { form: HDB },
   'bank loan': { form: { ...HDB, housingPlan: 'bank-loan', bankLoanRatePercent: 3, retainedOrdinaryAccount: null } },
@@ -52,11 +53,16 @@ const VIEWS: Record<string, { form: FormValues; notices?: string[] }> = {
   },
 };
 
-const render = ({ form, notices = [] }: { form: FormValues; notices?: string[] }) =>
+const render = ({ form, notices = [], b }: { form: FormValues; notices?: string[]; b?: FormValues }) =>
   renderToString(
     <ThemeProvider>
       <AppShell ruleSet={CURRENT_RULE_SET}>
-        <ProjectionPage startMonth="2026-10" initialForm={form} linkNotices={notices} />
+        <ProjectionPage
+          startMonth="2026-10"
+          initialForm={form}
+          initialScenarios={b ? { a: form, b, active: 'b' } : undefined}
+          linkNotices={notices}
+        />
       </AppShell>
     </ThemeProvider>,
   );
