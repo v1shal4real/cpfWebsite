@@ -19,7 +19,9 @@ export const RULE_SET_2026: RuleSet = {
   id: 'sg-cpf-2026-01',
   label: '1 January 2026',
   effectiveFrom: '2026-01-01',
-  effectiveTo: null,
+  // Closed when the 2027 set was added. A link pinned to this set still uses
+  // it for every month: the newest set a link knows is open-ended.
+  effectiveTo: '2026-12-31',
   verified: true,
 
   wageCeilings: {

@@ -1,4 +1,5 @@
 import { RULE_SET_2026 } from './ruleset-2026';
+import { RULE_SET_2027 } from './ruleset-2027';
 import type { SourceId } from './sources';
 import type { RuleSet } from './types';
 
@@ -14,7 +15,9 @@ export * from './escalation';
  * a shared link pinned to `sg-cpf-2026-01` must keep rendering the figures it
  * was built from, and the changelog is the diff between adjacent entries.
  */
-export const RULE_SETS: readonly RuleSet[] = [RULE_SET_2026];
+export const RULE_SETS: readonly RuleSet[] = [RULE_SET_2026, RULE_SET_2027];
+
+export { RULE_SET_2026, RULE_SET_2027 };
 
 /** The newest rule set. What an unpinned session uses. */
 export const CURRENT_RULE_SET: RuleSet = RULE_SETS[RULE_SETS.length - 1]!;
@@ -39,6 +42,23 @@ export const RULES_AS_AT = CURRENT_RULE_SET.label;
  */
 export function resolveRuleSet(isoDate: string, asOf?: string): RuleSet {
   return resolveFrom(RULE_SETS, isoDate, asOf);
+}
+
+/**
+ * The rule sets a projection pinned to `pinned` uses from `isoDate` onwards:
+ * the one in force on that date, then any that take effect later, up to and
+ * including the pinned set. For the rules-as-at stamp, which names the rules
+ * in force today and the changes already scheduled.
+ */
+export function ruleSetsFrom(
+  pinned: RuleSet,
+  isoDate: string,
+  sets: readonly RuleSet[] = RULE_SETS,
+): { inForce: RuleSet; scheduled: RuleSet[] } {
+  const pinnedAt = sets.indexOf(pinned);
+  const known = pinnedAt === -1 ? [pinned] : sets.slice(0, pinnedAt + 1);
+  const inForce = resolveFrom(known, isoDate, pinned.id);
+  return { inForce, scheduled: known.slice(known.indexOf(inForce) + 1) };
 }
 
 /**

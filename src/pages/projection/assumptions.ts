@@ -1,6 +1,13 @@
 import type { ProjectionInput } from '@/engine/types';
 import { formatEffectiveDate, formatMoney } from '@/lib/format';
-import { escalationAssumptions, sourceFor, type LoanLimits, type RuleSet, type SourceId } from '@/rules';
+import {
+  escalationAssumptions,
+  lastPublishedYear,
+  sourceFor,
+  type LoanLimits,
+  type RuleSet,
+  type SourceId,
+} from '@/rules';
 
 /**
  * Everything the projection rests on, grouped for the assumptions panel.
@@ -64,6 +71,11 @@ function loanRows(name: string, limits: LoanLimits): AssumptionRow[] {
 }
 
 export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
+  // The sums are labelled with their year. A set added before January carries
+  // the latest published BHS, which may be the previous year's (see the 2027 set).
+  const setYear = Number(rules.effectiveFrom.slice(0, 4));
+  const bhsSeries = rules.escalation.basicHealthcareSum;
+  const bhsYear = bhsSeries.published[setYear] !== undefined ? setYear : lastPublishedYear(bhsSeries);
   const {
     wageCeilings: w,
     contributionRates: c,
@@ -153,18 +165,18 @@ export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
       sourceId: t.sourceId,
       rows: [
         {
-          label: 'Basic Healthcare Sum',
+          label: `Basic Healthcare Sum, ${bhsYear}`,
           value: formatMoney(t.basicHealthcareSum),
           sourceId: own(t, 'basicHealthcareSum'),
         },
         {
-          label: 'Basic Retirement Sum',
+          label: `Basic Retirement Sum, turning 55 in ${setYear}`,
           value: formatMoney(t.basicRetirementSum),
           sourceId: own(t, 'basicRetirementSum'),
         },
-        { label: 'Full Retirement Sum', value: formatMoney(t.fullRetirementSum) },
+        { label: `Full Retirement Sum, turning 55 in ${setYear}`, value: formatMoney(t.fullRetirementSum) },
         {
-          label: 'Enhanced Retirement Sum',
+          label: `Enhanced Retirement Sum, ${setYear}`,
           value: formatMoney(t.enhancedRetirementSum),
           sourceId: own(t, 'enhancedRetirementSum'),
         },

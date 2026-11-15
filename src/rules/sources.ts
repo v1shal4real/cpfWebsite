@@ -277,12 +277,40 @@ export const SOURCES = {
 
   /* Scheduled changes --------------------------------------------------- */
 
+  /**
+   * States the 2027 rates for every age band, and that the increase for ages
+   * above 55 to 65 goes to the Retirement Account up to the FRS.
+   */
   changes2027: {
     id: 'changes2027',
     title: 'CPF Contribution Changes from 1 January 2027',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/employer/infohub/news/cpf-related-announcements/new-contribution-rates',
-    retrievedOn: '2026-09-14',
+    retrievedOn: '2026-11-15',
+  },
+  /** Table 1: rates and wage brackets from 1 January 2027; OW ceiling $8,000. */
+  contributionRateTable2027: {
+    id: 'contributionRateTable2027',
+    title: 'CPF Contribution Rate Table from 1 January 2027',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/content/dam/web/employer/employer-obligations/documents/jan2027cpfcontributionrates.pdf',
+    retrievedOn: '2026-11-15',
+  },
+  allocationRates2027: {
+    id: 'allocationRates2027',
+    title: 'CPF Allocation Rates from 1 January 2027',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/content/dam/web/employer/employer-obligations/documents/jan2027cpfallocationrates.pdf',
+    retrievedOn: '2026-11-15',
+  },
+  /** States the 4% floor on SA, MA and RA monies extended to 31 December 2027. */
+  interestFloor2027: {
+    id: 'interestFloor2027',
+    title:
+      'Government Extends 4% Interest Rate Floor on Special, MediSave and Retirement Account Monies Until 31 December 2027',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/member/infohub/news/news-releases/government-extends-4-per-cent-interest-rate-floor-on-special-medisave-and-retirement-account-monies-until-31-december-2027',
+    retrievedOn: '2026-11-15',
   },
 } as const satisfies Record<string, Source>;
 

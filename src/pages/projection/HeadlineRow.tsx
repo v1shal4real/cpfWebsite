@@ -32,7 +32,7 @@ export const HeadlineRow = memo(function HeadlineRow({
 }) {
   const figures = headlineFigures(result);
   const { at55 } = figures;
-  const stamp = <RulesStamp compact ruleSet={ruleSet} />;
+  const stamp = <RulesStamp compact ruleSet={ruleSet} from={result.input.startMonth} />;
 
   return (
     <section aria-labelledby="headline-heading" className="flex min-w-0 flex-col gap-3">

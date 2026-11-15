@@ -44,14 +44,21 @@ describe('project', () => {
     }
   });
 
-  it('records the rules each month was computed under', () => {
+  it('records the rules each month was computed under, switching on 1 January 2027', () => {
     const result = project(input());
     for (const month of result.months) {
-      expect(month.ruleSetId).toBe(CURRENT_RULE_SET.id);
+      expect(month.ruleSetId, month.month).toBe(
+        month.month < '2027-01' ? 'sg-cpf-2026-01' : 'sg-cpf-2027-01',
+      );
     }
-    // One entry per distinct rule set, which is one until a second dated set
-    // is added. A projection crossing a rule change lists both, in order.
-    expect(result.ruleSetIds).toEqual([CURRENT_RULE_SET.id]);
+    // One entry per distinct rule set, in order: this projection starts in
+    // November 2026, so it crosses the 2027 rule change.
+    expect(result.ruleSetIds).toEqual(['sg-cpf-2026-01', 'sg-cpf-2027-01']);
+  });
+
+  it('keeps a link pinned to the 2026 rules on them throughout', () => {
+    const pinned = project({ ...input(), rulesAsAt: 'sg-cpf-2026-01' });
+    expect(pinned.ruleSetIds).toEqual(['sg-cpf-2026-01']);
   });
 
   it('is pure: the same input always produces an identical result', () => {
@@ -562,8 +569,9 @@ describe('age-55 transition through the loop', () => {
     // The birthday month's contribution is still on the 55-and-below band, lands in SA, and moves with it.
     expect(at('2027-01').contribution.allocation.special).toBeGreaterThan(0);
     expect(at('2027-01').contribution.total).toBe(185_000);
-    // From February: the above-55 rates (34%), and the second share goes to RA, or to OA with RA full.
-    expect(at('2027-02').contribution.total).toBe(170_000);
+    // From February: the above-55 rates, now the 2027 set's 35.5% (34% in
+    // 2026), and the second share goes to RA, or to OA with RA full.
+    expect(at('2027-02').contribution.total).toBe(177_500);
     expect(at('2027-02').contribution.allocation.special).toBe(0);
   });
 

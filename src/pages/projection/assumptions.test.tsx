@@ -94,14 +94,36 @@ describe('AssumptionsPanel', () => {
     expect(html).toContain('Assumptions and sources');
     expect(html).not.toMatch(/<details/);
     expect(html).toContain(source(CURRENT_RULE_SET.contributionRates.sourceId).url.replace(/&/g, '&amp;'));
-    expect(html).toContain('From 1 January 2026');
+    // A projection from October 2026 runs under both sets: the 2026 one now
+    // closed, the 2027 one open-ended.
+    expect(html).toContain('1 January 2026 to 31 December 2026');
+    expect(html).toContain('From 1 January 2027');
   });
 
-  it('shows every rule set when a projection spans more than one', () => {
-    // Only one rule set exists today, so the same id twice stands in for a span.
-    const spanning = { ...result, ruleSetIds: [CURRENT_RULE_SET.id, CURRENT_RULE_SET.id] };
-    const html = renderToString(<AssumptionsPanel result={spanning} />);
-    expect(html).toContain('This projection uses 2 rule sets');
-    expect(html.match(/CPF rules as at 1 January 2026/g)?.length).toBeGreaterThanOrEqual(2);
+  it('shows every rule set when a projection spans more than one, oldest first, each with its own figures', () => {
+    expect(result.ruleSetIds).toEqual(['sg-cpf-2026-01', 'sg-cpf-2027-01']);
+    const text = renderToString(<AssumptionsPanel result={result} />)
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ');
+    expect(text).toContain('This projection uses 2 rule sets');
+    expect(text).toContain(
+      '1 January 2026 (1 January 2026 to 31 December 2026), then 1 January 2027 (from 1 January 2027)',
+    );
+    const at2026 = text.indexOf('CPF rules as at 1 January 2026');
+    const at2027 = text.indexOf('CPF rules as at 1 January 2027');
+    expect(at2026).toBeGreaterThan(-1);
+    expect(at2027).toBeGreaterThan(at2026);
+    // Above 55 to 60: 34% in 2026, 35.5% in 2027, each under its own set.
+    expect(text.slice(at2026, at2027)).toContain('Age above 55 to 60 18% employee + 16% employer');
+    expect(text.slice(at2027)).toContain('Age above 55 to 60 19% employee + 16.5% employer');
+    expect(text.slice(at2027)).toContain('$228,200');
+  });
+
+  it('shows one rule set for a link pinned to 2026', () => {
+    const pinned = projectDraft({ ...toDraft(DEFAULT_FORM, '2026-10'), rulesAsAt: 'sg-cpf-2026-01' });
+    if (!pinned.ok) throw new Error('should project');
+    const html = renderToString(<AssumptionsPanel result={pinned.result} />);
+    expect(html).not.toContain('rule sets');
+    expect(html).not.toContain('CPF rules as at 1 January 2027');
   });
 });

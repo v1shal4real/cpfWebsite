@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CURRENT_RULE_SET } from '@/rules';
+import { CURRENT_RULE_SET, RULE_SET_2026, RULE_SET_2027 } from '@/rules';
 import type { RuleSet } from '@/rules';
 import { CONTRIBUTION_FIXTURES } from './__fixtures__';
 import type { ContributionFixture } from './__fixtures__/types';
@@ -83,6 +83,7 @@ describe('age bands', () => {
   });
 
   it('reads the band from the rule set', () => {
+    const CURRENT_RULE_SET = RULE_SET_2026;
     const atFiftyFive = bandForMonth(CURRENT_RULE_SET, 55 * 12);
     expect(atFiftyFive).toMatchObject({ throughAge: 55, employee: 0.2, employer: 0.17 });
 
@@ -90,6 +91,20 @@ describe('age bands', () => {
     expect(monthAfter).toMatchObject({ throughAge: 60, employee: 0.18, employer: 0.16 });
 
     expect(bandForMonth(CURRENT_RULE_SET, 71 * 12)).toMatchObject({ throughAge: null });
+  });
+
+  it('reads the 2027 rates for ages above 55 to 65 from the 2027 set', () => {
+    expect(bandForMonth(RULE_SET_2027, 55 * 12 + 1)).toMatchObject({
+      throughAge: 60,
+      employee: 0.19,
+      employer: 0.165,
+    });
+    expect(bandForMonth(RULE_SET_2027, 60 * 12 + 1)).toMatchObject({
+      throughAge: 65,
+      employee: 0.13,
+      employer: 0.13,
+    });
+    expect(bandForMonth(RULE_SET_2027, 55 * 12)).toEqual(bandForMonth(RULE_SET_2026, 55 * 12));
   });
 });
 

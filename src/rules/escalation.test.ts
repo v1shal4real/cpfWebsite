@@ -60,7 +60,13 @@ describe('escalation data', () => {
   it.each(eachSet)('%s: agrees with its own thresholds for the year it takes effect', (_id, set) => {
     const year = Number(set.effectiveFrom.slice(0, 4));
     expect(set.escalation.basicRetirementSum.published[year]).toBe(set.thresholds.basicRetirementSum);
-    expect(set.escalation.basicHealthcareSum.published[year]).toBe(set.thresholds.basicHealthcareSum);
+    // The BHS for a year is announced that January, so a set added before then
+    // carries the latest published figure; the escalation assumption covers
+    // the gap in the projection.
+    const bhs = set.escalation.basicHealthcareSum;
+    expect(bhs.published[year] ?? bhs.published[lastPublishedYear(bhs)]).toBe(
+      set.thresholds.basicHealthcareSum,
+    );
   });
 
   it.each(eachSet)('%s: states every assumption as an assumption, not a forecast', (_id, set) => {

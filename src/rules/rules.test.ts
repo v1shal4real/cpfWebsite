@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CURRENT_RULE_SET,
+  RULE_SET_2026,
+  RULE_SET_2027,
   RULE_SETS,
   SOURCES,
   bandForAge,
@@ -214,7 +216,7 @@ describe('bandForAge', () => {
 });
 
 describe('contribution rates', () => {
-  const bands = CURRENT_RULE_SET.contributionRates.bands;
+  const bands = RULE_SET_2026.contributionRates.bands;
 
   it('resolves a band at every age a projection can reach', () => {
     for (let age = 16; age <= 100; age++) {
@@ -229,12 +231,33 @@ describe('contribution rates', () => {
     expect(bandForAge(bands, 70)).toMatchObject({ employee: 0.075, employer: 0.09 });
     expect(bandForAge(bands, 71)).toMatchObject({ employee: 0.05, employer: 0.075 });
   });
+
+  it('raises the rates above 55 to 65 from 1 January 2027, and only those', () => {
+    const next = RULE_SET_2027.contributionRates.bands;
+    expect(bandForAge(next, 56)).toMatchObject({ employee: 0.19, employer: 0.165 });
+    expect(bandForAge(next, 61)).toMatchObject({ employee: 0.13, employer: 0.13 });
+    for (const age of [30, 55, 66, 71]) expect(bandForAge(next, age)).toEqual(bandForAge(bands, age));
+  });
+
+  it("keeps each band's total equal to its allocation denominator in every set", () => {
+    // CPF publishes allocation as ratios of the total, so they must sum to 1.
+    for (const set of RULE_SETS) {
+      for (const band of set.allocation.bands) {
+        expect(
+          band.ordinary + band.specialOrRetirement + band.medisave,
+          `${set.id} ${band.throughAge}`,
+        ).toBeCloseTo(1, 3);
+      }
+    }
+  });
 });
 
 describe('resolveRuleSet', () => {
   it('returns the set in force on a date', () => {
     expect(resolveRuleSet('2026-01-01').id).toBe('sg-cpf-2026-01');
-    expect(resolveRuleSet('2040-06-15').id).toBe('sg-cpf-2026-01');
+    expect(resolveRuleSet('2026-12-31').id).toBe('sg-cpf-2026-01');
+    expect(resolveRuleSet('2027-01-01').id).toBe('sg-cpf-2027-01');
+    expect(resolveRuleSet('2040-06-15').id).toBe('sg-cpf-2027-01');
   });
 
   it('falls back to the earliest set before any set applies', () => {
@@ -242,7 +265,10 @@ describe('resolveRuleSet', () => {
   });
 
   it('looks sets up by pinned id', () => {
-    expect(ruleSetById('sg-cpf-2026-01')).toBe(CURRENT_RULE_SET);
+    expect(ruleSetById('sg-cpf-2026-01')).toBe(RULE_SET_2026);
+    expect(ruleSetById('sg-cpf-2027-01')).toBe(CURRENT_RULE_SET);
+    // A link pinned to 2026 keeps the 2026 rules for every later month.
+    expect(resolveRuleSet('2030-06-01', 'sg-cpf-2026-01').id).toBe('sg-cpf-2026-01');
     expect(ruleSetById('does-not-exist')).toBeUndefined();
   });
 });
