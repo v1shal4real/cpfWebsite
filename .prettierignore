@@ -5,3 +5,4 @@ package-lock.json
 *.tsbuildinfo
 docs/planning/jira-tasks.csv
 .claude
+docs/performance/*.report.html

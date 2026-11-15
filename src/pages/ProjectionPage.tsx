@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Button, Callout, Card, CardBody, CardHeader, CopyLinkButton } from '@/components/ui';
 import { Container } from '@/components/layout/AppShell';
 import { projectDraft } from '@/engine/project';
@@ -75,13 +75,23 @@ export function ProjectionPage({
   linkNotices = [],
 }: ProjectionPageProps) {
   const [scenarios, setScenarios] = useState<Scenarios>(initialScenarios ?? singleScenario(initialForm));
+  // The inputs render from `scenarios`, at full priority, so a keystroke shows
+  // at once. The projection and every result render from `deferred`, which
+  // React updates at lower priority and abandons if another key arrives
+  // first. On a slow phone the results redraw took 50-100ms per keystroke;
+  // typing no longer waits for it (KAN-52).
+  const deferred = useDeferredValue(scenarios);
   const form = activeForm(scenarios);
+  const projectedForm = activeForm(deferred);
   const changed = useMemo(
     () => (scenarios.active === 'b' && scenarios.b ? changedFields(scenarios.a, scenarios.b) : undefined),
     [scenarios],
   );
   const ruleSet = ruleSetById(rulesAsAt) ?? CURRENT_RULE_SET;
-  const draft = useMemo(() => ({ ...toDraft(form, startMonth), rulesAsAt }), [form, startMonth, rulesAsAt]);
+  const draft = useMemo(
+    () => ({ ...toDraft(projectedForm, startMonth), rulesAsAt }),
+    [projectedForm, startMonth, rulesAsAt],
+  );
 
   // The URL is the projection's only memory: every change is written to it,
   // replacing the history entry so Back leaves the page rather than stepping
@@ -108,20 +118,30 @@ export function ProjectionPage({
 
   // With a scenario B, the one not being edited is projected too, for the
   // side-by-side view. Its inputs were valid when last edited or decoded.
+  // Keyed on that scenario's own inputs, not on both: typing in one scenario
+  // must not re-run the engine for the other, which has not changed. On a
+  // slow phone that second run is what pushed a keystroke towards 200ms.
+  const otherForm = deferred.b ? (deferred.active === 'a' ? deferred.b : deferred.a) : null;
   const other = useMemo(() => {
-    if (!scenarios.b) return null;
-    const otherForm = scenarios.active === 'a' ? scenarios.b : scenarios.a;
+    if (!otherForm) return null;
     const result = projectDraft({ ...toDraft(otherForm, startMonth), rulesAsAt });
     return result.ok ? result.result : null;
-  }, [scenarios, startMonth, rulesAsAt]);
-  const comparison =
-    scenarios.b && shown
-      ? scenarios.active === 'a'
-        ? { resultA: shown, resultB: other }
-        : other
-          ? { resultA: other, resultB: shown }
-          : null
-      : null;
+  }, [otherForm, startMonth, rulesAsAt]);
+  const comparison = useMemo(
+    () =>
+      deferred.b && shown
+        ? deferred.active === 'a'
+          ? { resultA: shown, resultB: other }
+          : other
+            ? { resultA: other, resultB: shown }
+            : null
+        : null,
+    [deferred.b, deferred.active, shown, other],
+  );
+  const compare = useMemo(
+    () => (comparison?.resultB ? { resultA: comparison.resultA, resultB: comparison.resultB } : undefined),
+    [comparison],
+  );
 
   const onChange = (patch: Partial<FormValues>) => setScenarios((previous) => updateActive(previous, patch));
 
@@ -151,7 +171,7 @@ export function ProjectionPage({
           <LinkNotice notices={linkNotices} />
           {outcome.ok ? null : <StaleNotice errors={outcome.errors} hasEarlierResult={shown !== null} />}
           {comparison ? (
-            <ComparisonView {...comparison} active={scenarios.active} ruleSet={ruleSet} />
+            <ComparisonView {...comparison} active={deferred.active} ruleSet={ruleSet} />
           ) : shown ? (
             <HeadlineRow result={shown} ruleSet={ruleSet} />
           ) : null}
@@ -169,10 +189,8 @@ export function ProjectionPage({
         {shown ? (
           <ResultsRegion
             result={shown}
-            compare={
-              comparison?.resultB ? { resultA: comparison.resultA, resultB: comparison.resultB } : undefined
-            }
-            scenarioLabel={scenarios.b ? `Scenario ${scenarios.active.toUpperCase()}` : undefined}
+            compare={compare}
+            scenarioLabel={deferred.b ? `Scenario ${deferred.active.toUpperCase()}` : undefined}
           />
         ) : null}
       </div>
@@ -278,7 +296,7 @@ function InputsRegion({
   );
 }
 
-function ResultsRegion({
+const ResultsRegion = memo(function ResultsRegion({
   result,
   scenarioLabel,
   compare,
@@ -311,4 +329,4 @@ function ResultsRegion({
       <AssumptionsPanel result={result} />
     </section>
   );
-}
+});
