@@ -81,8 +81,15 @@ export interface HousingPlan {
   price: Cents;
   /** The part of the downpayment taken from the Ordinary Account, decided by the user. */
   downpaymentFromOrdinaryAccount: Cents;
-  /** Downpayment paid in cash. Recorded so the two sources add up to the downpayment. */
+  /** Downpayment paid in cash. Recorded so the sources add up to the downpayment. */
   downpaymentFromCash: Cents;
+  /**
+   * A housing grant applied to the purchase, the rest of the downpayment.
+   * Paid through the Ordinary Account, so it is CPF used for the property and
+   * is refunded with accrued interest on sale. Entered by the member; the tool
+   * does not assess eligibility. Zero or absent means none.
+   */
+  grant?: Cents;
   loan: LoanTerms;
   /** Whether monthly instalments are paid from the Ordinary Account or in cash. */
   instalmentsPaidFrom: 'ordinary-account' | 'cash';
@@ -99,6 +106,21 @@ export interface AnnualBonus {
   monthsOfSalary: number;
   /** Calendar month it is paid in, 1 to 12. */
   paidInMonth: number;
+}
+
+/**
+ * Selling the property, and buying the next one in the same month.
+ *
+ * The sale's order and the refund rules are in `sale.ts`. `next` is optional:
+ * without it the member sells and owns no property afterwards.
+ */
+export interface PropertySale {
+  /** Age at which the property is sold. After the purchase age, no later than the projection's end. */
+  age: number;
+  /** The expected sale price, entered by the member: a figure, not a forecast. */
+  price: Cents;
+  /** The next property, bought in the month of the sale. Its `purchaseAge` equals `age`. */
+  next?: HousingPlan;
 }
 
 export interface ProjectionInput {
@@ -143,6 +165,8 @@ export interface ProjectionInput {
    */
   annualBonus?: AnnualBonus;
   housing?: HousingPlan;
+  /** Selling `housing`, and any next purchase. Only with `housing`. */
+  sale?: PropertySale;
   /**
    * The id of the newest rule set the projection may use. Absent means every
    * rule set known. A shared link pins it, so the link keeps rendering the
@@ -282,6 +306,8 @@ export interface MonthlyHousing {
   accruedInterest: Cents;
   /** `principalUsed + accruedInterest`: the refund due if the property were sold this month. */
   refundable: Cents;
+  /** A housing grant applied this month, as CPF used for the property. Zero except at a purchase. */
+  grantUsed: Cents;
 }
 
 /* Events ------------------------------------------------------------------- */
@@ -299,6 +325,22 @@ export type ProjectionEvent =
       fromOrdinaryAccount: Cents;
       fromCash: Cents;
       loanPrincipal: Cents;
+      /** Housing grant applied, through CPF. Zero if none. */
+      grant: Cents;
+      /** True for a purchase made with a sale, in the same month. */
+      afterSale: boolean;
+    }
+  | {
+      /** The sale, applied in order: loan, then CPF refund, then cash. See `sale.ts`. */
+      kind: 'property-sold';
+      salePrice: Cents;
+      outstandingLoan: Cents;
+      refundDue: Cents;
+      refunded: Cents;
+      refundNotCovered: Cents;
+      refundedToRetirement: Cents;
+      refundedToOrdinary: Cents;
+      cashProceeds: Cents;
     }
   | {
       /**

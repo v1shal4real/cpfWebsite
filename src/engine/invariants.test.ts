@@ -81,6 +81,16 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
     instalmentsPaidFrom: fc.constantFrom('ordinary-account', 'cash') as fc.Arbitrary<
       'ordinary-account' | 'cash'
     >,
+    // Up to 40% of the downpayment as a grant, in about half the drafts.
+    grantShareOfDownpayment: fc.option(basisPoints(0, 4_000), { nil: undefined }),
+    // A sale in about half the drafts, at anything from a fifth of the price
+    // (a loss, with the loan not covered) to three times it.
+    saleAfterYears: fc.option(fc.integer({ min: 1, max: 20 }), { nil: undefined }),
+    salePriceShareOfPrice: basisPoints(2_000, 30_000),
+    nextHousingPlan: fc.constantFrom('none', 'hdb-loan', 'bank-loan') as fc.Arbitrary<
+      NonNullable<ProjectionDraft['nextHousingPlan']>
+    >,
+    nextPropertyPrice: fc.integer({ min: 10_000_000, max: 200_000_000 }),
   })
   .map((g): ProjectionDraft => {
     const endAge = Math.max(INPUT_LIMITS.projectionEndAge, g.currentAge);
@@ -107,6 +117,19 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
       bankLoanRate: g.bankLoanRate,
       ordinaryAccountRetention: g.ordinaryAccountRetention,
       instalmentsPaidFrom: g.instalmentsPaidFrom,
+      ...(g.grantShareOfDownpayment !== undefined && {
+        housingGrant: Math.round(g.propertyPrice * g.downpaymentShareOfPrice * g.grantShareOfDownpayment),
+      }),
+      ...(g.saleAfterYears !== undefined && {
+        saleAge: Math.min(g.currentAge + g.purchaseAfterYears + g.saleAfterYears, endAge),
+        salePrice: Math.round(g.propertyPrice * g.salePriceShareOfPrice),
+        nextHousingPlan: g.nextHousingPlan,
+        nextPropertyPrice: g.nextPropertyPrice,
+        nextDownpayment: Math.round(g.nextPropertyPrice * g.downpaymentShareOfPrice),
+        nextDownpaymentShareFromOrdinaryAccount: g.downpaymentShareFromOrdinaryAccount,
+        nextLoanTenureYears: Math.min(g.tenure, 25),
+        nextBankLoanRate: g.bankLoanRate,
+      }),
     };
   });
 
@@ -137,6 +160,12 @@ function forEveryMonth(check: (month: ProjectionMonth, result: ProjectionResult)
 
 /* Conservation ------------------------------------------------------------- */
 
+/** CPF refunded by a sale this month, all accounts. */
+function saleRefund(month: ProjectionMonth): number {
+  const sold = month.events.find((event) => event.kind === 'property-sold');
+  return sold?.kind === 'property-sold' ? sold.refunded : 0;
+}
+
 describe('conservation', () => {
   it('opening + contributions + interest - withdrawals = closing, per account, every month', () => {
     // Money also moves between accounts: the MediSave overflow and the age-55
@@ -146,14 +175,37 @@ describe('conservation', () => {
         const overflow =
           account === 'medisave' ? -month.medisaveOverflow.amount : month.medisaveOverflow.to[account];
         const withdrawn = account === 'ordinary' ? (month.housing?.withdrawnFromOrdinaryAccount ?? 0) : 0;
+        // A sale's CPF refund lands in the OA, or from 55 partly in the RA.
+        const sold = month.events.find((event) => event.kind === 'property-sold');
+        const refunded =
+          sold?.kind !== 'property-sold'
+            ? 0
+            : account === 'ordinary'
+              ? sold.refundedToOrdinary
+              : account === 'retirement'
+                ? sold.refundedToRetirement
+                : 0;
         const expected =
           month.openingBalances[account] +
           month.contribution.allocation[account] +
           month.interest.credited[account] -
           withdrawn +
+          refunded +
           overflow +
           month.retirementTransfers[account];
         expect(month.closingBalances[account], `${month.month} ${account}`).toBe(expected);
+      }
+    });
+  });
+
+  it('a sale accounts for every dollar of the price, and refunds no more than is due', () => {
+    forEveryMonth((month) => {
+      for (const event of month.events) {
+        if (event.kind !== 'property-sold') continue;
+        expect(event.outstandingLoan + event.refunded + event.cashProceeds).toBe(event.salePrice);
+        expect(event.refunded + event.refundNotCovered).toBe(event.refundDue);
+        expect(event.refundedToOrdinary + event.refundedToRetirement).toBe(event.refunded);
+        expect(event.refunded).toBeGreaterThanOrEqual(0);
       }
     });
   });
@@ -166,11 +218,11 @@ describe('conservation', () => {
     });
   });
 
-  it('across all accounts, the change each month is contributions + interest - withdrawals', () => {
+  it('across all accounts, the change each month is contributions + interest - withdrawals + refunds', () => {
     forEveryMonth((month) => {
       const withdrawn = month.housing?.withdrawnFromOrdinaryAccount ?? 0;
       expect(total(month.closingBalances) - total(month.openingBalances), month.month).toBe(
-        month.contribution.total + total(month.interest.credited) - withdrawn,
+        month.contribution.total + total(month.interest.credited) - withdrawn + saleRefund(month),
       );
     });
   });
@@ -244,7 +296,10 @@ describe('no negative balances', () => {
   it('never withdraws for housing below the retained amount', () => {
     forEveryMonth((month) => {
       if (!month.housing || month.housing.withdrawnFromOrdinaryAccount === 0) return;
-      const available = month.openingBalances.ordinary + month.contribution.allocation.ordinary;
+      // A next purchase can draw on the refund its sale credited that month.
+      const sold = month.events.find((event) => event.kind === 'property-sold');
+      const refunded = sold?.kind === 'property-sold' ? sold.refundedToOrdinary : 0;
+      const available = month.openingBalances.ordinary + month.contribution.allocation.ordinary + refunded;
       expect(available - month.housing.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(
         month.housing.ordinaryAccountRetention,
       );
@@ -366,11 +421,13 @@ describe('rules that hold for every input', () => {
     });
   });
 
-  it('never lets the CPF principal used for housing go down', () => {
+  it('never lets the CPF principal used for housing go down, except to start again for the next home', () => {
     fc.assert(
       fc.property(inputArbitrary, (input) => {
         let previous = 0;
         for (const month of project(input).months) {
+          // A sale refunds it, so the next property starts its own record.
+          if (month.events.some((event) => event.kind === 'property-sold')) previous = 0;
           if (!month.housing) continue;
           expect(month.housing.principalUsed).toBeGreaterThanOrEqual(previous);
           previous = month.housing.principalUsed;

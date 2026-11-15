@@ -84,10 +84,12 @@ import { housingPayments } from './housing';
 import { drawLoan, repayLoan, type LoanMonth, type LoanState } from './loan';
 import { capMedisave } from './medisave';
 import { isRaiseMonth, raiseWage } from './salary';
+import { sellProperty, type SaleResult } from './sale';
 import { closeSpecialAccount, formRetirementAccount } from './transition';
 import type {
   AccountAmounts,
   Cents,
+  HousingPlan,
   ProjectionEvent,
   ProjectionInput,
   ProjectionMonth,
@@ -288,6 +290,19 @@ export function project(input: ProjectionInput): ProjectionResult {
     ? (input.housing.purchaseAge - input.startAge) * MONTHS_PER_YEAR
     : undefined;
   let loan: LoanState | undefined;
+  // A sale, and the next purchase in the same month. From the sale month on,
+  // the next plan is the one being paid for, if there is one.
+  const saleStep =
+    input.housing && input.sale ? (input.sale.age - input.startAge) * MONTHS_PER_YEAR : undefined;
+  const nextPlan = input.sale?.next;
+  const nextLoanTerms = nextPlan && nextPlan.loan.principal > 0 ? nextPlan.loan : undefined;
+  const planAt = (step: number): { plan: HousingPlan; purchasedAt: number } | undefined => {
+    if (saleStep !== undefined && step >= saleStep)
+      return nextPlan ? { plan: nextPlan, purchasedAt: saleStep } : undefined;
+    if (input.housing && purchaseStep !== undefined && step >= purchaseStep)
+      return { plan: input.housing, purchasedAt: purchaseStep };
+    return undefined;
+  };
   // CPF principal used for the property and the interest it has accrued:
   // what must be refunded on sale.
   let housingUse: AccruedInterestState = { ...NO_HOUSING_USE };
@@ -355,31 +370,60 @@ export function project(input: ProjectionInput): ProjectionResult {
       fullRetirementSum,
     });
 
-    // The loan: drawn in the purchase month, an instalment due each month after.
+    // The loan: drawn in the purchase month, an instalment due each month
+    // after. In a sale month the property is sold before that month's
+    // instalment, so what is owed is the balance carried in; the next
+    // property's loan, if any, is drawn the same month.
+    const isSaleMonth = step === saleStep;
     let loanMonth: LoanMonth | undefined;
-    if (loanTerms && step === purchaseStep) loanMonth = drawLoan(loanTerms, ruleSet);
+    let outstandingAtSale = 0;
+    if (isSaleMonth) {
+      outstandingAtSale = loan?.balance ?? 0;
+      if (nextLoanTerms) loanMonth = drawLoan(nextLoanTerms, ruleSet);
+    } else if (loanTerms && step === purchaseStep) loanMonth = drawLoan(loanTerms, ruleSet);
     else if (loan) loanMonth = repayLoan(loan, ruleSet);
     loan = loanMonth && !loanMonth.cleared ? loanMonth.state : undefined;
 
-    // Paying for the property, from the purchase month on. The OA can draw
-    // on this month's contribution, which has landed by now.
-    const owning = input.housing !== undefined && purchaseStep !== undefined && step >= purchaseStep;
-    const payments =
-      owning && input.housing
-        ? housingPayments({
-            rules: ruleSet,
-            plan: input.housing,
-            isPurchaseMonth: step === purchaseStep,
-            instalmentDue: loanMonth?.record.instalment ?? 0,
-            ordinaryAvailable: openingBalances.ordinary + allocation.ordinary,
-          })
-        : undefined;
+    // The sale: loan first, then the CPF refund with accrued interest to this
+    // month, then cash. The refund lands this month, so the next purchase can
+    // draw on it; it earns interest from next month like any other credit.
+    let sale: SaleResult | undefined;
+    if (isSaleMonth && input.sale) {
+      const final = accrueHousingInterest({ rules: ruleSet, state: housingUse, withdrawn: 0, calendarMonth });
+      sale = sellProperty({
+        salePrice: input.sale.price,
+        outstandingLoan: outstandingAtSale,
+        principalUsed: final.principalUsed,
+        accruedInterest: final.accruedInterest,
+        from55: onFrom55Rules(ageInMonths),
+        retirementBalance: openingBalances.retirement + allocation.retirement,
+        requiredRetirementSum: fullRetirementSum,
+      });
+      housingUse = { ...NO_HOUSING_USE };
+    }
+
+    // Paying for the property, from its purchase month on. The OA can draw
+    // on this month's contribution, and a sale's refund, which have landed.
+    const owned = planAt(step);
+    const isPurchaseMonth = owned !== undefined && step === owned.purchasedAt;
+    const payments = owned
+      ? housingPayments({
+          rules: ruleSet,
+          plan: owned.plan,
+          isPurchaseMonth,
+          instalmentDue: loanMonth?.record.instalment ?? 0,
+          ordinaryAvailable: openingBalances.ordinary + allocation.ordinary + (sale?.refundedToOrdinary ?? 0),
+        })
+      : undefined;
     const withdrawnFromOrdinaryAccount = payments?.withdrawnFromOrdinaryAccount ?? 0;
+    // A grant passes through the OA into the purchase: CPF used, refundable
+    // with interest, but never part of the member's own balance.
+    const grantUsed = owned && isPurchaseMonth ? (owned.plan.grant ?? 0) : 0;
     const refund = payments
       ? accrueHousingInterest({
           rules: ruleSet,
           state: housingUse,
-          withdrawn: withdrawnFromOrdinaryAccount,
+          withdrawn: withdrawnFromOrdinaryAccount + grantUsed,
           calendarMonth,
         })
       : undefined;
@@ -407,10 +451,10 @@ export function project(input: ProjectionInput): ProjectionResult {
       rules: ruleSet,
       ageInMonths,
       balances: add(add(add(openingBalances, allocation), credited), {
-        ordinary: -withdrawnFromOrdinaryAccount,
+        ordinary: (sale?.refundedToOrdinary ?? 0) - withdrawnFromOrdinaryAccount,
         special: 0,
         medisave: 0,
-        retirement: 0,
+        retirement: sale?.refundedToRetirement ?? 0,
       }),
       basicHealthcareSum: caps.basicHealthcareSum,
       fullRetirementSum: onFrom55Rules(ageInMonths) ? fullRetirementSum : caps.currentFullRetirementSum,
@@ -421,12 +465,17 @@ export function project(input: ProjectionInput): ProjectionResult {
     // Events in the order they happen within the month: the purchase or the
     // loan instalment, then the MediSave cap, then the age-55 transition.
     const events: ProjectionEvent[] = [];
-    if (input.housing && payments && step === purchaseStep) {
+    if (sale) {
+      events.push({ kind: 'property-sold', ...sale });
+    }
+    if (owned && payments && isPurchaseMonth) {
       events.push({
         kind: 'property-purchased',
         fromOrdinaryAccount: payments.withdrawnFromOrdinaryAccount,
         fromCash: payments.paidInCash,
-        loanPrincipal: loanTerms?.principal ?? 0,
+        loanPrincipal: owned.plan.loan.principal,
+        grant: grantUsed,
+        afterSale: isSaleMonth,
       });
     }
     if (loanMonth?.cleared) {
@@ -516,6 +565,7 @@ export function project(input: ProjectionInput): ProjectionResult {
             principalUsed: refund.principalUsed,
             accruedInterest: refund.accruedInterest,
             refundable: refund.refundable,
+            grantUsed,
           },
         }),
       events,

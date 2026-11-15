@@ -22,6 +22,7 @@ import {
   type FormValues,
 } from './form';
 import { retentionHint, retentionNote, shareInterestHint } from './retentionCopy';
+import { SaleFields } from './SaleFields';
 
 /**
  * The projection input panel: every §3.1 input.
@@ -277,6 +278,21 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
             </Field>
 
             <Field
+              label="Housing grant"
+              hint="Optional. Any grant you receive, as part of the downpayment. It is paid through your CPF, so it is refunded with accrued interest if you sell. The tool does not check eligibility."
+              labelAside={mark('housingGrant', <SourceLink sourceId="housingGrantRefund" variant="chip" />)}
+              error={errorFor('housingGrant')}
+            >
+              <MoneyInput
+                value={values.housingGrant}
+                onValueChange={(housingGrant) => onChange({ housingGrant })}
+                onBlur={markTouched('housingGrant')}
+                min={0}
+                step={1_000}
+              />
+            </Field>
+
+            <Field
               label="Share of the downpayment from the Ordinary Account"
               hint={
                 loanLimits.minimumCashDownpayment > 0
@@ -358,6 +374,19 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
           </>
         ) : null}
       </Group>
+
+      {housing ? (
+        <Group legend="Selling and moving">
+          <SaleFields
+            values={values}
+            onChange={onChange}
+            rules={rules}
+            mark={mark}
+            errorFor={errorFor}
+            markTouched={markTouched}
+          />
+        </Group>
+      ) : null}
     </form>
   );
 }

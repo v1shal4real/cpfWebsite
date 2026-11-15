@@ -52,6 +52,21 @@ const HDB: FormValues = {
 
 const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValues }> = {
   'two scenarios side by side': { form: DEFAULT_FORM, b: HDB },
+  'sale and upgrade': {
+    form: {
+      ...HDB,
+      housingGrant: 30_000,
+      selling: true,
+      saleAge: 40,
+      salePrice: 700_000,
+      nextHousingPlan: 'bank-loan',
+      nextPropertyPrice: 900_000,
+      nextDownpayment: 300_000,
+      nextOrdinaryAccountSharePercent: 50,
+      nextLoanTenureYears: 25,
+      nextBankLoanRatePercent: 3,
+    },
+  },
   'default projection': { form: DEFAULT_FORM },
   'HDB loan': { form: HDB },
   'bank loan': {

@@ -1,4 +1,4 @@
-import { DEFAULT_FORM, type FormField, type FormValues } from './form';
+import { DEFAULT_FORM, appliesTo, type FormField, type FormValues } from './form';
 
 /**
  * Two input sets, A and B, for comparing one decision against another.
@@ -39,22 +39,7 @@ export function updateActive(scenarios: Scenarios, patch: Partial<FormValues>): 
   return { ...scenarios, a: { ...scenarios.a, ...patch } };
 }
 
-const HOUSING_FIELDS: readonly FormField[] = [
-  'propertyPrice',
-  'purchaseAge',
-  'downpayment',
-  'ordinaryAccountSharePercent',
-  'loanTenureYears',
-  'bankLoanRatePercent',
-  'retainedOrdinaryAccount',
-];
-
-/** Whether a field takes part in a projection with this housing plan. */
-export function appliesTo(field: FormField, form: FormValues): boolean {
-  if (form.housingPlan === 'none' && HOUSING_FIELDS.includes(field)) return false;
-  if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan') return false;
-  return true;
-}
+export { appliesTo };
 
 /**
  * The fields where B differs from A, among those that apply to B. A value A

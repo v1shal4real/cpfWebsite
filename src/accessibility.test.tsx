@@ -35,6 +35,21 @@ const STATES: Record<string, { form: FormValues; b?: FormValues; notices?: strin
     form: { ...HDB, housingPlan: 'bank-loan', bankLoanRatePercent: 3, retainedOrdinaryAccount: null },
   },
   'two scenarios': { form: DEFAULT_FORM, b: HDB },
+  'sale and upgrade': {
+    form: {
+      ...HDB,
+      housingGrant: 30_000,
+      selling: true,
+      saleAge: 40,
+      salePrice: 700_000,
+      nextHousingPlan: 'bank-loan',
+      nextPropertyPrice: 900_000,
+      nextDownpayment: 300_000,
+      nextOrdinaryAccountSharePercent: 50,
+      nextLoanTenureYears: 25,
+      nextBankLoanRatePercent: 3,
+    },
+  },
   'inputs that cannot be projected': { form: { ...DEFAULT_FORM, monthlySalary: null } },
   'link notice': { form: DEFAULT_FORM, notices: ['The housing plan in this link could not be read.'] },
 };

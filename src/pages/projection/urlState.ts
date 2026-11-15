@@ -20,8 +20,15 @@
  *   p   property price ($)          pa  age at purchase
  *   d   downpayment ($)             os  share of downpayment from OA (%)
  *   t   loan tenure (years)         br  bank loan rate (%)
+ *   rt  OA set aside ($)            hg  housing grant ($)
+ *   sl  1 when the home is sold     sla sale age            slp sale price ($)
+ *   nh  next home's plan: n, hdb, bank (bought the month of the sale)
+ *   np  next price ($)   nd  next downpayment ($)   nos next share from OA (%)
+ *   nt  next tenure (years)         nbr next bank loan rate (%)
  *
- * Empty fields are left out; housing keys appear only with a housing plan.
+ * Empty fields are left out, and so is every field that does not apply
+ * (`appliesTo` in form.ts): housing keys only with a plan, sale keys only when
+ * selling, next-home keys only when buying again.
  *
  * Scenario B, when there is one:
  *
@@ -40,7 +47,17 @@
 import { CURRENT_RULE_SET, ruleSetById } from '@/rules';
 import type { MonthStamp } from '@/engine/types';
 import { validateProjectionInput, type HousingPlanChoice } from '@/engine/validate';
-import { DEFAULT_FORM, errorsByField, toDraft, type FormField, type FormValues } from './form';
+import {
+  DEFAULT_FORM,
+  NEXT_FIELDS,
+  SALE_FIELDS,
+  appliesTo,
+  errorsByField,
+  normalised,
+  toDraft,
+  type FormField,
+  type FormValues,
+} from './form';
 import { singleScenario, type Scenarios } from './scenarios';
 
 export const URL_SCHEMA_VERSION = '1';
@@ -76,11 +93,20 @@ const NUMERIC_KEYS = {
   loanTenureYears: 't',
   bankLoanRatePercent: 'br',
   retainedOrdinaryAccount: 'rt',
+  housingGrant: 'hg',
+  saleAge: 'sla',
+  salePrice: 'slp',
+  nextPropertyPrice: 'np',
+  nextDownpayment: 'nd',
+  nextOrdinaryAccountSharePercent: 'nos',
+  nextLoanTenureYears: 'nt',
+  nextBankLoanRatePercent: 'nbr',
 } as const satisfies Partial<Record<FormField, string>>;
 
 type NumericField = keyof typeof NUMERIC_KEYS;
 
-const HOUSING_FIELDS: readonly NumericField[] = [
+/** The first property's details, which stand or fall together in a link. */
+const HOUSING_FIELDS: readonly FormField[] = [
   'propertyPrice',
   'purchaseAge',
   'downpayment',
@@ -88,7 +114,11 @@ const HOUSING_FIELDS: readonly NumericField[] = [
   'loanTenureYears',
   'bankLoanRatePercent',
   'retainedOrdinaryAccount',
+  'housingGrant',
 ];
+
+/** The sale and the next home, which also stand or fall together. */
+const SALE_GROUP: readonly FormField[] = ['selling', ...SALE_FIELDS, ...NEXT_FIELDS];
 
 const PLAN_CODES: Record<HousingPlanChoice, string> = { none: 'n', 'hdb-loan': 'hdb', 'bank-loan': 'bank' };
 
@@ -110,9 +140,22 @@ const FIELD_NAMES: Record<FormField, string> = {
   loanTenureYears: 'loan tenure',
   bankLoanRatePercent: 'bank loan rate',
   retainedOrdinaryAccount: 'Ordinary Account kept back',
+  housingGrant: 'housing grant',
+  selling: 'sale',
+  saleAge: 'sale age',
+  salePrice: 'sale price',
+  nextHousingPlan: 'next home',
+  nextPropertyPrice: 'next home price',
+  nextDownpayment: 'next home downpayment',
+  nextOrdinaryAccountSharePercent: 'next home share from the Ordinary Account',
+  nextLoanTenureYears: 'next home loan tenure',
+  nextBankLoanRatePercent: 'next home bank loan rate',
 };
 
-const ALL_KEYS = new Set<string>(['v', 'r', 'm', 'h', 'B', ...Object.values(NUMERIC_KEYS)]);
+const planFor = (code: string | null) =>
+  (Object.entries(PLAN_CODES) as [HousingPlanChoice, string][]).find(([, each]) => each === code)?.[0];
+
+const ALL_KEYS = new Set<string>(['v', 'r', 'm', 'h', 'sl', 'nh', 'B', ...Object.values(NUMERIC_KEYS)]);
 const B_PREFIX = 'b.';
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
@@ -129,11 +172,10 @@ export function encodeUrlState({ form, startMonth, rulesAsAt }: UrlState): strin
   params.set('r', rulesAsAt);
   params.set('m', startMonth);
   params.set('h', PLAN_CODES[form.housingPlan]);
+  if (appliesTo('selling', form) && form.selling) params.set('sl', '1');
+  if (appliesTo('nextHousingPlan', form)) params.set('nh', PLAN_CODES[form.nextHousingPlan]);
   for (const [field, key] of Object.entries(NUMERIC_KEYS) as [NumericField, string][]) {
-    if (form.housingPlan === 'none' && HOUSING_FIELDS.includes(field)) continue;
-    if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan') continue;
-    // The bonus month means nothing without a bonus.
-    if (field === 'bonusPaidInMonth' && form.bonusMonths === null) continue;
+    if (!appliesTo(field, form)) continue;
     const value = form[field];
     if (value !== null) params.set(key, compact(value));
   }
@@ -197,6 +239,14 @@ export function decodeUrlState(
     notices.push('The housing plan in this link could not be read, so the projection shows no property.');
   }
 
+  form.selling = params.get('sl') === '1';
+  const nextCode = params.get('nh');
+  if (nextCode !== null) {
+    const next = planFor(nextCode);
+    if (next) form.nextHousingPlan = next;
+    else notices.push('The next home in this link could not be read, so the projection shows the sale only.');
+  }
+
   for (const [field, key] of Object.entries(NUMERIC_KEYS) as [NumericField, string][]) {
     const raw = params.get(key);
     if (raw === null) continue;
@@ -232,14 +282,21 @@ function fallBackWhereInvalid(
   const invalid = Object.keys(errorsByField(first.errors)) as FormField[];
 
   // Property details stand or fall together: dropping one would leave a
-  // purchase the visitor never described.
-  if (invalid.some((field) => (HOUSING_FIELDS as readonly string[]).includes(field))) {
+  // purchase the visitor never described. The sale and next home go with it.
+  const reset = (fields: readonly FormField[]) => {
+    for (const field of fields) (repaired as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
+  };
+  if (invalid.some((field) => HOUSING_FIELDS.includes(field))) {
     repaired.housingPlan = 'none';
-    for (const field of HOUSING_FIELDS) (repaired as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
+    reset([...HOUSING_FIELDS, ...SALE_GROUP]);
     say('The property details in this link could not be used, so the projection shows no property.');
+  } else if (invalid.some((field) => SALE_GROUP.includes(field))) {
+    // Likewise the sale and the next home: the first home is kept, unsold.
+    reset(SALE_GROUP);
+    say('The sale details in this link could not be used, so the projection keeps the first home.');
   }
   for (const field of invalid) {
-    if ((HOUSING_FIELDS as readonly string[]).includes(field)) continue;
+    if (HOUSING_FIELDS.includes(field) || SALE_GROUP.includes(field)) continue;
     (repaired as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
     say(
       `The ${FIELD_NAMES[field]} in this link is outside what the projection supports, so the default is used.`,
@@ -266,19 +323,6 @@ export interface DecodedScenariosUrlState {
   fromLink: boolean;
 }
 
-/** A as a link carries it: the values a decoded A would hold. */
-function normalised(form: FormValues): FormValues {
-  const out: FormValues = { ...form };
-  for (const field of Object.keys(NUMERIC_KEYS) as NumericField[]) {
-    if (form.housingPlan === 'none' && HOUSING_FIELDS.includes(field))
-      (out as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
-    if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan')
-      out.bankLoanRatePercent = DEFAULT_FORM.bankLoanRatePercent;
-  }
-  if (form.bonusMonths === null) out.bonusPaidInMonth = DEFAULT_FORM.bonusPaidInMonth;
-  return out;
-}
-
 /** The query string for both scenarios. Without a B it is exactly `encodeUrlState` for A. */
 export function encodeScenariosUrl({ scenarios, startMonth, rulesAsAt }: ScenariosUrlState): string {
   const base = encodeUrlState({ form: scenarios.a, startMonth, rulesAsAt });
@@ -288,6 +332,8 @@ export function encodeScenariosUrl({ scenarios, startMonth, rulesAsAt }: Scenari
   const params = new URLSearchParams(base);
   params.set('B', '1');
   if (b.housingPlan !== a.housingPlan) params.set(`${B_PREFIX}h`, PLAN_CODES[b.housingPlan]);
+  if (b.selling !== a.selling) params.set(`${B_PREFIX}sl`, b.selling ? '1' : '0');
+  if (b.nextHousingPlan !== a.nextHousingPlan) params.set(`${B_PREFIX}nh`, PLAN_CODES[b.nextHousingPlan]);
   for (const [field, key] of Object.entries(NUMERIC_KEYS) as [NumericField, string][]) {
     if (b[field] === a[field]) continue;
     params.set(`${B_PREFIX}${key}`, b[field] === null ? '' : compact(b[field]));
@@ -321,6 +367,14 @@ export function decodeScenariosUrl(
     )?.[0];
     if (plan) b.housingPlan = plan;
     else notices.push(`${label}: the housing plan in this link could not be read, so it keeps scenario A's.`);
+  }
+  const selling = params.get(`${B_PREFIX}sl`);
+  if (selling !== null) b.selling = selling === '1';
+  const nextCode = params.get(`${B_PREFIX}nh`);
+  if (nextCode !== null) {
+    const next = planFor(nextCode);
+    if (next) b.nextHousingPlan = next;
+    else notices.push(`${label}: the next home in this link could not be read, so it keeps scenario A's.`);
   }
   for (const [field, key] of Object.entries(NUMERIC_KEYS) as [NumericField, string][]) {
     const raw = params.get(`${B_PREFIX}${key}`);

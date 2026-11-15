@@ -61,7 +61,14 @@ describe('ProjectionMonth', () => {
 
 describe('ProjectionEvent', () => {
   const events: ProjectionEvent[] = [
-    { kind: 'property-purchased', fromOrdinaryAccount: 0, fromCash: 0, loanPrincipal: 0 },
+    {
+      kind: 'property-purchased',
+      fromOrdinaryAccount: 0,
+      fromCash: 0,
+      loanPrincipal: 0,
+      grant: 0,
+      afterSale: false,
+    },
     {
       kind: 'age-55-transition',
       transferredFromSpecial: 0,
@@ -80,6 +87,17 @@ describe('ProjectionEvent', () => {
       overflowTo: nothing,
     },
     { kind: 'housing-loan-cleared', principal: 0, instalmentsPaid: 0, totalInterestPaid: 0 },
+    {
+      kind: 'property-sold',
+      salePrice: 0,
+      outstandingLoan: 0,
+      refundDue: 0,
+      refunded: 0,
+      refundNotCovered: 0,
+      refundedToRetirement: 0,
+      refundedToOrdinary: 0,
+      cashProceeds: 0,
+    },
   ];
 
   it('covers the events the spec names', () => {
@@ -106,6 +124,8 @@ describe('ProjectionEvent', () => {
           return 'Basic Healthcare Sum reached';
         case 'housing-loan-cleared':
           return 'housing loan cleared';
+        case 'property-sold':
+          return 'property sold';
         default: {
           const unhandled: never = event;
           return unhandled;
@@ -118,6 +138,7 @@ describe('ProjectionEvent', () => {
       'age 55 transition',
       'Basic Healthcare Sum reached',
       'housing loan cleared',
+      'property sold',
     ]);
   });
 });

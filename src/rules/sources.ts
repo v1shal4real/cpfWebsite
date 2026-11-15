@@ -267,12 +267,23 @@ export const SOURCES = {
     url: 'https://www.hdb.gov.sg/-/media/hdb-pulse/news/2026/hdb-launches-7964-flats-across-seven-projects-in-nov-2026-bto-sales-exercise/Annex-B---Nov-2026-BTO---Final.pdf',
     retrievedOn: '2026-11-09',
   },
+  /**
+   * States that the principal refunded on sale includes the CPF Housing Grant,
+   * with its accrued interest.
+   */
+  housingGrantRefund: {
+    id: 'housingGrantRefund',
+    title: 'Do I have to refund the housing grant to my CPF account upon sale of my property?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/do-i-have-to-refund-the-housing-grant-to-my-cpf-account-upon-sale-of-my-property',
+    retrievedOn: '2026-11-15',
+  },
   housingRefund: {
     id: 'housingRefund',
     title: 'CPF refund when selling or transferring property',
     publisher: 'CPF Board',
     url: 'https://www.cpf.gov.sg/member/home-ownership/using-your-cpf-to-buy-a-home/cpf-refund-when-selling-or-transferring-property',
-    retrievedOn: '2026-09-14',
+    retrievedOn: '2026-11-15',
   },
 
   /* Scheduled changes --------------------------------------------------- */

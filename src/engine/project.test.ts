@@ -739,6 +739,8 @@ describe('housing withdrawals through the loop', () => {
       fromOrdinaryAccount: 3_000_000,
       fromCash: 7_000_000,
       loanPrincipal: 40_000_000,
+      grant: 0,
+      afterSale: false,
     });
   });
 
