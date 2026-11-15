@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Money, SourceLink, StatTile } from '@/components/ui';
 import { RulesStamp } from '@/components/layout/RulesStamp';
 import type { ProjectionResult } from '@/engine/types';
@@ -21,7 +22,14 @@ const BASIS_NOTE: Record<FigureBasis, string | null> = {
   'before-published': 'This sum is the earliest one CPF Board publishes, applied to an earlier year.',
 };
 
-export function HeadlineRow({ result, ruleSet }: { result: ProjectionResult; ruleSet: RuleSet }) {
+/** Memoised: its props only change when the projection does, not on every keystroke. */
+export const HeadlineRow = memo(function HeadlineRow({
+  result,
+  ruleSet,
+}: {
+  result: ProjectionResult;
+  ruleSet: RuleSet;
+}) {
   const figures = headlineFigures(result);
   const { at55 } = figures;
   const stamp = <RulesStamp compact ruleSet={ruleSet} />;
@@ -84,4 +92,4 @@ export function HeadlineRow({ result, ruleSet }: { result: ProjectionResult; rul
       </div>
     </section>
   );
-}
+});

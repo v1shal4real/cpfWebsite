@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Badge, Money, StatTile } from '@/components/ui';
 import { RulesStamp } from '@/components/layout/RulesStamp';
 import type { ProjectionResult } from '@/engine/types';
@@ -29,7 +30,13 @@ export interface ComparisonViewProps {
   ruleSet: RuleSet;
 }
 
-export function ComparisonView({ resultA, resultB, active, ruleSet }: ComparisonViewProps) {
+/** Memoised: its props only change when the projection does, not on every keystroke. */
+export const ComparisonView = memo(function ComparisonView({
+  resultA,
+  resultB,
+  active,
+  ruleSet,
+}: ComparisonViewProps) {
   const metric = resultB ? comparisonMetric(resultA, resultB) : null;
   const statement = !resultB
     ? 'Scenario B cannot be projected with its current inputs, so there is no comparison yet.'
@@ -62,7 +69,7 @@ export function ComparisonView({ resultA, resultB, active, ruleSet }: Comparison
       </div>
     </section>
   );
-}
+});
 
 function ScenarioColumn({
   id,

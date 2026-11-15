@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14">
+  <!-- The header's logo mark: four bars in the light-theme account hues. -->
+  <rect x="1" y="7" width="2.25" height="6" rx="0.6" fill="#2a78d6"/>
+  <rect x="4.25" y="4" width="2.25" height="9" rx="0.6" fill="#eb6834"/>
+  <rect x="7.5" y="5.5" width="2.25" height="7.5" rx="0.6" fill="#1baf7a"/>
+  <rect x="10.75" y="1" width="2.25" height="12" rx="0.6" fill="#4a3aa7"/>
+</svg>
