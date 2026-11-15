@@ -49,7 +49,13 @@ export function Table({
       tabIndex={focusable ? 0 : undefined}
       role={focusable ? 'region' : undefined}
       aria-label={focusable && typeof caption === 'string' ? caption : undefined}
-      className={cn('relative overflow-auto rounded-md border border-line bg-surface', containerClassName)}
+      // A non-focusable copy (the screen-reader table behind a chart) must not
+      // scroll either: a scroll box nobody can reach by keyboard fails 2.1.1.
+      className={cn(
+        'relative rounded-md border border-line bg-surface',
+        focusable && 'overflow-auto',
+        containerClassName,
+      )}
       style={maxHeight ? { maxHeight } : undefined}
     >
       <table

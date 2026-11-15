@@ -102,6 +102,11 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge, compare }:
         <LineChart
           data={points}
           margin={chartMargin}
+          // Recharts' keyboard layer makes the SVG a focusable "application"
+          // whose name is the run-together tick text. Keyboard and screen
+          // reader users get the same figures from the timeline slider (which
+          // drives this crosshair) and from the table, so it is left off.
+          accessibilityLayer={false}
           onMouseMove={(state) => {
             const age = Number(state?.activeLabel);
             if (onHoverAge && Number.isFinite(age)) onHoverAge(age);

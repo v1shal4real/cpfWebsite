@@ -34,7 +34,7 @@ export function AssumptionsPanel({ result }: { result: ProjectionResult }) {
           </Callout>
         ) : null}
 
-        <Group group={assumptionGroup(result.input, latest)} />
+        <Group group={assumptionGroup(result.input, latest)} headingLevel={4} />
 
         {ruleSets.map((rules) => (
           <section
@@ -58,11 +58,14 @@ export function AssumptionsPanel({ result }: { result: ProjectionResult }) {
   );
 }
 
-function Group({ group }: { group: AssumptionGroup }) {
+function Group({ group, headingLevel = 5 }: { group: AssumptionGroup; headingLevel?: 4 | 5 }) {
+  // The assumptions group sits straight under the card's h3; rule-set groups
+  // sit under each rule set's h4. Headings must not skip a level.
+  const Heading = headingLevel === 4 ? 'h4' : 'h5';
   return (
     <section aria-label={group.title} className="flex min-w-0 flex-col gap-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h5 className="text-[0.8125rem] font-semibold text-ink">{group.title}</h5>
+        <Heading className="text-[0.8125rem] font-semibold text-ink">{group.title}</Heading>
         {group.sourceId ? <SourceLink sourceId={group.sourceId} variant="chip" /> : null}
       </div>
       <dl className="flex flex-col">

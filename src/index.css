@@ -35,7 +35,7 @@
   /* Ink */
   --ink: #0b0b0b;
   --ink-muted: #52514e;
-  --ink-subtle: #78766f;
+  --ink-subtle: #6e6c65; /* 4.57:1 on surface-2, the darkest surface it sits on (WCAG AA 4.5:1) */
   --ink-inverse: #fcfcfb;
 
   /* Lines */
