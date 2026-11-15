@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { projectDraft } from '@/engine/project';
 import { validateProjectionInput } from '@/engine/validate';
 import { CURRENT_RULE_SET } from '@/rules';
-import { DEFAULT_FORM, toDraft, type FormValues } from './form';
+import { DEFAULT_FORM, normalised, toDraft, type FormValues } from './form';
 import { decodeUrlState, encodeUrlState, type UrlState } from './urlState';
 
 const START = '2026-10';
@@ -60,56 +60,87 @@ describe('round trip: state -> URL -> state', () => {
         fc.integer({ min: 0, max: max * 100 }).map((cents) => cents / 100),
         { nil: null },
       );
-    const formArbitrary = fc.record<FormValues>({
-      currentAge: fc.integer({ min: 16, max: 70 }),
-      monthlySalary: fc.integer({ min: 75_100, max: 3_000_000 }).map((cents) => cents / 100),
-      salaryGrowthPercent: fc.integer({ min: 0, max: 2_000 }).map((hundredths) => hundredths / 100),
-      ordinaryBalance: money(500_000),
-      specialBalance: money(500_000),
-      medisaveBalance: money(80_000),
-      housingPlan: fc.constantFrom('none', 'hdb-loan', 'bank-loan'),
-      propertyPrice: fc.integer({ min: 100_000, max: 2_000_000 }),
-      purchaseAge: fc.integer({ min: 16, max: 65 }),
-      downpayment: fc.integer({ min: 0, max: 100_000 }),
-      ordinaryAccountSharePercent: fc.integer({ min: 0, max: 20 }).map((step) => step * 5),
-      loanTenureYears: fc.integer({ min: 1, max: 25 }),
-      bankLoanRatePercent: fc.integer({ min: 0, max: 800 }).map((hundredths) => hundredths / 100),
-      // Within the HDB cap, so the validator never clamps it and the round trip stays exact.
-      retainedOrdinaryAccount: fc.option(fc.integer({ min: 0, max: 20_000 }), { nil: null }),
-      bonusMonths: fc.option(
-        fc.integer({ min: 0, max: 48 }).map((halves) => halves / 2),
-        { nil: null },
-      ),
-      bonusPaidInMonth: fc.integer({ min: 1, max: 12 }),
-    });
+    // Downpayments as a share of the price, so most generated forms pass the
+    // loan-to-value check rather than being filtered out.
+    const formArbitrary = fc
+      .record({
+        currentAge: fc.integer({ min: 16, max: 60 }),
+        monthlySalary: fc.integer({ min: 75_100, max: 3_000_000 }).map((cents) => cents / 100),
+        salaryGrowthPercent: fc.integer({ min: 0, max: 2_000 }).map((hundredths) => hundredths / 100),
+        ordinaryBalance: money(500_000),
+        specialBalance: money(500_000),
+        medisaveBalance: money(80_000),
+        housingPlan: fc.constantFrom('none', 'hdb-loan', 'bank-loan') as fc.Arbitrary<
+          FormValues['housingPlan']
+        >,
+        propertyPrice: fc.integer({ min: 100_000, max: 2_000_000 }),
+        purchaseAfter: fc.integer({ min: 0, max: 5 }),
+        downpaymentShare: fc.integer({ min: 45, max: 90 }),
+        ordinaryAccountSharePercent: fc.integer({ min: 0, max: 15 }).map((step) => step * 5),
+        loanTenureYears: fc.integer({ min: 1, max: 25 }),
+        bankLoanRatePercent: fc.integer({ min: 0, max: 800 }).map((hundredths) => hundredths / 100),
+        // Within the HDB cap, so the validator never clamps it and the round trip stays exact.
+        retainedOrdinaryAccount: fc.option(fc.integer({ min: 0, max: 20_000 }), { nil: null }),
+        grantShare: fc.option(fc.integer({ min: 1, max: 30 }), { nil: null }),
+        bonusMonths: fc.option(
+          fc.integer({ min: 0, max: 48 }).map((halves) => halves / 2),
+          { nil: null },
+        ),
+        bonusPaidInMonth: fc.integer({ min: 1, max: 12 }),
+        selling: fc.boolean(),
+        saleAfter: fc.integer({ min: 1, max: 10 }),
+        salePrice: fc.integer({ min: 50_000, max: 3_000_000 }),
+        nextHousingPlan: fc.constantFrom('none', 'hdb-loan', 'bank-loan') as fc.Arbitrary<
+          FormValues['housingPlan']
+        >,
+        nextPropertyPrice: fc.integer({ min: 100_000, max: 2_000_000 }),
+        nextDownpaymentShare: fc.integer({ min: 45, max: 90 }),
+        nextOrdinaryAccountSharePercent: fc.integer({ min: 0, max: 15 }).map((step) => step * 5),
+        nextLoanTenureYears: fc.integer({ min: 1, max: 25 }),
+        nextBankLoanRatePercent: fc.integer({ min: 0, max: 800 }).map((hundredths) => hundredths / 100),
+      })
+      .map((g): FormValues => {
+        const purchaseAge = g.currentAge + g.purchaseAfter;
+        const downpayment = Math.round((g.propertyPrice * g.downpaymentShare) / 100);
+        return {
+          ...DEFAULT_FORM,
+          currentAge: g.currentAge,
+          monthlySalary: g.monthlySalary,
+          salaryGrowthPercent: g.salaryGrowthPercent,
+          ordinaryBalance: g.ordinaryBalance,
+          specialBalance: g.specialBalance,
+          medisaveBalance: g.medisaveBalance,
+          housingPlan: g.housingPlan,
+          propertyPrice: g.propertyPrice,
+          purchaseAge,
+          downpayment,
+          ordinaryAccountSharePercent: g.ordinaryAccountSharePercent,
+          loanTenureYears: g.loanTenureYears,
+          bankLoanRatePercent: g.bankLoanRatePercent,
+          retainedOrdinaryAccount: g.retainedOrdinaryAccount,
+          housingGrant: g.grantShare === null ? null : Math.round((downpayment * g.grantShare) / 100),
+          bonusMonths: g.bonusMonths,
+          bonusPaidInMonth: g.bonusPaidInMonth,
+          selling: g.selling,
+          saleAge: purchaseAge + g.saleAfter,
+          salePrice: g.salePrice,
+          nextHousingPlan: g.nextHousingPlan,
+          nextPropertyPrice: g.nextPropertyPrice,
+          nextDownpayment: Math.round((g.nextPropertyPrice * g.nextDownpaymentShare) / 100),
+          nextOrdinaryAccountSharePercent: g.nextOrdinaryAccountSharePercent,
+          nextLoanTenureYears: g.nextLoanTenureYears,
+          nextBankLoanRatePercent: g.nextBankLoanRatePercent,
+        };
+      });
     fc.assert(
       fc.property(
         formArbitrary.filter((form) => validateProjectionInput(toDraft(form, START)).ok),
         (form) => {
-          // A link only carries what applies: housing fields without a plan,
-          // and a bank rate without a bank loan, are not part of the state.
-          const applicable: FormValues =
-            form.housingPlan === 'none'
-              ? {
-                  ...form,
-                  propertyPrice: null,
-                  purchaseAge: null,
-                  downpayment: null,
-                  ordinaryAccountSharePercent: DEFAULT_FORM.ordinaryAccountSharePercent,
-                  loanTenureYears: null,
-                  bankLoanRatePercent: null,
-                  retainedOrdinaryAccount: null,
-                }
-              : form.housingPlan === 'hdb-loan'
-                ? { ...form, bankLoanRatePercent: null }
-                : form;
-          // Likewise the bonus month without a bonus.
-          const withBonus: FormValues =
-            applicable.bonusMonths === null
-              ? { ...applicable, bonusPaidInMonth: DEFAULT_FORM.bonusPaidInMonth }
-              : applicable;
-          const decoded = roundTrip(state(withBonus));
-          expect(decoded.state).toEqual(state(withBonus));
+          // A link only carries what applies (`appliesTo`); everything else
+          // comes back as its default.
+          const applicable = normalised(form);
+          const decoded = roundTrip(state(applicable));
+          expect(decoded.state).toEqual(state(applicable));
           expect(decoded.notices).toEqual([]);
         },
       ),

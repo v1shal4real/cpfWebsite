@@ -30,7 +30,15 @@
 
 import { resolveRuleSet, ruleSetById, type RuleSet } from '@/rules';
 import { lowestWage } from './salary';
-import type { Cents, Fraction, HousingPlan, LoanTerms, MonthStamp, ProjectionInput } from './types';
+import type {
+  Cents,
+  Fraction,
+  HousingPlan,
+  LoanTerms,
+  MonthStamp,
+  ProjectionInput,
+  PropertySale,
+} from './types';
 
 const CENTS_PER_DOLLAR = 100;
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -97,6 +105,18 @@ export interface ProjectionDraft {
   instalmentsPaidFrom?: 'ordinary-account' | 'cash';
   /** The newest rule set the projection may use, by id. Absent means every rule set known. */
   rulesAsAt?: string;
+  /** A housing grant applied to the purchase, part of the downpayment. Optional. */
+  housingGrant?: Cents;
+  /** Selling the property: the age, and the expected price. Absent means no sale. */
+  saleAge?: number;
+  salePrice?: Cents;
+  /** The next property, bought in the sale month. 'none' or absent: sell only. */
+  nextHousingPlan?: HousingPlanChoice;
+  nextPropertyPrice?: Cents;
+  nextDownpayment?: Cents;
+  nextDownpaymentShareFromOrdinaryAccount?: Fraction;
+  nextLoanTenureYears?: number;
+  nextBankLoanRate?: Fraction;
 }
 
 export type ProjectionField =
@@ -117,6 +137,14 @@ export type ProjectionField =
   | 'loanTenureYears'
   | 'bankLoanRate'
   | 'ordinaryAccountRetention'
+  | 'housingGrant'
+  | 'saleAge'
+  | 'salePrice'
+  | 'nextPropertyPrice'
+  | 'nextDownpayment'
+  | 'nextDownpaymentShareFromOrdinaryAccount'
+  | 'nextLoanTenureYears'
+  | 'nextBankLoanRate'
   | 'rulesAsAt';
 
 export type ValidationErrorCode =
@@ -131,6 +159,10 @@ export type ValidationErrorCode =
   | 'before-current-age'
   | 'after-projection-end'
   | 'exceeds-property-price'
+  /** A grant larger than the downpayment it is part of. */
+  | 'exceeds-downpayment'
+  /** A sale before, or in the same month as, the purchase. */
+  | 'not-after-purchase'
   /** The loan is above the loan-to-value limit for its kind. */
   | 'below-minimum-downpayment'
   /** Less of the price is paid in cash than the loan's minimum cash downpayment. */
@@ -327,6 +359,10 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
   // so leftover values in hidden fields cannot block a projection.
   const housing =
     draft.housingPlan === 'none' ? undefined : validateHousing(draft, rules, check, age, endAge);
+  const sale =
+    draft.housingPlan === 'none' || draft.saleAge === undefined
+      ? undefined
+      : validateSale(draft, rules, check, endAge);
 
   if (check.errors.length > 0 || age === undefined || endAge === undefined || salary === undefined) {
     return { ok: false, errors: check.errors };
@@ -341,6 +377,7 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     salaryGrowth: { rate: growth!, appliedInMonth: raiseMonth! },
     ...(bonusMonths > 0 && { annualBonus: { monthsOfSalary: bonusMonths, paidInMonth: bonusMonth } }),
     ...(housing && { housing }),
+    ...(housing && sale && { sale }),
     ...(draft.rulesAsAt !== undefined && { rulesAsAt: draft.rulesAsAt }),
   };
 
@@ -398,6 +435,19 @@ function validateHousing(
       'The downpayment cannot be more than the price.',
       price,
     );
+  }
+
+  // A grant is part of the downpayment, paid through CPF; the OA share and
+  // cash cover the rest of it.
+  let grant = check.money('housingGrant', draft.housingGrant, 'Housing grant', false) ?? 0;
+  if (downpayment !== undefined && grant > downpayment) {
+    grant =
+      check.fail(
+        'housingGrant',
+        'exceeds-downpayment',
+        'The housing grant cannot be more than the downpayment.',
+        downpayment,
+      ) ?? 0;
   }
 
   const share = check.range(
@@ -470,9 +520,11 @@ function validateHousing(
       );
     } else if (share !== undefined && minCash > 0) {
       const minimumCash = Math.ceil(price * minCash);
-      const cash = downpayment - Math.round(downpayment * share);
+      // A grant is CPF money, so it is not cash.
+      const ownPart = downpayment - grant;
+      const cash = ownPart - Math.round(ownPart * share);
       if (cash < minimumCash) {
-        const maxShare = Math.floor(((downpayment - minimumCash) / downpayment) * 100);
+        const maxShare = ownPart > 0 ? Math.max(0, Math.floor(((ownPart - minimumCash) / ownPart) * 100)) : 0;
         check.fail(
           'downpaymentShareFromOrdinaryAccount',
           'below-minimum-cash',
@@ -515,7 +567,8 @@ function validateHousing(
     return undefined;
   }
 
-  const fromOrdinaryAccount = Math.round(downpayment * share);
+  const ownPart = downpayment - grant;
+  const fromOrdinaryAccount = Math.round(ownPart * share);
   const loan: LoanTerms =
     kind === 'bank'
       ? { kind, principal, tenureYears: tenure, interestRate: rate ?? 0 }
@@ -525,9 +578,84 @@ function validateHousing(
     purchaseAge,
     price,
     downpaymentFromOrdinaryAccount: fromOrdinaryAccount,
-    downpaymentFromCash: downpayment - fromOrdinaryAccount,
+    downpaymentFromCash: ownPart - fromOrdinaryAccount,
+    ...(grant > 0 && { grant }),
     loan,
     instalmentsPaidFrom: draft.instalmentsPaidFrom ?? 'ordinary-account',
     ...(retention !== undefined && { ordinaryAccountRetention: retention }),
   };
+}
+
+/** Which next-property field each of the shared housing checks reports against. */
+const NEXT_FIELD: Partial<Record<ProjectionField, ProjectionField>> = {
+  propertyPrice: 'nextPropertyPrice',
+  downpayment: 'nextDownpayment',
+  downpaymentShareFromOrdinaryAccount: 'nextDownpaymentShareFromOrdinaryAccount',
+  loanTenureYears: 'nextLoanTenureYears',
+  bankLoanRate: 'nextBankLoanRate',
+};
+
+/**
+ * The sale and the next purchase. The next property runs through the same
+ * checks as the first (loan-to-value, minimum cash, tenure, rate), bought at
+ * the sale age; its errors are reported against the next-property fields.
+ */
+function validateSale(
+  draft: ProjectionDraft,
+  rules: RuleSet,
+  check: Checker,
+  endAge: number | undefined,
+): PropertySale | undefined {
+  let saleAge = check.wholeNumber('saleAge', draft.saleAge, 'Sale age', true);
+  if (saleAge !== undefined && draft.purchaseAge !== undefined && saleAge <= draft.purchaseAge) {
+    saleAge = check.fail(
+      'saleAge',
+      'not-after-purchase',
+      `The sale must be after the purchase, so the sale age must be at least ${draft.purchaseAge + 1}.`,
+      draft.purchaseAge + 1,
+    );
+  }
+  if (saleAge !== undefined && endAge !== undefined && saleAge > endAge) {
+    saleAge = check.fail(
+      'saleAge',
+      'after-projection-end',
+      `Sale age must be no later than ${endAge}, when the projection ends.`,
+      endAge,
+    );
+  }
+  const price = check.money('salePrice', draft.salePrice, 'Sale price', true);
+  if (price === 0) check.fail('salePrice', 'below-minimum', 'Sale price must be more than zero.', 0);
+
+  let next: HousingPlan | undefined;
+  if (draft.nextHousingPlan && draft.nextHousingPlan !== 'none') {
+    const inner = new Checker();
+    next = validateHousing(
+      {
+        startMonth: draft.startMonth,
+        housingPlan: draft.nextHousingPlan,
+        ...(draft.nextPropertyPrice !== undefined && { propertyPrice: draft.nextPropertyPrice }),
+        ...(saleAge !== undefined && { purchaseAge: saleAge }),
+        ...(draft.nextDownpayment !== undefined && { downpayment: draft.nextDownpayment }),
+        ...(draft.nextDownpaymentShareFromOrdinaryAccount !== undefined && {
+          downpaymentShareFromOrdinaryAccount: draft.nextDownpaymentShareFromOrdinaryAccount,
+        }),
+        ...(draft.nextLoanTenureYears !== undefined && { loanTenureYears: draft.nextLoanTenureYears }),
+        ...(draft.nextBankLoanRate !== undefined && { bankLoanRate: draft.nextBankLoanRate }),
+        ...(draft.instalmentsPaidFrom !== undefined && { instalmentsPaidFrom: draft.instalmentsPaidFrom }),
+      },
+      rules,
+      inner,
+      saleAge,
+      endAge,
+    );
+    for (const error of inner.errors) {
+      const field = NEXT_FIELD[error.field];
+      // The purchase age is the sale age, already checked above.
+      if (field) check.errors.push({ ...error, field, message: `Next property: ${error.message}` });
+    }
+  }
+
+  if (saleAge === undefined || price === undefined) return undefined;
+  if (draft.nextHousingPlan && draft.nextHousingPlan !== 'none' && !next) return undefined;
+  return { age: saleAge, price, ...(next && { next }) };
 }

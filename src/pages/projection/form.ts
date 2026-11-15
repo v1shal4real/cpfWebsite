@@ -44,6 +44,20 @@ export interface FormValues {
   bankLoanRatePercent: number | null;
   /** Dollars of Ordinary Account savings kept back from the property. Optional; empty means none. */
   retainedOrdinaryAccount: number | null;
+  /** Dollars of housing grant, part of the downpayment. Optional; empty means none. */
+  housingGrant: number | null;
+  /* Selling this home later, and the next one bought the same month. */
+  selling: boolean;
+  saleAge: number | null;
+  /** Dollars: the expected sale price. */
+  salePrice: number | null;
+  /** 'none' sells without buying again. */
+  nextHousingPlan: HousingPlanChoice;
+  nextPropertyPrice: number | null;
+  nextDownpayment: number | null;
+  nextOrdinaryAccountSharePercent: number;
+  nextLoanTenureYears: number | null;
+  nextBankLoanRatePercent: number | null;
 }
 
 export type FormField = keyof FormValues;
@@ -81,6 +95,16 @@ export const DEFAULT_FORM: FormValues = {
   loanTenureYears: null,
   bankLoanRatePercent: null,
   retainedOrdinaryAccount: null,
+  housingGrant: null,
+  selling: false,
+  saleAge: null,
+  salePrice: null,
+  nextHousingPlan: 'none',
+  nextPropertyPrice: null,
+  nextDownpayment: null,
+  nextOrdinaryAccountSharePercent: 100,
+  nextLoanTenureYears: null,
+  nextBankLoanRatePercent: null,
 };
 
 const cents = (dollars: number | null) =>
@@ -110,7 +134,73 @@ export function toDraft(form: FormValues, startMonth: MonthStamp): ProjectionDra
     loanTenureYears: optional(form.loanTenureYears),
     bankLoanRate: fraction(form.bankLoanRatePercent),
     ordinaryAccountRetention: cents(form.retainedOrdinaryAccount),
+    housingGrant: cents(form.housingGrant),
+    ...(form.selling && {
+      saleAge: optional(form.saleAge),
+      salePrice: cents(form.salePrice),
+      nextHousingPlan: form.nextHousingPlan,
+      nextPropertyPrice: cents(form.nextPropertyPrice),
+      nextDownpayment: cents(form.nextDownpayment),
+      nextDownpaymentShareFromOrdinaryAccount: form.nextOrdinaryAccountSharePercent / PERCENT,
+      nextLoanTenureYears: optional(form.nextLoanTenureYears),
+      nextBankLoanRate: fraction(form.nextBankLoanRatePercent),
+    }),
   };
+}
+
+/** Fields that only count with a housing plan. */
+const HOUSING_FIELDS: readonly FormField[] = [
+  'propertyPrice',
+  'purchaseAge',
+  'downpayment',
+  'ordinaryAccountSharePercent',
+  'loanTenureYears',
+  'bankLoanRatePercent',
+  'retainedOrdinaryAccount',
+  'housingGrant',
+  'selling',
+];
+
+/** Fields that only count when selling. */
+export const SALE_FIELDS: readonly FormField[] = ['saleAge', 'salePrice', 'nextHousingPlan'];
+
+/** Fields that only count when buying again after the sale. */
+export const NEXT_FIELDS: readonly FormField[] = [
+  'nextPropertyPrice',
+  'nextDownpayment',
+  'nextOrdinaryAccountSharePercent',
+  'nextLoanTenureYears',
+  'nextBankLoanRatePercent',
+];
+
+/**
+ * Whether a field takes part in a projection with these values. One rule, used
+ * by the link (what it carries), scenario B (what counts as changed) and the
+ * panel (what it shows): a field that does not apply is neither shown,
+ * shared nor compared.
+ */
+export function appliesTo(field: FormField, form: FormValues): boolean {
+  const housing = form.housingPlan !== 'none';
+  const selling = housing && form.selling;
+  const buyingAgain = selling && form.nextHousingPlan !== 'none';
+  if (HOUSING_FIELDS.includes(field)) {
+    return housing && (field !== 'bankLoanRatePercent' || form.housingPlan === 'bank-loan');
+  }
+  if (SALE_FIELDS.includes(field)) return selling;
+  if (NEXT_FIELDS.includes(field)) {
+    return buyingAgain && (field !== 'nextBankLoanRatePercent' || form.nextHousingPlan === 'bank-loan');
+  }
+  if (field === 'bonusPaidInMonth') return form.bonusMonths !== null;
+  return true;
+}
+
+/** The values with every field that does not apply reset to its default. */
+export function normalised(form: FormValues): FormValues {
+  const out = { ...form } as Record<FormField, unknown>;
+  for (const field of Object.keys(DEFAULT_FORM) as FormField[]) {
+    if (!appliesTo(field, form)) out[field] = DEFAULT_FORM[field];
+  }
+  return out as unknown as FormValues;
 }
 
 /** Which form field each of the validator's fields is shown against. */
@@ -134,6 +224,14 @@ const FORM_FIELD_FOR: Record<ProjectionField, FormField | undefined> = {
   loanTenureYears: 'loanTenureYears',
   bankLoanRate: 'bankLoanRatePercent',
   ordinaryAccountRetention: 'retainedOrdinaryAccount',
+  housingGrant: 'housingGrant',
+  saleAge: 'saleAge',
+  salePrice: 'salePrice',
+  nextPropertyPrice: 'nextPropertyPrice',
+  nextDownpayment: 'nextDownpayment',
+  nextDownpaymentShareFromOrdinaryAccount: 'nextOrdinaryAccountSharePercent',
+  nextLoanTenureYears: 'nextLoanTenureYears',
+  nextBankLoanRate: 'nextBankLoanRatePercent',
   // Supplied by the page from the link, which falls back before validating.
   rulesAsAt: undefined,
 };

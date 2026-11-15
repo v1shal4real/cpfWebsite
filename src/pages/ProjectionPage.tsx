@@ -11,6 +11,7 @@ import { BalanceChart } from './projection/BalanceChart';
 import { ComparisonView } from './projection/ComparisonView';
 import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
+import { SaleSummary } from './projection/SaleSummary';
 import { Timeline } from './projection/Timeline';
 import {
   DEFAULT_FORM,
@@ -325,6 +326,7 @@ const ResultsRegion = memo(function ResultsRegion({
         cursorAgeInMonths={ageInMonths}
         onHoverAge={(age) => setScrubbed(age * 12)}
       />
+      <SaleSummary result={result} />
       <Timeline result={result} ageInMonths={ageInMonths} onAgeChange={setScrubbed} />
       <AssumptionsPanel result={result} />
     </section>
