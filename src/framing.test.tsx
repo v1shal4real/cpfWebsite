@@ -68,7 +68,7 @@ const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValu
 const render = ({ form, notices = [], b }: { form: FormValues; notices?: string[]; b?: FormValues }) =>
   renderToString(
     <ThemeProvider>
-      <AppShell ruleSet={CURRENT_RULE_SET}>
+      <AppShell ruleSet={CURRENT_RULE_SET} startMonth="2026-10">
         <ProjectionPage
           startMonth="2026-10"
           initialForm={form}
@@ -91,8 +91,11 @@ describe.each(Object.entries(VIEWS))('%s', (_, view) => {
     expect(text.match(PRODUCTS)?.[0] ?? null).toBeNull();
   });
 
-  it('carries the rules-as-at stamp', () => {
-    expect(text).toContain(`Rules as at ${CURRENT_RULE_SET.label}`);
+  it('carries the rules-as-at stamp, naming the rules in force and the scheduled change', () => {
+    // Tags become spaces in `textOf`, hence the optional space before the comma.
+    expect(text).toMatch(/Rules as at 1 January 2026 ?, with changes from 1 January 2027/);
+    // Never the scheduled set on its own, as if it were already in force.
+    expect(text).not.toMatch(/Rules as at 1 January 2027/);
   });
 
   it('keeps the projection framing on screen', () => {

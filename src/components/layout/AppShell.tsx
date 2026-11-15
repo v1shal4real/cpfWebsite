@@ -31,7 +31,16 @@ export function Container({
  * pin an older one than the current. The stamps in the header and footer
  * follow it, so they never claim newer rules than the figures used.
  */
-export function AppShell({ children, ruleSet }: { children: ReactNode; ruleSet?: RuleSet | undefined }) {
+export function AppShell({
+  children,
+  ruleSet,
+  startMonth,
+}: {
+  children: ReactNode;
+  ruleSet?: RuleSet | undefined;
+  /** The projection's first month, so the stamp can name the rules in force then. */
+  startMonth?: string | undefined;
+}) {
   return (
     <div className="flex min-h-dvh flex-col">
       <a
@@ -45,18 +54,18 @@ export function AppShell({ children, ruleSet }: { children: ReactNode; ruleSet?:
         Skip to projection
       </a>
 
-      <Header ruleSet={ruleSet} />
+      <Header ruleSet={ruleSet} startMonth={startMonth} />
 
       <main id="main" tabIndex={-1} className="flex-1 outline-none">
         {children}
       </main>
 
-      <Footer ruleSet={ruleSet} />
+      <Footer ruleSet={ruleSet} startMonth={startMonth} />
     </div>
   );
 }
 
-function Header({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
+function Header({ ruleSet, startMonth }: { ruleSet?: RuleSet | undefined; startMonth?: string | undefined }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/85 backdrop-blur-md">
       <Container className="flex h-14 items-center justify-between gap-3">
@@ -76,19 +85,19 @@ function Header({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <RulesStamp compact ruleSet={ruleSet} className="hidden md:inline-flex" />
+          <RulesStamp compact ruleSet={ruleSet} from={startMonth} className="hidden md:inline-flex" />
           <ThemeToggle />
         </div>
       </Container>
       {/* Below md, the stamp gets its own row rather than disappearing. */}
       <Container className="flex h-8 items-center border-t border-line md:hidden">
-        <RulesStamp compact ruleSet={ruleSet} />
+        <RulesStamp compact ruleSet={ruleSet} from={startMonth} />
       </Container>
     </header>
   );
 }
 
-function Footer({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
+function Footer({ ruleSet, startMonth }: { ruleSet?: RuleSet | undefined; startMonth?: string | undefined }) {
   return (
     <footer className="mt-16 border-t border-line bg-surface">
       <Container className="flex flex-col gap-3 py-6 text-[0.75rem] leading-relaxed text-ink-subtle sm:flex-row sm:items-start sm:justify-between">
@@ -99,7 +108,7 @@ function Footer({ ruleSet }: { ruleSet?: RuleSet | undefined }) {
           each figure links to the page it was published on.
         </p>
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-          <RulesStamp ruleSet={ruleSet} />
+          <RulesStamp ruleSet={ruleSet} from={startMonth} />
           {import.meta.env.DEV ? (
             <a href={DESIGN_SYSTEM_PATH} className="text-accent underline underline-offset-2">
               Design system preview (development only)

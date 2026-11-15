@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CURRENT_RULE_SET } from '@/rules';
+import { RULE_SET_2026 } from '@/rules';
+
+// CPF Board's allocation examples and the ratios below are 2026's.
+const CURRENT_RULE_SET = RULE_SET_2026;
 import { ALLOCATION_FIXTURES } from './__fixtures__';
 import { allocateContribution, allocationBandForMonth, splitContribution } from './allocation';
 

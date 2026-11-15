@@ -23,7 +23,10 @@ export function App() {
   const link = useMemo(() => decodeScenariosUrl(window.location.search, { startMonth: currentMonth() }), []);
 
   return (
-    <AppShell ruleSet={route === 'projection' ? ruleSetById(link.state.rulesAsAt) : undefined}>
+    <AppShell
+      ruleSet={route === 'projection' ? ruleSetById(link.state.rulesAsAt) : undefined}
+      startMonth={route === 'projection' ? link.state.startMonth : undefined}
+    >
       {route === 'design-system' && DesignSystemPage ? (
         <Suspense fallback={null}>
           <DesignSystemPage />

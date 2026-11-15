@@ -97,7 +97,7 @@ function ScenarioColumn({
             label="Combined balances at 55"
             value={<Money value={at55.total} />}
             animationKey={at55.total}
-            source={<RulesStamp compact ruleSet={ruleSet} />}
+            source={<RulesStamp compact ruleSet={ruleSet} from={result.input.startMonth} />}
           />
           <StatTile
             label="Retirement Account at 55"
@@ -114,7 +114,7 @@ function ScenarioColumn({
         animationKey={figures.accruedInterest}
         accent={SERIES.accrued.color}
         context={figures.usedCpfForHousing ? undefined : 'No CPF used for housing.'}
-        source={at55 ? undefined : <RulesStamp compact ruleSet={ruleSet} />}
+        source={at55 ? undefined : <RulesStamp compact ruleSet={ruleSet} from={result.input.startMonth} />}
       />
     </section>
   );

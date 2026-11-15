@@ -27,7 +27,7 @@ export function AssumptionsPanel({ result }: { result: ProjectionResult }) {
             <p>
               CPF rules change during the projection. Each month uses the rules in force then:{' '}
               {ruleSets
-                .map((rules) => `${rules.label} (${effectiveRange(rules).toLowerCase()})`)
+                .map((rules) => `${rules.label} (${effectiveRange(rules).replace(/^From/, 'from')})`)
                 .join(', then ')}
               .
             </p>
@@ -62,8 +62,11 @@ function Group({ group, headingLevel = 5 }: { group: AssumptionGroup; headingLev
   // The assumptions group sits straight under the card's h3; rule-set groups
   // sit under each rule set's h4. Headings must not skip a level.
   const Heading = headingLevel === 4 ? 'h4' : 'h5';
+  // A plain container, not a named region: with more than one rule set the
+  // same group titles repeat, and repeated region names make the landmark
+  // list ambiguous. The heading gives the structure.
   return (
-    <section aria-label={group.title} className="flex min-w-0 flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Heading className="text-[0.8125rem] font-semibold text-ink">{group.title}</Heading>
         {group.sourceId ? <SourceLink sourceId={group.sourceId} variant="chip" /> : null}
@@ -82,6 +85,6 @@ function Group({ group, headingLevel = 5 }: { group: AssumptionGroup; headingLev
           </div>
         ))}
       </dl>
-    </section>
+    </div>
   );
 }
