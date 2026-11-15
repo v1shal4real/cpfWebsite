@@ -14,6 +14,7 @@
  *   m   month the projection starts from, YYYY-MM
  *   a   current age                 s   monthly salary ($)
  *   g   salary growth (%)
+ *   bo  annual bonus (months of salary)    bp  bonus month (1-12)
  *   ob  OA balance ($)              sb  SA balance ($)      mb  MA balance ($)
  *   h   housing plan: n (none), hdb (HDB loan), bank (bank loan)
  *   p   property price ($)          pa  age at purchase
@@ -63,6 +64,8 @@ const NUMERIC_KEYS = {
   currentAge: 'a',
   monthlySalary: 's',
   salaryGrowthPercent: 'g',
+  bonusMonths: 'bo',
+  bonusPaidInMonth: 'bp',
   ordinaryBalance: 'ob',
   specialBalance: 'sb',
   medisaveBalance: 'mb',
@@ -94,6 +97,8 @@ const FIELD_NAMES: Record<FormField, string> = {
   currentAge: 'current age',
   monthlySalary: 'monthly salary',
   salaryGrowthPercent: 'salary growth',
+  bonusMonths: 'annual bonus',
+  bonusPaidInMonth: 'bonus month',
   ordinaryBalance: 'Ordinary Account balance',
   specialBalance: 'Special Account balance',
   medisaveBalance: 'MediSave Account balance',
@@ -127,6 +132,8 @@ export function encodeUrlState({ form, startMonth, rulesAsAt }: UrlState): strin
   for (const [field, key] of Object.entries(NUMERIC_KEYS) as [NumericField, string][]) {
     if (form.housingPlan === 'none' && HOUSING_FIELDS.includes(field)) continue;
     if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan') continue;
+    // The bonus month means nothing without a bonus.
+    if (field === 'bonusPaidInMonth' && form.bonusMonths === null) continue;
     const value = form[field];
     if (value !== null) params.set(key, compact(value));
   }
@@ -268,6 +275,7 @@ function normalised(form: FormValues): FormValues {
     if (field === 'bankLoanRatePercent' && form.housingPlan !== 'bank-loan')
       out.bankLoanRatePercent = DEFAULT_FORM.bankLoanRatePercent;
   }
+  if (form.bonusMonths === null) out.bonusPaidInMonth = DEFAULT_FORM.bonusPaidInMonth;
   return out;
 }
 

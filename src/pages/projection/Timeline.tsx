@@ -132,6 +132,19 @@ function ReadoutPanel({ readout }: { readout: TimelineReadout }) {
           />
         )}
 
+        {readout.bonus ? (
+          <>
+            <h4 className="mt-3 text-[0.8125rem] font-semibold text-ink">Bonus this month</h4>
+            <DefinitionList
+              items={[
+                { term: 'Bonus paid', value: formatMoney(readout.bonus.paid) },
+                { term: 'Subject to CPF', value: formatMoney(readout.bonus.subjectToCpf) },
+                { term: 'CPF on the bonus', value: formatMoney(readout.bonus.contribution) },
+              ]}
+            />
+          </>
+        ) : null}
+
         <h4 className="mt-3 text-[0.8125rem] font-semibold text-ink">Accrued interest</h4>
         {housing ? (
           <DefinitionList

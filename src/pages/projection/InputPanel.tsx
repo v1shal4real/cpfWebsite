@@ -134,6 +134,42 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
             max={INPUT_LIMITS.maximumSalaryGrowthPercent}
           />
         </Field>
+
+        <Field
+          label="Annual bonus"
+          hint={`Optional. In months of salary, e.g. 1 for a 13th-month payment. CPF applies to bonuses up to the Additional Wage ceiling: ${formatMoney(wageCeilings.annualSalaryCeiling)} a year, less the Ordinary Wages that attract CPF that year.`}
+          labelAside={mark(
+            'bonusMonths',
+            <SourceLink sourceId="additionalWageCeilingExamples" variant="chip" />,
+          )}
+          error={errorFor('bonusMonths')}
+        >
+          <NumericInput
+            value={values.bonusMonths}
+            onValueChange={(bonusMonths) => onChange({ bonusMonths })}
+            onBlur={markTouched('bonusMonths')}
+            min={0}
+            max={INPUT_LIMITS.maximumBonusMonths}
+            step={0.5}
+            suffix="months"
+            unitDescription="months of salary"
+          />
+        </Field>
+
+        {values.bonusMonths ? (
+          <Field
+            label="Bonus paid in"
+            hint="Each year, at the salary of that month."
+            labelAside={mark('bonusPaidInMonth')}
+            error={errorFor('bonusPaidInMonth')}
+          >
+            <Select
+              value={String(values.bonusPaidInMonth)}
+              onChange={(event) => onChange({ bonusPaidInMonth: Number(event.target.value) })}
+              options={MONTH_NAMES.map((name, index) => ({ value: String(index + 1), label: name }))}
+            />
+          </Field>
+        ) : null}
       </Group>
 
       <Group legend="Current CPF balances" description="Optional. Leave a field blank for zero.">
@@ -378,3 +414,18 @@ function ChangedMark({ what }: { what?: string }) {
     </Badge>
   );
 }
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;

@@ -1,5 +1,5 @@
 /**
- * Monthly CPF contributions on Ordinary Wages.
+ * Monthly CPF contributions on Ordinary Wages and Additional Wages (bonuses).
  *
  * Three caps apply, in the order CPF Board applies them: the Ordinary Wage
  * ceiling on the month's wage, the annual salary ceiling on the wages counted
@@ -32,12 +32,15 @@ const DOLLAR = CENTS_PER_DOLLAR * BASIS_POINTS;
 export interface YearToDate {
   /** Ordinary Wages already subject to CPF this year. */
   ordinaryWagesSubjectToCpf: Cents;
+  /** Additional Wages already subject to CPF this year, against the AW ceiling. */
+  additionalWagesSubjectToCpf: Cents;
   /** Contributions already payable this year, employee and employer together. */
   contributions: Cents;
 }
 
 export const NO_CONTRIBUTIONS_YET: YearToDate = {
   ordinaryWagesSubjectToCpf: 0,
+  additionalWagesSubjectToCpf: 0,
   contributions: 0,
 };
 
@@ -165,4 +168,89 @@ export function contributionForMonth({
   const total = limitRoom;
   const employee = Math.min(uncapped.employee, total);
   return { ordinaryWageSubjectToCpf, total, employee, employer: total - employee };
+}
+
+/* Additional Wages ---------------------------------------------------------- */
+
+/**
+ * The Additional Wage ceiling for a calendar year: the annual salary ceiling
+ * less the Ordinary Wages subject to CPF that year.
+ *
+ * CPF Board: "$102,000 - Total Ordinary Wages (OW) subject to CPF for the
+ * year". An employer estimates the year's OW at each AW payment and
+ * re-calculates in December; a projection knows the year's wages already, so
+ * it applies the December figure throughout, and each year's total AW subject
+ * to CPF matches CPF Board's examples after their re-calculation.
+ */
+export function additionalWageCeiling(rules: RuleSet, ordinaryWagesSubjectToCpfForYear: Cents): Cents {
+  const annual = rules.wageCeilings.annualSalaryCeiling * CENTS_PER_DOLLAR;
+  return Math.max(0, annual - ordinaryWagesSubjectToCpfForYear);
+}
+
+/**
+ * Ordinary Wages subject to CPF over a calendar year, from each month's wage
+ * and the OW ceiling in force that month, capped at the annual ceiling.
+ */
+export function ordinaryWagesSubjectToCpfForYear(
+  months: readonly { ordinaryWage: Cents; rules: RuleSet }[],
+): Cents {
+  let total = 0;
+  for (const { ordinaryWage, rules } of months) {
+    const monthly = rules.wageCeilings.ordinaryWageCeiling * CENTS_PER_DOLLAR;
+    const annual = rules.wageCeilings.annualSalaryCeiling * CENTS_PER_DOLLAR;
+    total = Math.min(annual, total + Math.min(ordinaryWage, monthly));
+  }
+  return total;
+}
+
+export interface AdditionalWageRequest {
+  rules: RuleSet;
+  ageInMonths: number;
+  /** Additional Wages paid this month, before the AW ceiling. */
+  additionalWage: Cents;
+  /** This year's AW ceiling, from `additionalWageCeiling`. */
+  ceiling: Cents;
+  /** Including this month's Ordinary Wage contribution, which is computed first. */
+  yearToDate: YearToDate;
+}
+
+export interface AdditionalWageAmounts {
+  /** The part of this month's AW that attracted CPF, after the AW ceiling. */
+  additionalWageSubjectToCpf: Cents;
+  total: Cents;
+  employee: Cents;
+  employer: Cents;
+}
+
+export const NO_ADDITIONAL_WAGE: AdditionalWageAmounts = {
+  additionalWageSubjectToCpf: 0,
+  total: 0,
+  employee: 0,
+  employer: 0,
+};
+
+/**
+ * Contributions on one month's Additional Wages.
+ *
+ * At the rates for the month the AW is paid, so a bonus paid after the 55th
+ * birthday month takes the 55-to-60 rates (CPF Board's Example 10). Rounded on
+ * its own, apart from the month's OW contribution, as CPF Board's tables do.
+ * The Annual Limit covers OW and AW together.
+ */
+export function contributionOnAdditionalWage({
+  rules,
+  ageInMonths,
+  additionalWage,
+  ceiling,
+  yearToDate,
+}: AdditionalWageRequest): AdditionalWageAmounts {
+  if (additionalWage <= 0) return NO_ADDITIONAL_WAGE;
+  const room = Math.max(0, ceiling - yearToDate.additionalWagesSubjectToCpf);
+  const additionalWageSubjectToCpf = Math.min(additionalWage, room);
+  const uncapped = contributionOnWage(additionalWageSubjectToCpf, bandForMonth(rules, ageInMonths));
+
+  const limitRoom = Math.max(0, rules.wageCeilings.annualLimit * CENTS_PER_DOLLAR - yearToDate.contributions);
+  if (uncapped.total <= limitRoom) return { additionalWageSubjectToCpf, ...uncapped };
+  const employee = Math.min(uncapped.employee, limitRoom);
+  return { additionalWageSubjectToCpf, total: limitRoom, employee, employer: limitRoom - employee };
 }

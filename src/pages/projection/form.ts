@@ -23,6 +23,10 @@ export interface FormValues {
   monthlySalary: number | null;
   /** Percentage points a year: 3 is 3%. */
   salaryGrowthPercent: number | null;
+  /** Annual bonus in months of salary. Optional; empty means none. */
+  bonusMonths: number | null;
+  /** Calendar month the bonus is paid, 1 to 12. */
+  bonusPaidInMonth: number;
   /** Dollars. Optional; empty means zero. */
   ordinaryBalance: number | null;
   specialBalance: number | null;
@@ -51,6 +55,9 @@ export type FormField = keyof FormValues;
  */
 export const DEFAULT_SALARY_GROWTH_PERCENT = 0;
 
+/** December: when most annual bonuses, and the 13th-month payment, are paid. Editable. */
+export const DEFAULT_BONUS_MONTH = 12;
+
 /**
  * What a visitor lands on: illustrative values, not a typical member and not
  * a suggestion. No housing plan, so no particular purchase is put in front of
@@ -61,6 +68,8 @@ export const DEFAULT_FORM: FormValues = {
   currentAge: 30,
   monthlySalary: 5_000,
   salaryGrowthPercent: DEFAULT_SALARY_GROWTH_PERCENT,
+  bonusMonths: null,
+  bonusPaidInMonth: DEFAULT_BONUS_MONTH,
   ordinaryBalance: null,
   specialBalance: null,
   medisaveBalance: null,
@@ -86,6 +95,8 @@ export function toDraft(form: FormValues, startMonth: MonthStamp): ProjectionDra
     currentAge: optional(form.currentAge),
     monthlySalary: cents(form.monthlySalary),
     salaryGrowthRate: fraction(form.salaryGrowthPercent),
+    annualBonusMonths: optional(form.bonusMonths),
+    bonusPaidInMonth: form.bonusPaidInMonth,
     balances: {
       ordinary: cents(form.ordinaryBalance),
       special: cents(form.specialBalance),
@@ -111,6 +122,8 @@ const FORM_FIELD_FOR: Record<ProjectionField, FormField | undefined> = {
   salaryGrowthRate: 'salaryGrowthPercent',
   // The raise month is not a v1 input; it always takes its default.
   salaryRaiseMonth: undefined,
+  annualBonusMonths: 'bonusMonths',
+  bonusPaidInMonth: 'bonusPaidInMonth',
   'balances.ordinary': 'ordinaryBalance',
   'balances.special': 'specialBalance',
   'balances.medisave': 'medisaveBalance',

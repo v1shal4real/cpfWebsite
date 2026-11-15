@@ -37,6 +37,7 @@
  * derive one: ask CPF Board.
  */
 
+export { ADDITIONAL_WAGE_FIXTURES } from './additionalWages';
 export { ALLOCATION_FIXTURES } from './allocation';
 export { CONTRIBUTION_FIXTURES } from './contributions';
 export { HOUSING_ACCRUED_INTEREST_FIXTURES } from './housing';

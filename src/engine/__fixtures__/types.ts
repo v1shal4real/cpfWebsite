@@ -148,3 +148,34 @@ export interface AllocationFixture {
     medisave: number;
   };
 }
+
+/* Additional Wage ceiling --------------------------------------------------
+ *
+ * A whole year of one of CPF Board's AW ceiling examples: the Ordinary Wage
+ * paid each month and every Additional Wage payment, with the AW subject to
+ * CPF and the contributions CPF Board tabulates for it. Transcribed.
+ */
+
+export interface AdditionalWageYearFixture {
+  id: string;
+  description: string;
+  cite: FixtureCitation;
+  /** Rates and ceilings in force that year; bands ordered by `throughAge`. */
+  assumes: {
+    cite: FixtureCitation;
+    ordinaryWageCeiling: number;
+    annualSalaryCeiling: number;
+    bands: readonly { throughAge: number | null; total: number; employee: number }[];
+  };
+  /** The month the member turns 55, 1 to 12, or omitted if they stay below 55 all year. */
+  turns55InMonth?: number;
+  /** Ordinary Wage paid in each month, January first. */
+  ordinaryWagePaid: readonly number[];
+  /** CPF Board's AW ceiling for the year, after its December re-calculation. */
+  expectedCeiling: number;
+  payments: readonly {
+    month: number;
+    additionalWagePaid: number;
+    expected: { subjectToCpf: number; employer: number; employee: number };
+  }[];
+}
