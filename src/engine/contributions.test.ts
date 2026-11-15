@@ -119,7 +119,11 @@ describe('ceilings', () => {
     const result = contributionForMonth(
       request({
         ordinaryWage: 800_000,
-        yearToDate: { ordinaryWagesSubjectToCpf: annual - 100_000, contributions: 0 },
+        yearToDate: {
+          ...NO_CONTRIBUTIONS_YET,
+          ordinaryWagesSubjectToCpf: annual - 100_000,
+          contributions: 0,
+        },
       }),
     );
     expect(result.ordinaryWageSubjectToCpf).toBe(100_000);
@@ -131,14 +135,17 @@ describe('ceilings', () => {
     const result = contributionForMonth(
       request({
         ordinaryWage: 800_000,
-        yearToDate: { ordinaryWagesSubjectToCpf: 0, contributions: limit - 5_000 },
+        yearToDate: { ...NO_CONTRIBUTIONS_YET, ordinaryWagesSubjectToCpf: 0, contributions: limit - 5_000 },
       }),
     );
     expect(result.total).toBe(5_000);
     expect(result.employee + result.employer).toBe(result.total);
 
     const exhausted = contributionForMonth(
-      request({ ordinaryWage: 800_000, yearToDate: { ordinaryWagesSubjectToCpf: 0, contributions: limit } }),
+      request({
+        ordinaryWage: 800_000,
+        yearToDate: { ...NO_CONTRIBUTIONS_YET, ordinaryWagesSubjectToCpf: 0, contributions: limit },
+      }),
     );
     expect(exhausted.total).toBe(0);
   });

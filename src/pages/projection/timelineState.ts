@@ -46,12 +46,18 @@ export interface TimelineReadout {
   /** Closing balances that month, in dollars. */
   balances: AccountAmounts;
   total: number;
-  /** Total contribution as a share of the wage subject to CPF; `null` when no wage is subject to CPF. */
+  /**
+   * Contribution on the Ordinary Wage as a share of the OW subject to CPF;
+   * `null` when no wage is subject to CPF. A bonus is left out, so the rate
+   * reads the same in a bonus month as in any other.
+   */
   contributionRate: number | null;
   employeeRate: number | null;
   employerRate: number | null;
   /** Share of the month's contribution going to each account; `null` when there was no contribution. */
   allocationShares: AccountAmounts | null;
+  /** Present in a bonus month. Dollars. */
+  bonus: { paid: number; subjectToCpf: number; contribution: number } | null;
   /** Present once CPF has been used for housing. Dollars. */
   housing: { principalUsed: number; accruedInterest: number; refundable: number } | null;
 }
@@ -83,9 +89,17 @@ export function readoutAt(result: ProjectionResult, ageInMonths: number): Timeli
     month: month.month,
     balances,
     total: balances.ordinary + balances.special + balances.medisave + balances.retirement,
-    contributionRate: wage > 0 ? contribution.total / wage : null,
-    employeeRate: wage > 0 ? contribution.employee / wage : null,
-    employerRate: wage > 0 ? contribution.employer / wage : null,
+    contributionRate: wage > 0 ? (contribution.total - contribution.onAdditionalWage.total) / wage : null,
+    employeeRate: wage > 0 ? (contribution.employee - contribution.onAdditionalWage.employee) / wage : null,
+    employerRate: wage > 0 ? (contribution.employer - contribution.onAdditionalWage.employer) / wage : null,
+    bonus:
+      contribution.additionalWage > 0
+        ? {
+            paid: dollars(contribution.additionalWage),
+            subjectToCpf: dollars(contribution.additionalWageSubjectToCpf),
+            contribution: dollars(contribution.onAdditionalWage.total),
+          }
+        : null,
     allocationShares:
       contribution.total > 0
         ? {

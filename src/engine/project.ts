@@ -61,8 +61,16 @@ import {
   type RuleSet,
 } from '@/rules';
 import { allocateContribution } from './allocation';
-import { addMonths, monthToIsoDate, parseMonth } from './calendar';
-import { NO_CONTRIBUTIONS_YET, contributionForMonth, onFrom55Rules, type YearToDate } from './contributions';
+import { addMonths, formatMonth, monthToIsoDate, monthsBetween, parseMonth } from './calendar';
+import {
+  NO_CONTRIBUTIONS_YET,
+  additionalWageCeiling,
+  contributionForMonth,
+  contributionOnAdditionalWage,
+  onFrom55Rules,
+  ordinaryWagesSubjectToCpfForYear,
+  type YearToDate,
+} from './contributions';
 import {
   CREDITING_MONTH,
   NOTHING_ACCRUED,
@@ -198,6 +206,38 @@ export type DraftProjection =
  * project comes back as typed field errors instead, and a value that was
  * clamped comes back as an adjustment alongside the result.
  */
+/** The Ordinary Wage for every month of the projection, raised as the salary-growth rule says. */
+function wagePath(input: ProjectionInput, steps: number): Cents[] {
+  const wages: Cents[] = [];
+  let wage = input.monthlyOrdinaryWage;
+  for (let step = 0; step < steps; step++) {
+    const { month } = parseMonth(addMonths(input.startMonth, step));
+    if (isRaiseMonth(input, step, month)) wage = raiseWage(wage, input.salaryGrowth.rate);
+    wages.push(wage);
+  }
+  return wages;
+}
+
+/**
+ * Ordinary Wages subject to CPF over a calendar year, for its AW ceiling.
+ *
+ * Months of the start year before the projection begins are assumed paid at
+ * the starting wage: the member is taken to be in the same job all year, as
+ * the salary input describes. Months of the final year after the projection
+ * ends are not counted, as the projection does not model them.
+ */
+function yearOrdinaryWages(input: ProjectionInput, wages: readonly Cents[], year: number): Cents {
+  const months: { ordinaryWage: Cents; rules: RuleSet }[] = [];
+  for (let month = 1; month <= MONTHS_PER_YEAR; month++) {
+    const stamp = formatMonth({ year, month });
+    const step = monthsBetween(input.startMonth, stamp);
+    if (step >= wages.length) break;
+    const ordinaryWage = step < 0 ? wages[0]! : wages[step]!;
+    months.push({ ordinaryWage, rules: resolveRuleSet(monthToIsoDate(stamp), input.rulesAsAt) });
+  }
+  return ordinaryWagesSubjectToCpfForYear(months);
+}
+
 export function projectDraft(draft: ProjectionDraft): DraftProjection {
   const validated = validateProjectionInput(draft);
   if (!validated.ok) return validated;
@@ -220,7 +260,10 @@ export function project(input: ProjectionInput): ProjectionResult {
   const ruleSetIds: string[] = [];
 
   let balances = copy(input.openingBalances);
+  const wages = wagePath(input, steps);
   let ordinaryWage = input.monthlyOrdinaryWage;
+  // This year's Additional Wage ceiling, set in the first month of each year.
+  let awCeiling = 0;
   // The ceilings that count across a year are per calendar year, so this
   // resets in January rather than on the projection's own anniversary.
   let yearToDate: YearToDate = { ...NO_CONTRIBUTIONS_YET };
@@ -256,16 +299,19 @@ export function project(input: ProjectionInput): ProjectionResult {
     const ruleSet = resolveRuleSet(monthToIsoDate(month), input.rulesAsAt);
     if (ruleSetIds.at(-1) !== ruleSet.id) ruleSetIds.push(ruleSet.id);
 
-    if (year !== yearInProgress) {
-      yearToDate = { ...NO_CONTRIBUTIONS_YET };
-      yearInProgress = year;
-      caps = undefined;
+    if (step === 0 || year !== yearInProgress) {
+      if (year !== yearInProgress) {
+        yearToDate = { ...NO_CONTRIBUTIONS_YET };
+        yearInProgress = year;
+        caps = undefined;
+      }
+      awCeiling = input.annualBonus
+        ? additionalWageCeiling(ruleSet, yearOrdinaryWages(input, wages, year))
+        : 0;
     }
     caps ??= capsForYear(ruleSet, year, fixesBasicHealthcareSumIn);
 
-    if (isRaiseMonth(input, step, calendarMonth)) {
-      ordinaryWage = raiseWage(ordinaryWage, input.salaryGrowth.rate);
-    }
+    ordinaryWage = wages[step]!;
 
     const contribution = contributionForMonth({
       rules: ruleSet,
@@ -274,15 +320,37 @@ export function project(input: ProjectionInput): ProjectionResult {
       yearToDate,
     });
     yearToDate = {
+      ...yearToDate,
       ordinaryWagesSubjectToCpf: yearToDate.ordinaryWagesSubjectToCpf + contribution.ordinaryWageSubjectToCpf,
       contributions: yearToDate.contributions + contribution.total,
     };
+
+    // A bonus in its month: an Additional Wage, capped by this year's AW
+    // ceiling, after the month's Ordinary Wage contribution.
+    const additionalWage =
+      input.annualBonus && calendarMonth === input.annualBonus.paidInMonth
+        ? Math.round(ordinaryWage * input.annualBonus.monthsOfSalary)
+        : 0;
+    const onAdditionalWage = contributionOnAdditionalWage({
+      rules: ruleSet,
+      ageInMonths,
+      additionalWage,
+      ceiling: awCeiling,
+      yearToDate,
+    });
+    yearToDate = {
+      ...yearToDate,
+      additionalWagesSubjectToCpf:
+        yearToDate.additionalWagesSubjectToCpf + onAdditionalWage.additionalWageSubjectToCpf,
+      contributions: yearToDate.contributions + onAdditionalWage.total,
+    };
+    const monthTotal = contribution.total + onAdditionalWage.total;
 
     const openingBalances = copy(balances);
     const allocation = allocateContribution({
       rules: ruleSet,
       ageInMonths,
-      total: contribution.total,
+      total: monthTotal,
       retirementBalance: openingBalances.retirement,
       fullRetirementSum,
     });
@@ -419,8 +487,18 @@ export function project(input: ProjectionInput): ProjectionResult {
       closingBalances,
       ordinaryWage,
       contribution: {
-        ...contribution,
+        ordinaryWageSubjectToCpf: contribution.ordinaryWageSubjectToCpf,
+        total: monthTotal,
+        employee: contribution.employee + onAdditionalWage.employee,
+        employer: contribution.employer + onAdditionalWage.employer,
         allocation,
+        additionalWage,
+        additionalWageSubjectToCpf: onAdditionalWage.additionalWageSubjectToCpf,
+        onAdditionalWage: {
+          total: onAdditionalWage.total,
+          employee: onAdditionalWage.employee,
+          employer: onAdditionalWage.employer,
+        },
       },
       interest: {
         baseAccrued: interest.baseAccrued,

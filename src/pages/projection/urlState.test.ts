@@ -76,6 +76,11 @@ describe('round trip: state -> URL -> state', () => {
       bankLoanRatePercent: fc.integer({ min: 0, max: 800 }).map((hundredths) => hundredths / 100),
       // Within the HDB cap, so the validator never clamps it and the round trip stays exact.
       retainedOrdinaryAccount: fc.option(fc.integer({ min: 0, max: 20_000 }), { nil: null }),
+      bonusMonths: fc.option(
+        fc.integer({ min: 0, max: 48 }).map((halves) => halves / 2),
+        { nil: null },
+      ),
+      bonusPaidInMonth: fc.integer({ min: 1, max: 12 }),
     });
     fc.assert(
       fc.property(
@@ -98,8 +103,13 @@ describe('round trip: state -> URL -> state', () => {
               : form.housingPlan === 'hdb-loan'
                 ? { ...form, bankLoanRatePercent: null }
                 : form;
-          const decoded = roundTrip(state(applicable));
-          expect(decoded.state).toEqual(state(applicable));
+          // Likewise the bonus month without a bonus.
+          const withBonus: FormValues =
+            applicable.bonusMonths === null
+              ? { ...applicable, bonusPaidInMonth: DEFAULT_FORM.bonusPaidInMonth }
+              : applicable;
+          const decoded = roundTrip(state(withBonus));
+          expect(decoded.state).toEqual(state(withBonus));
           expect(decoded.notices).toEqual([]);
         },
       ),

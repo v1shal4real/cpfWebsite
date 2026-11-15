@@ -25,6 +25,9 @@ const emptyMonth: ProjectionMonth = {
     employee: 0,
     employer: 0,
     allocation: nothing,
+    additionalWage: 0,
+    additionalWageSubjectToCpf: 0,
+    onAdditionalWage: { total: 0, employee: 0, employer: 0 },
   },
   interest: {
     baseAccrued: nothing,

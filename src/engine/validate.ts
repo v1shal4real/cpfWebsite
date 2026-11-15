@@ -50,6 +50,11 @@ export const INPUT_LIMITS = {
   maximumSalaryGrowthPercent: 20,
   /** The highest bank loan rate the tool will project, in whole percent. */
   maximumBankLoanRatePercent: 20,
+  /**
+   * The largest annual bonus the tool will project, in months of salary. Well
+   * past any usual bonus; the AW ceiling caps what attracts CPF long before.
+   */
+  maximumBonusMonths: 24,
 } as const;
 
 export type HousingPlanChoice = 'none' | 'hdb-loan' | 'bank-loan';
@@ -69,6 +74,10 @@ export interface ProjectionDraft {
   salaryGrowthRate?: Fraction;
   /** The month of the year the annual raise lands in, 1 to 12. Defaults to January. */
   salaryRaiseMonth?: number;
+  /** Annual bonus in months of salary. Absent or zero means no bonus. */
+  annualBonusMonths?: number;
+  /** The month the bonus is paid, 1 to 12. Defaults to December. */
+  bonusPaidInMonth?: number;
   /** Opening balances. Each defaults to zero. */
   balances?: { ordinary?: Cents; special?: Cents; medisave?: Cents };
   housingPlan: HousingPlanChoice;
@@ -96,6 +105,8 @@ export type ProjectionField =
   | 'monthlySalary'
   | 'salaryGrowthRate'
   | 'salaryRaiseMonth'
+  | 'annualBonusMonths'
+  | 'bonusPaidInMonth'
   | 'balances.ordinary'
   | 'balances.special'
   | 'balances.medisave'
@@ -284,6 +295,26 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
       'Raise month',
     ) ?? (draft.salaryRaiseMonth === undefined ? 1 : undefined);
 
+  // Annual bonus: optional; zero or absent means none.
+  const bonusMonths =
+    check.range(
+      'annualBonusMonths',
+      check.number('annualBonusMonths', draft.annualBonusMonths, 'Annual bonus', false),
+      0,
+      INPUT_LIMITS.maximumBonusMonths,
+      (months) => `${months} months of salary`,
+      'Annual bonus',
+    ) ?? 0;
+  const bonusMonth =
+    check.range(
+      'bonusPaidInMonth',
+      check.wholeNumber('bonusPaidInMonth', draft.bonusPaidInMonth, 'Bonus month', false),
+      1,
+      12,
+      String,
+      'Bonus month',
+    ) ?? 12;
+
   // Opening balances, each optional and zero by default.
   const ordinary =
     check.money('balances.ordinary', draft.balances?.ordinary, 'Ordinary Account balance', false) ?? 0;
@@ -308,6 +339,7 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     openingBalances: { ordinary, special, medisave, retirement: 0 },
     monthlyOrdinaryWage: salary,
     salaryGrowth: { rate: growth!, appliedInMonth: raiseMonth! },
+    ...(bonusMonths > 0 && { annualBonus: { monthsOfSalary: bonusMonths, paidInMonth: bonusMonth } }),
     ...(housing && { housing }),
     ...(draft.rulesAsAt !== undefined && { rulesAsAt: draft.rulesAsAt }),
   };

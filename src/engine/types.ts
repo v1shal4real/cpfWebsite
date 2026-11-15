@@ -94,6 +94,13 @@ export interface HousingPlan {
   ordinaryAccountRetention?: Cents;
 }
 
+export interface AnnualBonus {
+  /** Months of salary, e.g. 1.5. The Ordinary Wage of the month it is paid, before any ceiling. */
+  monthsOfSalary: number;
+  /** Calendar month it is paid in, 1 to 12. */
+  paidInMonth: number;
+}
+
 export interface ProjectionInput {
   /**
    * The month the projection starts from. An explicit input, never
@@ -129,6 +136,12 @@ export interface ProjectionInput {
      */
     appliedInMonth: number;
   };
+  /**
+   * A yearly bonus, an Additional Wage to CPF. Absent means none. Expressed
+   * in months of that month's salary, so it grows with the salary, which is
+   * how bonuses are usually quoted (a 13th month plus a variable bonus).
+   */
+  annualBonus?: AnnualBonus;
   housing?: HousingPlan;
   /**
    * The id of the newest rule set the projection may use. Absent means every
@@ -157,6 +170,16 @@ export interface MonthlyContribution {
   employer: Cents;
   /** How the total was split across accounts: MediSave, then SA or RA, then the remainder. */
   allocation: AccountAmounts;
+  /** Additional Wages paid this month (a bonus), before the AW ceiling. Zero in most months. */
+  additionalWage: Cents;
+  /** The part of it subject to CPF, after the AW ceiling. */
+  additionalWageSubjectToCpf: Cents;
+  /**
+   * The part of `total`, `employee` and `employer` that is on the Additional
+   * Wage. CPF rounds it on its own, so it is recorded rather than derived;
+   * the rest is on the Ordinary Wage.
+   */
+  onAdditionalWage: { total: Cents; employee: Cents; employer: Cents };
 }
 
 /**

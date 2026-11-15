@@ -57,6 +57,12 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
     monthlySalary: fc.integer({ min: 75_001, max: 2_000_000 }),
     salaryGrowthRate: basisPoints(-500, 1_000),
     salaryRaiseMonth: fc.integer({ min: 1, max: 12 }),
+    // A bonus in about two drafts of three, from a fraction of a month to well past the AW ceiling.
+    annualBonusMonths: fc.option(
+      fc.integer({ min: 1, max: 48 }).map((halves) => halves / 2),
+      { nil: undefined, freq: 2 },
+    ),
+    bonusPaidInMonth: fc.integer({ min: 1, max: 12 }),
     ordinary: fc.integer({ min: 0, max: 50_000_000 }),
     special: fc.integer({ min: 0, max: 50_000_000 }),
     medisave: fc.integer({ min: 0, max: 10_000_000 }),
@@ -89,6 +95,8 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
       monthlySalary: g.monthlySalary,
       salaryGrowthRate: g.salaryGrowthRate,
       salaryRaiseMonth: g.salaryRaiseMonth,
+      annualBonusMonths: g.annualBonusMonths,
+      bonusPaidInMonth: g.bonusPaidInMonth,
       balances: { ordinary: g.ordinary, special: g.special, medisave: g.medisave },
       housingPlan: g.housingPlan,
       propertyPrice: g.propertyPrice,

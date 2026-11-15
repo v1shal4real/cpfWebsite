@@ -81,6 +81,11 @@ export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
       rows: [
         { label: 'Ordinary Wage ceiling', value: `${formatMoney(w.ordinaryWageCeiling)} a month` },
         { label: 'Annual salary ceiling', value: formatMoney(w.annualSalaryCeiling) },
+        {
+          label: 'Additional Wage ceiling',
+          value: `${formatMoney(w.annualSalaryCeiling)} less the year's Ordinary Wages subject to CPF`,
+          sourceId: 'additionalWageCeilingExamples',
+        },
         { label: 'CPF Annual Limit', value: formatMoney(w.annualLimit), sourceId: own(w, 'annualLimit') },
       ],
     },
@@ -247,6 +252,13 @@ export function assumptionGroup(input: ProjectionInput, rules: RuleSet): Assumpt
           : `${pct(salaryGrowth.rate, 1)} a year, each ${MONTHS[salaryGrowth.appliedInMonth - 1] ?? 'year'}`,
     },
   ];
+  if (input.annualBonus) {
+    rows.push({
+      label: 'Annual bonus (yours)',
+      value: `${input.annualBonus.monthsOfSalary} months of salary, each ${MONTHS[input.annualBonus.paidInMonth - 1]}; CPF applies up to the Additional Wage ceiling`,
+      sourceId: 'additionalWageCeilingExamples',
+    });
+  }
   if (housing?.loan.kind === 'bank') {
     rows.push({
       label: 'Bank loan rate (yours)',
