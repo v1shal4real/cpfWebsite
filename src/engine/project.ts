@@ -90,6 +90,7 @@ import { housingPayments } from './housing';
 import { drawLoan, repayLoan, type LoanMonth, type LoanState } from './loan';
 import { capMedisave } from './medisave';
 import { isRaiseMonth, raiseWage } from './salary';
+import { estimateCpfLife } from './cpfLife';
 import { sellProperty, type SaleResult } from './sale';
 import { closeSpecialAccount, formRetirementAccount } from './transition';
 import type {
@@ -634,9 +635,25 @@ export function project(input: ProjectionInput): ProjectionResult {
   return {
     input,
     months,
-    summary: summarise(months, retirementSums),
+    summary: withCpfLife(summarise(months, retirementSums), months, input),
     ruleSetIds,
   };
+}
+
+/**
+ * CPF LIFE estimates from the Retirement Account at the end of the 65th
+ * birthday month, the premium, under the rules in force then. Only for a
+ * projection that reaches 65.
+ */
+function withCpfLife(
+  summary: ProjectionSummary,
+  months: readonly ProjectionMonth[],
+  input: ProjectionInput,
+): ProjectionSummary {
+  const at65 = months.find((month) => month.ageInMonths === AGE_65_IN_MONTHS);
+  if (!at65) return summary;
+  const rules = resolveRuleSet(monthToIsoDate(at65.month), input.rulesAsAt);
+  return { ...summary, cpfLife: estimateCpfLife(rules.cpfLife, at65.closingBalances.retirement) };
 }
 
 function summarise(

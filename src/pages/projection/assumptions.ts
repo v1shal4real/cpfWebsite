@@ -209,6 +209,27 @@ export function ruleSetGroups(rules: RuleSet): AssumptionGroup[] {
       ],
     },
     {
+      id: 'cpfLife',
+      title: 'CPF LIFE estimates',
+      sourceId: rules.cpfLife.sourceId,
+      rows: [
+        ...rules.cpfLife.standardTable.map((row) => ({
+          label: `Standard Plan, ${formatMoney(row.premiumAt65)} at 65`,
+          value: `${formatMoney(row.monthlyFrom65)} from 65, ${formatMoney(row.monthlyFrom70)} from 70`,
+        })),
+        {
+          label: 'Escalating Plan',
+          value: `Starts ${pct(1 - rules.cpfLife.escalatingStartRatio)} below the Standard Plan`,
+          sourceId: own(rules.cpfLife, 'escalatingStartRatio'),
+        },
+        {
+          label: 'Escalating Plan rise',
+          value: `${pct(rules.cpfLife.escalatingAnnualRise)} a year`,
+          sourceId: own(rules.cpfLife, 'escalatingAnnualRise'),
+        },
+      ],
+    },
+    {
       id: 'housing',
       title: 'Housing',
       sourceId: h.sourceId,

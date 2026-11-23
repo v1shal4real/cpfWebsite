@@ -271,6 +271,32 @@ export interface HousingRules extends Sourced<
   bankLoanLimits: LoanLimits;
 }
 
+/** One row of CPF Board's published CPF LIFE payout table. Dollars. */
+export interface CpfLifePayoutPoint {
+  /** Savings in the Retirement Account at 65: the CPF LIFE premium. */
+  premiumAt65: number;
+  /** Estimated Standard Plan monthly payout from 65. */
+  monthlyFrom65: number;
+  /** The same, deferred to start at 70. */
+  monthlyFrom70: number;
+}
+
+/**
+ * CPF LIFE payout estimates, from published figures only. CPF Board does not
+ * publish its annuity formula, so the engine reads payouts off CPF's own
+ * table rather than computing them.
+ */
+export interface CpfLifeRules extends Sourced<'escalatingStartRatio' | 'escalatingAnnualRise'> {
+  /** The cohort and assumptions the table was published for, as CPF states them. */
+  basis: string;
+  /** Standard Plan, ascending by premium. */
+  standardTable: readonly CpfLifePayoutPoint[];
+  /** Escalating Plan's first payout as a share of the Standard Plan's. */
+  escalatingStartRatio: number;
+  /** Escalating Plan's yearly increase. */
+  escalatingAnnualRise: number;
+}
+
 export interface RuleSet {
   /** Stable identifier, e.g. `sg-cpf-2026-01`. */
   id: string;
@@ -297,4 +323,5 @@ export interface RuleSet {
   escalation: Escalation;
   retirementAccount: RetirementAccountRules;
   housing: HousingRules;
+  cpfLife: CpfLifeRules;
 }
