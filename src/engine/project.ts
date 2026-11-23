@@ -79,7 +79,13 @@ import {
   earningBalances,
   type AccruedThisYear,
 } from './interest';
-import { NO_HOUSING_USE, accrueHousingInterest, type AccruedInterestState } from './accruedInterest';
+import {
+  NO_HOUSING_USE,
+  accrueHousingInterest,
+  applyVoluntaryRefund,
+  type AccruedInterestState,
+  type VoluntaryRefundResult,
+} from './accruedInterest';
 import { housingPayments } from './housing';
 import { drawLoan, repayLoan, type LoanMonth, type LoanState } from './loan';
 import { capMedisave } from './medisave';
@@ -306,6 +312,8 @@ export function project(input: ProjectionInput): ProjectionResult {
   // CPF principal used for the property and the interest it has accrued:
   // what must be refunded on sale.
   let housingUse: AccruedInterestState = { ...NO_HOUSING_USE };
+  // Set by a full voluntary refund: CPF is no longer used for this home.
+  let cpfUseStopped = false;
 
   for (let step = 0; step < steps; step++) {
     const month = addMonths(input.startMonth, step);
@@ -402,23 +410,58 @@ export function project(input: ProjectionInput): ProjectionResult {
       housingUse = { ...NO_HOUSING_USE };
     }
 
-    // Paying for the property, from its purchase month on. The OA can draw
-    // on this month's contribution, and a sale's refund, which have landed.
     const owned = planAt(step);
     const isPurchaseMonth = owned !== undefined && step === owned.purchasedAt;
+    // A new home starts with CPF in use again.
+    if (isPurchaseMonth) cpfUseStopped = false;
+
+    // A voluntary refund, at the start of the month, against the home owned
+    // now: it reduces principal then accrued interest, before this month
+    // accrues. It lands in the OA, or from 55 in the RA up to the FRS first,
+    // and earns OA interest from next month like any other credit.
+    const refundAsked = owned
+      ? (input.voluntaryRefunds ?? [])
+          .filter((each) => each.age * MONTHS_PER_YEAR === ageInMonths)
+          .reduce((sum, each) => sum + each.amount, 0)
+      : 0;
+    let voluntary: (VoluntaryRefundResult & { toRetirement: Cents; toOrdinary: Cents }) | undefined;
+    if (refundAsked > 0) {
+      const applied = applyVoluntaryRefund(housingUse, refundAsked);
+      housingUse = applied.state;
+      const retirementSoFar =
+        openingBalances.retirement + allocation.retirement + (sale?.refundedToRetirement ?? 0);
+      const toRetirement = onFrom55Rules(ageInMonths)
+        ? Math.min(applied.refunded, Math.max(0, fullRetirementSum - retirementSoFar))
+        : 0;
+      voluntary = { ...applied, toRetirement, toOrdinary: applied.refunded - toRetirement };
+      // CPF Board (source `voluntaryHousingRefundComparison`): after a full
+      // refund of the CPF used and accrued interest, "all CPF withdrawals
+      // including monthly housing loan instalments (if any) for the property
+      // will stop". From this month, instalments are paid in cash.
+      const { principalUsed, credited, accruingThisYear } = applied.state;
+      if (principalUsed === 0 && credited === 0 && accruingThisYear === 0) cpfUseStopped = true;
+    }
+
+    // Paying for the property, from its purchase month on. The OA can draw
+    // on this month's contribution, and any refund, which have landed.
     const payments = owned
       ? housingPayments({
           rules: ruleSet,
-          plan: owned.plan,
+          plan: cpfUseStopped ? { ...owned.plan, instalmentsPaidFrom: 'cash' } : owned.plan,
           isPurchaseMonth,
           instalmentDue: loanMonth?.record.instalment ?? 0,
-          ordinaryAvailable: openingBalances.ordinary + allocation.ordinary + (sale?.refundedToOrdinary ?? 0),
+          ordinaryAvailable:
+            openingBalances.ordinary +
+            allocation.ordinary +
+            (sale?.refundedToOrdinary ?? 0) +
+            (voluntary?.toOrdinary ?? 0),
         })
       : undefined;
     const withdrawnFromOrdinaryAccount = payments?.withdrawnFromOrdinaryAccount ?? 0;
     // A grant passes through the OA into the purchase: CPF used, refundable
     // with interest, but never part of the member's own balance.
     const grantUsed = owned && isPurchaseMonth ? (owned.plan.grant ?? 0) : 0;
+
     const refund = payments
       ? accrueHousingInterest({
           rules: ruleSet,
@@ -451,10 +494,11 @@ export function project(input: ProjectionInput): ProjectionResult {
       rules: ruleSet,
       ageInMonths,
       balances: add(add(add(openingBalances, allocation), credited), {
-        ordinary: (sale?.refundedToOrdinary ?? 0) - withdrawnFromOrdinaryAccount,
+        ordinary:
+          (sale?.refundedToOrdinary ?? 0) + (voluntary?.toOrdinary ?? 0) - withdrawnFromOrdinaryAccount,
         special: 0,
         medisave: 0,
-        retirement: sale?.refundedToRetirement ?? 0,
+        retirement: (sale?.refundedToRetirement ?? 0) + (voluntary?.toRetirement ?? 0),
       }),
       basicHealthcareSum: caps.basicHealthcareSum,
       fullRetirementSum: onFrom55Rules(ageInMonths) ? fullRetirementSum : caps.currentFullRetirementSum,
@@ -476,6 +520,18 @@ export function project(input: ProjectionInput): ProjectionResult {
         loanPrincipal: owned.plan.loan.principal,
         grant: grantUsed,
         afterSale: isSaleMonth,
+      });
+    }
+    if (voluntary && refund) {
+      events.push({
+        kind: 'voluntary-housing-refund',
+        asked: refundAsked,
+        refunded: voluntary.refunded,
+        toPrincipal: voluntary.toPrincipal,
+        toInterest: voluntary.toInterest,
+        refundedToRetirement: voluntary.toRetirement,
+        refundedToOrdinary: voluntary.toOrdinary,
+        refundableAfter: refund.refundable,
       });
     }
     if (loanMonth?.cleared) {
@@ -566,6 +622,7 @@ export function project(input: ProjectionInput): ProjectionResult {
             accruedInterest: refund.accruedInterest,
             refundable: refund.refundable,
             grantUsed,
+            voluntaryRefund: voluntary?.refunded ?? 0,
           },
         }),
       events,

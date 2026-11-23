@@ -38,6 +38,7 @@ import type {
   MonthStamp,
   ProjectionInput,
   PropertySale,
+  VoluntaryRefund,
 } from './types';
 
 const CENTS_PER_DOLLAR = 100;
@@ -117,6 +118,9 @@ export interface ProjectionDraft {
   nextDownpaymentShareFromOrdinaryAccount?: Fraction;
   nextLoanTenureYears?: number;
   nextBankLoanRate?: Fraction;
+  /** A voluntary housing refund: cash paid back into CPF at an age. Optional. */
+  voluntaryRefundAge?: number;
+  voluntaryRefundAmount?: Cents;
 }
 
 export type ProjectionField =
@@ -145,6 +149,8 @@ export type ProjectionField =
   | 'nextDownpaymentShareFromOrdinaryAccount'
   | 'nextLoanTenureYears'
   | 'nextBankLoanRate'
+  | 'voluntaryRefundAge'
+  | 'voluntaryRefundAmount'
   | 'rulesAsAt';
 
 export type ValidationErrorCode =
@@ -163,6 +169,8 @@ export type ValidationErrorCode =
   | 'exceeds-downpayment'
   /** A sale before, or in the same month as, the purchase. */
   | 'not-after-purchase'
+  /** A voluntary refund before the home is bought. */
+  | 'before-purchase'
   /** The loan is above the loan-to-value limit for its kind. */
   | 'below-minimum-downpayment'
   /** Less of the price is paid in cash than the loan's minimum cash downpayment. */
@@ -363,6 +371,11 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     draft.housingPlan === 'none' || draft.saleAge === undefined
       ? undefined
       : validateSale(draft, rules, check, endAge);
+  const voluntaryRefunds =
+    draft.housingPlan === 'none' ||
+    (draft.voluntaryRefundAge === undefined && draft.voluntaryRefundAmount === undefined)
+      ? undefined
+      : validateVoluntaryRefund(draft, check, endAge);
 
   if (check.errors.length > 0 || age === undefined || endAge === undefined || salary === undefined) {
     return { ok: false, errors: check.errors };
@@ -378,6 +391,7 @@ export function validateProjectionInput(draft: ProjectionDraft): ValidationResul
     ...(bonusMonths > 0 && { annualBonus: { monthsOfSalary: bonusMonths, paidInMonth: bonusMonth } }),
     ...(housing && { housing }),
     ...(housing && sale && { sale }),
+    ...(housing && voluntaryRefunds && { voluntaryRefunds }),
     ...(draft.rulesAsAt !== undefined && { rulesAsAt: draft.rulesAsAt }),
   };
 
@@ -658,4 +672,38 @@ function validateSale(
   if (saleAge === undefined || price === undefined) return undefined;
   if (draft.nextHousingPlan && draft.nextHousingPlan !== 'none' && !next) return undefined;
   return { age: saleAge, price, ...(next && { next }) };
+}
+
+/**
+ * One voluntary refund: an age while a home is owned, and an amount. The
+ * engine caps the amount at the principal plus accrued interest owed then,
+ * which only the projection knows.
+ */
+function validateVoluntaryRefund(
+  draft: ProjectionDraft,
+  check: Checker,
+  endAge: number | undefined,
+): VoluntaryRefund[] | undefined {
+  let age = check.wholeNumber('voluntaryRefundAge', draft.voluntaryRefundAge, 'Refund age', true);
+  if (age !== undefined && draft.purchaseAge !== undefined && age < draft.purchaseAge) {
+    age = check.fail(
+      'voluntaryRefundAge',
+      'before-purchase',
+      `A refund can only be made once the home is bought, from age ${draft.purchaseAge}.`,
+      draft.purchaseAge,
+    );
+  }
+  if (age !== undefined && endAge !== undefined && age > endAge) {
+    age = check.fail(
+      'voluntaryRefundAge',
+      'after-projection-end',
+      `Refund age must be no later than ${endAge}, when the projection ends.`,
+      endAge,
+    );
+  }
+  const amount = check.money('voluntaryRefundAmount', draft.voluntaryRefundAmount, 'Refund amount', true);
+  if (amount === 0)
+    check.fail('voluntaryRefundAmount', 'below-minimum', 'Refund amount must be more than zero.', 0);
+  if (age === undefined || amount === undefined || amount === 0) return undefined;
+  return [{ age, amount }];
 }

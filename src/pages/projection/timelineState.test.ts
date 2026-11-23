@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { projectDraft } from '@/engine/project';
 import { DEFAULT_FORM, toDraft, type FormValues } from './form';
-import { monthAt, nextAgeInMonths, readoutAt } from './timelineState';
+import { monthAt, nextAgeInMonths, readoutAt, timelineMarks } from './timelineState';
 
 const range = { shift: false, min: 30 * 12, max: 65 * 12 };
 
@@ -74,5 +74,39 @@ describe('readout', () => {
 
   it('returns null outside the projection', () => {
     expect(readoutAt(result, 10 * 12)).toBeNull();
+  });
+});
+
+describe('timeline marks and the refund readout', () => {
+  const result = project({
+    ...DEFAULT_FORM,
+    ordinaryBalance: 200_000,
+    housingPlan: 'hdb-loan',
+    propertyPrice: 500_000,
+    purchaseAge: 32,
+    downpayment: 125_000,
+    ordinaryAccountSharePercent: 75,
+    loanTenureYears: 25,
+    voluntaryRefundAge: 40,
+    voluntaryRefundAmount: 50_000,
+    selling: true,
+    saleAge: 50,
+    salePrice: 800_000,
+  });
+
+  it('marks the purchase, the refund, age 55 and the sale, in order', () => {
+    expect(timelineMarks(result)).toEqual([
+      { value: 32 * 12, label: 'Home bought' },
+      { value: 40 * 12, label: 'Voluntary housing refund' },
+      { value: 50 * 12, label: 'Home sold' },
+      { value: 55 * 12, label: 'Age 55: Retirement Account formed' },
+    ]);
+  });
+
+  it('shows what the refund did in its month, and nothing the month after', () => {
+    const r = readoutAt(result, 40 * 12)!;
+    expect(r.voluntaryRefund).toMatchObject({ refunded: 50_000, toPrincipal: 50_000, toInterest: 0 });
+    expect(r.voluntaryRefund!.refundableAfter).toBe(r.housing!.refundable);
+    expect(readoutAt(result, 40 * 12 + 1)!.voluntaryRefund).toBeNull();
   });
 });

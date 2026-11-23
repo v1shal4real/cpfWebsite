@@ -22,6 +22,7 @@ import {
   type FormValues,
 } from './form';
 import { retentionHint, retentionNote, shareInterestHint } from './retentionCopy';
+import { RefundFields } from './RefundFields';
 import { SaleFields } from './SaleFields';
 
 /**
@@ -381,6 +382,18 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
             values={values}
             onChange={onChange}
             rules={rules}
+            mark={mark}
+            errorFor={errorFor}
+            markTouched={markTouched}
+          />
+        </Group>
+      ) : null}
+
+      {housing ? (
+        <Group legend="Paying CPF back">
+          <RefundFields
+            values={values}
+            onChange={onChange}
             mark={mark}
             errorFor={errorFor}
             markTouched={markTouched}

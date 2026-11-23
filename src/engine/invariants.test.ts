@@ -91,6 +91,9 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
       NonNullable<ProjectionDraft['nextHousingPlan']>
     >,
     nextPropertyPrice: fc.integer({ min: 10_000_000, max: 200_000_000 }),
+    // A voluntary refund in about half the drafts, from a little to more than is owed.
+    refundAfterYears: fc.option(fc.integer({ min: 0, max: 30 }), { nil: undefined }),
+    refundAmount: fc.integer({ min: 100, max: 100_000_000 }),
   })
   .map((g): ProjectionDraft => {
     const endAge = Math.max(INPUT_LIMITS.projectionEndAge, g.currentAge);
@@ -119,6 +122,10 @@ const draftArbitrary: fc.Arbitrary<ProjectionDraft> = fc
       instalmentsPaidFrom: g.instalmentsPaidFrom,
       ...(g.grantShareOfDownpayment !== undefined && {
         housingGrant: Math.round(g.propertyPrice * g.downpaymentShareOfPrice * g.grantShareOfDownpayment),
+      }),
+      ...(g.refundAfterYears !== undefined && {
+        voluntaryRefundAge: Math.min(g.currentAge + g.purchaseAfterYears + g.refundAfterYears, endAge),
+        voluntaryRefundAmount: g.refundAmount,
       }),
       ...(g.saleAfterYears !== undefined && {
         saleAge: Math.min(g.currentAge + g.purchaseAfterYears + g.saleAfterYears, endAge),
@@ -160,10 +167,14 @@ function forEveryMonth(check: (month: ProjectionMonth, result: ProjectionResult)
 
 /* Conservation ------------------------------------------------------------- */
 
-/** CPF refunded by a sale this month, all accounts. */
+/** CPF refunded this month, by a sale or a voluntary refund, all accounts. */
 function saleRefund(month: ProjectionMonth): number {
-  const sold = month.events.find((event) => event.kind === 'property-sold');
-  return sold?.kind === 'property-sold' ? sold.refunded : 0;
+  let refunded = 0;
+  for (const event of month.events) {
+    if (event.kind === 'property-sold' || event.kind === 'voluntary-housing-refund')
+      refunded += event.refunded;
+  }
+  return refunded;
 }
 
 describe('conservation', () => {
@@ -177,14 +188,22 @@ describe('conservation', () => {
         const withdrawn = account === 'ordinary' ? (month.housing?.withdrawnFromOrdinaryAccount ?? 0) : 0;
         // A sale's CPF refund lands in the OA, or from 55 partly in the RA.
         const sold = month.events.find((event) => event.kind === 'property-sold');
+        const voluntary = month.events.find((event) => event.kind === 'voluntary-housing-refund');
         const refunded =
-          sold?.kind !== 'property-sold'
+          (sold?.kind !== 'property-sold'
             ? 0
             : account === 'ordinary'
               ? sold.refundedToOrdinary
               : account === 'retirement'
                 ? sold.refundedToRetirement
-                : 0;
+                : 0) +
+          (voluntary?.kind !== 'voluntary-housing-refund'
+            ? 0
+            : account === 'ordinary'
+              ? voluntary.refundedToOrdinary
+              : account === 'retirement'
+                ? voluntary.refundedToRetirement
+                : 0);
         const expected =
           month.openingBalances[account] +
           month.contribution.allocation[account] +
@@ -206,6 +225,20 @@ describe('conservation', () => {
         expect(event.refunded + event.refundNotCovered).toBe(event.refundDue);
         expect(event.refundedToOrdinary + event.refundedToRetirement).toBe(event.refunded);
         expect(event.refunded).toBeGreaterThanOrEqual(0);
+      }
+    });
+  });
+
+  it('a voluntary refund never refunds more than is owed, and splits principal first', () => {
+    forEveryMonth((month) => {
+      for (const event of month.events) {
+        if (event.kind !== 'voluntary-housing-refund') continue;
+        expect(event.refunded).toBeLessThanOrEqual(event.asked);
+        expect(event.toPrincipal + event.toInterest).toBe(event.refunded);
+        expect(event.refundedToOrdinary + event.refundedToRetirement).toBe(event.refunded);
+        // Interest is reduced only once the principal is cleared.
+        if (event.toInterest > 0)
+          expect(month.housing!.principalUsed).toBe(month.housing!.withdrawnFromOrdinaryAccount);
       }
     });
   });
@@ -297,8 +330,11 @@ describe('no negative balances', () => {
     forEveryMonth((month) => {
       if (!month.housing || month.housing.withdrawnFromOrdinaryAccount === 0) return;
       // A next purchase can draw on the refund its sale credited that month.
-      const sold = month.events.find((event) => event.kind === 'property-sold');
-      const refunded = sold?.kind === 'property-sold' ? sold.refundedToOrdinary : 0;
+      let refunded = 0;
+      for (const event of month.events) {
+        if (event.kind === 'property-sold' || event.kind === 'voluntary-housing-refund')
+          refunded += event.refundedToOrdinary;
+      }
       const available = month.openingBalances.ordinary + month.contribution.allocation.ordinary + refunded;
       expect(available - month.housing.withdrawnFromOrdinaryAccount, month.month).toBeGreaterThanOrEqual(
         month.housing.ordinaryAccountRetention,
@@ -428,6 +464,10 @@ describe('rules that hold for every input', () => {
         for (const month of project(input).months) {
           // A sale refunds it, so the next property starts its own record.
           if (month.events.some((event) => event.kind === 'property-sold')) previous = 0;
+          // A voluntary refund reduces it by exactly what went to principal.
+          for (const event of month.events) {
+            if (event.kind === 'voluntary-housing-refund') previous -= event.toPrincipal;
+          }
           if (!month.housing) continue;
           expect(month.housing.principalUsed).toBeGreaterThanOrEqual(previous);
           previous = month.housing.principalUsed;

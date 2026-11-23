@@ -123,6 +123,13 @@ export interface PropertySale {
   next?: HousingPlan;
 }
 
+export interface VoluntaryRefund {
+  /** Age at which the refund is made, in whole years. */
+  age: number;
+  /** The amount asked; the engine caps it at principal plus accrued interest. */
+  amount: Cents;
+}
+
 export interface ProjectionInput {
   /**
    * The month the projection starts from. An explicit input, never
@@ -167,6 +174,11 @@ export interface ProjectionInput {
   housing?: HousingPlan;
   /** Selling `housing`, and any next purchase. Only with `housing`. */
   sale?: PropertySale;
+  /**
+   * Cash paid back into CPF against the home owned at the time, each at the
+   * start of the month the member reaches that age. See `applyVoluntaryRefund`.
+   */
+  voluntaryRefunds?: readonly VoluntaryRefund[];
   /**
    * The id of the newest rule set the projection may use. Absent means every
    * rule set known. A shared link pins it, so the link keeps rendering the
@@ -308,6 +320,8 @@ export interface MonthlyHousing {
   refundable: Cents;
   /** A housing grant applied this month, as CPF used for the property. Zero except at a purchase. */
   grantUsed: Cents;
+  /** Cash paid back into CPF this month against the property. Zero in most months. */
+  voluntaryRefund: Cents;
 }
 
 /* Events ------------------------------------------------------------------- */
@@ -329,6 +343,18 @@ export type ProjectionEvent =
       grant: Cents;
       /** True for a purchase made with a sale, in the same month. */
       afterSale: boolean;
+    }
+  | {
+      /** Cash paid back into CPF against the property. See `applyVoluntaryRefund`. */
+      kind: 'voluntary-housing-refund';
+      asked: Cents;
+      refunded: Cents;
+      toPrincipal: Cents;
+      toInterest: Cents;
+      refundedToRetirement: Cents;
+      refundedToOrdinary: Cents;
+      /** Principal plus accrued interest after the refund. */
+      refundableAfter: Cents;
     }
   | {
       /** The sale, applied in order: loan, then CPF refund, then cash. See `sale.ts`. */

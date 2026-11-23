@@ -25,6 +25,7 @@
  *   nh  next home's plan: n, hdb, bank (bought the month of the sale)
  *   np  next price ($)   nd  next downpayment ($)   nos next share from OA (%)
  *   nt  next tenure (years)         nbr next bank loan rate (%)
+ *   vra voluntary housing refund: age     vrm amount ($)
  *
  * Empty fields are left out, and so is every field that does not apply
  * (`appliesTo` in form.ts): housing keys only with a plan, sale keys only when
@@ -101,6 +102,8 @@ const NUMERIC_KEYS = {
   nextOrdinaryAccountSharePercent: 'nos',
   nextLoanTenureYears: 'nt',
   nextBankLoanRatePercent: 'nbr',
+  voluntaryRefundAge: 'vra',
+  voluntaryRefundAmount: 'vrm',
 } as const satisfies Partial<Record<FormField, string>>;
 
 type NumericField = keyof typeof NUMERIC_KEYS;
@@ -116,6 +119,9 @@ const HOUSING_FIELDS: readonly FormField[] = [
   'retainedOrdinaryAccount',
   'housingGrant',
 ];
+
+/** The voluntary refund, which also stands or falls on its own. */
+const REFUND_GROUP: readonly FormField[] = ['voluntaryRefundAge', 'voluntaryRefundAmount'];
 
 /** The sale and the next home, which also stand or fall together. */
 const SALE_GROUP: readonly FormField[] = ['selling', ...SALE_FIELDS, ...NEXT_FIELDS];
@@ -150,6 +156,8 @@ const FIELD_NAMES: Record<FormField, string> = {
   nextOrdinaryAccountSharePercent: 'next home share from the Ordinary Account',
   nextLoanTenureYears: 'next home loan tenure',
   nextBankLoanRatePercent: 'next home bank loan rate',
+  voluntaryRefundAge: 'refund age',
+  voluntaryRefundAmount: 'refund amount',
 };
 
 const planFor = (code: string | null) =>
@@ -288,15 +296,22 @@ function fallBackWhereInvalid(
   };
   if (invalid.some((field) => HOUSING_FIELDS.includes(field))) {
     repaired.housingPlan = 'none';
-    reset([...HOUSING_FIELDS, ...SALE_GROUP]);
+    reset([...HOUSING_FIELDS, ...SALE_GROUP, ...REFUND_GROUP]);
     say('The property details in this link could not be used, so the projection shows no property.');
-  } else if (invalid.some((field) => SALE_GROUP.includes(field))) {
-    // Likewise the sale and the next home: the first home is kept, unsold.
-    reset(SALE_GROUP);
-    say('The sale details in this link could not be used, so the projection keeps the first home.');
+  } else {
+    if (invalid.some((field) => SALE_GROUP.includes(field))) {
+      // Likewise the sale and the next home: the first home is kept, unsold.
+      reset(SALE_GROUP);
+      say('The sale details in this link could not be used, so the projection keeps the first home.');
+    }
+    if (invalid.some((field) => REFUND_GROUP.includes(field))) {
+      reset(REFUND_GROUP);
+      say('The voluntary refund in this link could not be used, so the projection leaves it out.');
+    }
   }
   for (const field of invalid) {
-    if (HOUSING_FIELDS.includes(field) || SALE_GROUP.includes(field)) continue;
+    if (HOUSING_FIELDS.includes(field) || SALE_GROUP.includes(field) || REFUND_GROUP.includes(field))
+      continue;
     (repaired as Record<FormField, unknown>)[field] = DEFAULT_FORM[field];
     say(
       `The ${FIELD_NAMES[field]} in this link is outside what the projection supports, so the default is used.`,

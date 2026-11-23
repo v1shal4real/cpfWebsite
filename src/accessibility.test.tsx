@@ -35,6 +35,7 @@ const STATES: Record<string, { form: FormValues; b?: FormValues; notices?: strin
     form: { ...HDB, housingPlan: 'bank-loan', bankLoanRatePercent: 3, retainedOrdinaryAccount: null },
   },
   'two scenarios': { form: DEFAULT_FORM, b: HDB },
+  'voluntary refund': { form: { ...HDB, voluntaryRefundAge: 40, voluntaryRefundAmount: 50_000 } },
   'sale and upgrade': {
     form: {
       ...HDB,

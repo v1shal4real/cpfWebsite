@@ -98,6 +98,8 @@ describe('round trip: state -> URL -> state', () => {
         nextOrdinaryAccountSharePercent: fc.integer({ min: 0, max: 15 }).map((step) => step * 5),
         nextLoanTenureYears: fc.integer({ min: 1, max: 25 }),
         nextBankLoanRatePercent: fc.integer({ min: 0, max: 800 }).map((hundredths) => hundredths / 100),
+        refundAfter: fc.option(fc.integer({ min: 0, max: 20 }), { nil: null }),
+        refundAmount: fc.integer({ min: 1, max: 500_000 }),
       })
       .map((g): FormValues => {
         const purchaseAge = g.currentAge + g.purchaseAfter;
@@ -130,6 +132,8 @@ describe('round trip: state -> URL -> state', () => {
           nextOrdinaryAccountSharePercent: g.nextOrdinaryAccountSharePercent,
           nextLoanTenureYears: g.nextLoanTenureYears,
           nextBankLoanRatePercent: g.nextBankLoanRatePercent,
+          voluntaryRefundAge: g.refundAfter === null ? null : purchaseAge + g.refundAfter,
+          voluntaryRefundAmount: g.refundAfter === null ? null : g.refundAmount,
         };
       });
     fc.assert(

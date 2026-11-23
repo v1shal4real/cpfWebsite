@@ -52,6 +52,7 @@ const HDB: FormValues = {
 
 const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValues }> = {
   'two scenarios side by side': { form: DEFAULT_FORM, b: HDB },
+  'voluntary refund': { form: { ...HDB, voluntaryRefundAge: 40, voluntaryRefundAmount: 50_000 } },
   'sale and upgrade': {
     form: {
       ...HDB,

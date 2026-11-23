@@ -60,6 +60,36 @@ export interface TimelineReadout {
   bonus: { paid: number; subjectToCpf: number; contribution: number } | null;
   /** Present once CPF has been used for housing. Dollars. */
   housing: { principalUsed: number; accruedInterest: number; refundable: number } | null;
+  /** Present in the month of a voluntary housing refund. Dollars. */
+  voluntaryRefund: {
+    refunded: number;
+    toPrincipal: number;
+    toInterest: number;
+    refundableAfter: number;
+  } | null;
+}
+
+/** Marks for the timeline: the moments a projection changes course, by age in months. */
+export function timelineMarks(result: ProjectionResult): { value: number; label: string }[] {
+  const marks: { value: number; label: string }[] = [];
+  for (const month of result.months) {
+    for (const event of month.events) {
+      const label =
+        event.kind === 'property-purchased'
+          ? event.afterSale
+            ? 'Next home bought'
+            : 'Home bought'
+          : event.kind === 'voluntary-housing-refund'
+            ? 'Voluntary housing refund'
+            : event.kind === 'property-sold'
+              ? 'Home sold'
+              : event.kind === 'age-55-transition'
+                ? 'Age 55: Retirement Account formed'
+                : null;
+      if (label) marks.push({ value: month.ageInMonths, label });
+    }
+  }
+  return marks;
 }
 
 const dollars = (cents: number) => cents / 100;
@@ -109,13 +139,26 @@ export function readoutAt(result: ProjectionResult, ageInMonths: number): Timeli
             retirement: share(contribution.allocation.retirement),
           }
         : null,
+    // Shown while anything is owed: after a refund that clears the principal,
+    // accrued interest can still be outstanding.
     housing:
-      housing && housing.principalUsed > 0
+      housing && housing.refundable > 0
         ? {
             principalUsed: dollars(housing.principalUsed),
             accruedInterest: dollars(housing.accruedInterest),
             refundable: dollars(housing.refundable),
           }
         : null,
+    voluntaryRefund: (() => {
+      const event = month.events.find((each) => each.kind === 'voluntary-housing-refund');
+      return event?.kind === 'voluntary-housing-refund'
+        ? {
+            refunded: dollars(event.refunded),
+            toPrincipal: dollars(event.toPrincipal),
+            toInterest: dollars(event.toInterest),
+            refundableAfter: dollars(event.refundableAfter),
+          }
+        : null;
+    })(),
   };
 }
