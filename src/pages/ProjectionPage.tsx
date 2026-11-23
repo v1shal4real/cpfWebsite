@@ -11,6 +11,7 @@ import { BalanceChart } from './projection/BalanceChart';
 import { ComparisonView } from './projection/ComparisonView';
 import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
+import { CpfLifeCard } from './projection/CpfLifeCard';
 import { SaleSummary } from './projection/SaleSummary';
 import { Timeline } from './projection/Timeline';
 import {
@@ -327,6 +328,7 @@ const ResultsRegion = memo(function ResultsRegion({
         onHoverAge={(age) => setScrubbed(age * 12)}
       />
       <SaleSummary result={result} />
+      <CpfLifeCard result={result} />
       <Timeline result={result} ageInMonths={ageInMonths} onAgeChange={setScrubbed} />
       <AssumptionsPanel result={result} />
     </section>

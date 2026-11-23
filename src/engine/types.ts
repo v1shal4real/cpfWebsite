@@ -22,6 +22,7 @@
  */
 
 import type { FigureBasis } from '@/rules';
+import type { CpfLifeEstimate } from './cpfLife';
 
 /** A whole number of cents. `123_45` is $123.45. */
 export type Cents = number;
@@ -494,6 +495,11 @@ export interface ProjectionSummary {
     retirementSumsBasis: FigureBasis;
     withdrawable: Cents;
   };
+  /**
+   * CPF LIFE payout estimates from the Retirement Account at 65. Absent if the
+   * projection does not reach 65. See `cpfLife.ts`.
+   */
+  cpfLife?: CpfLifeEstimate;
   atEnd: {
     balances: AccountAmounts;
     /** What would still be owed to CPF if the property were sold in the last month. */

@@ -184,6 +184,31 @@ export const RULE_SET_2026: RuleSet = {
     },
   },
 
+  cpfLife: {
+    sourceId: 'cpfLifePayouts',
+    fieldSources: {
+      escalatingStartRatio: 'cpfLifePlansComparison',
+      escalatingAnnualRise: 'cpfLifeEscalatingPlan',
+    },
+    basis:
+      "CPF Board's estimates for a male member on the Standard Plan, from Retirement Account savings set aside at 55 in 2026 and grown at interest rates of up to 6% a year to 65.",
+    // "Savings in your RA at age 65" and the Standard Plan "Monthly Payout
+    // from 65" and "from 70", as published (read 23 November 2026).
+    standardTable: [
+      { premiumAt65: 82_400, monthlyFrom65: 490, monthlyFrom70: 670 },
+      { premiumAt65: 170_100, monthlyFrom65: 950, monthlyFrom70: 1_280 },
+      { premiumAt65: 227_900, monthlyFrom65: 1_250, monthlyFrom70: 1_670 },
+      { premiumAt65: 330_100, monthlyFrom65: 1_780, monthlyFrom70: 2_380 },
+      { premiumAt65: 445_600, monthlyFrom65: 2_380, monthlyFrom70: 3_170 },
+      { premiumAt65: 650_100, monthlyFrom65: 3_440, monthlyFrom70: 4_580 },
+    ],
+    // "the initial payout is about 20% lower than the Standard Plan but
+    // increases by about 2% p.a." (a 2024 article on CPF Board's site), and
+    // the plan's own page: "payouts that increase by 2% each year".
+    escalatingStartRatio: 0.8,
+    escalatingAnnualRise: 0.02,
+  },
+
   housing: {
     sourceId: 'housingAccruedInterest',
     fieldSources: {

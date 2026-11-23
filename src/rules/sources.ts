@@ -215,6 +215,37 @@ export const SOURCES = {
     retrievedOn: '2026-10-08',
   },
 
+  /* CPF LIFE ------------------------------------------------------------ */
+
+  /** The Standard Plan payout table: RA at 55 and at 65, payouts from 65 and from 70. */
+  cpfLifePayouts: {
+    id: 'cpfLifePayouts',
+    title: 'How much CPF payouts can I get every month?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/how-much-cpf-payouts-can-i-get-every-month',
+    retrievedOn: '2026-11-23',
+  },
+  /** "payouts that increase by 2% each year". */
+  cpfLifeEscalatingPlan: {
+    id: 'cpfLifeEscalatingPlan',
+    title: 'How does the CPF LIFE Escalating Plan work?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/how-does-the-cpf-life-escalating-plan-work',
+    retrievedOn: '2026-11-23',
+  },
+  /**
+   * An article published on CPF Board's site on 5 July 2024 (by Providend):
+   * the Escalating Plan's "initial payout is about 20% lower than the
+   * Standard Plan". Not a CPF Board rule; the only published figure found.
+   */
+  cpfLifePlansComparison: {
+    id: 'cpfLifePlansComparison',
+    title: 'How to use CPF LIFE as the cornerstone of your retirement planning',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/member/infohub/educational-resources/how-to-use-cpf-life-as-the-cornerstone-of-your-retirement-planning',
+    retrievedOn: '2026-11-23',
+  },
+
   /* Housing ------------------------------------------------------------- */
 
   housing: {
