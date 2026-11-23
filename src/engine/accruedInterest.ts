@@ -113,3 +113,49 @@ export function accrueHousingInterest({
     refundable: principalUsed + accruedInterest,
   };
 }
+
+/* Voluntary housing refunds ------------------------------------------------ */
+
+export interface VoluntaryRefundResult {
+  state: AccruedInterestState;
+  /** What was refunded: the amount asked, capped at principal plus accrued interest. */
+  refunded: Cents;
+  /** The part that reduced the principal used. */
+  toPrincipal: Cents;
+  /** The part that reduced the accrued interest. */
+  toInterest: Cents;
+}
+
+/**
+ * Cash paid back into CPF against the property, before this month accrues.
+ *
+ * CPF Board, "Can I voluntarily refund a portion of the CPF savings I used for
+ * my property?" (source `voluntaryHousingRefund`, read on 18 November 2026):
+ * any amount "up to the total CPF principal amount" withdrawn plus accrued
+ * interest, and a partial refund "will first be used to reduce the principal
+ * amount withdrawn for your home"; what remains reduces the accrued interest.
+ *
+ * Applied before the month's accrual, the mirror of a withdrawal: interest
+ * "runs … until the date the CPF refund is made", so a refunded dollar stops
+ * accruing from the month it is paid back. Interest already credited is
+ * reduced before this year's, which has not yet been credited.
+ */
+export function applyVoluntaryRefund(state: AccruedInterestState, amount: Cents): VoluntaryRefundResult {
+  const asked = Math.max(0, amount);
+  const toPrincipal = Math.min(asked, state.principalUsed);
+  const thisYear = toCents(state.accruingThisYear);
+  const toInterest = Math.min(asked - toPrincipal, state.credited + thisYear);
+  const fromCredited = Math.min(toInterest, state.credited);
+  const fromThisYear = toInterest - fromCredited;
+  return {
+    state: {
+      principalUsed: state.principalUsed - toPrincipal,
+      credited: state.credited - fromCredited,
+      // Kept exact: take the refunded cents off the units, never below zero.
+      accruingThisYear: Math.max(0, state.accruingThisYear - fromThisYear * CENT),
+    },
+    refunded: toPrincipal + toInterest,
+    toPrincipal,
+    toInterest,
+  };
+}

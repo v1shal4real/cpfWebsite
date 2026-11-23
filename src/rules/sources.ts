@@ -278,6 +278,31 @@ export const SOURCES = {
     url: 'https://www.cpf.gov.sg/service/article/do-i-have-to-refund-the-housing-grant-to-my-cpf-account-upon-sale-of-my-property',
     retrievedOn: '2026-11-15',
   },
+  /** States that a partial refund reduces principal first, then accrued interest. */
+  voluntaryHousingRefund: {
+    id: 'voluntaryHousingRefund',
+    title: 'Can I voluntarily refund a portion of the CPF savings I used for my property?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/can-i-voluntarily-refund-a-portion-of-the-cpf-savings-i-used-for-my-property',
+    retrievedOn: '2026-11-18',
+  },
+  /** States that from 55 a voluntary refund tops the RA up to the FRS first, the rest to the OA. */
+  voluntaryHousingRefundFrom55: {
+    id: 'voluntaryHousingRefundFrom55',
+    title: 'What happens when I make a voluntary housing refund if I am 55 years old or older?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/what-happens-when-i-make-a-voluntary-housing-refund-if-i-am-55-years-old-or-older',
+    retrievedOn: '2026-11-18',
+  },
+  /** States that a full voluntary refund stops all further CPF withdrawals, instalments included. */
+  voluntaryHousingRefundComparison: {
+    id: 'voluntaryHousingRefundComparison',
+    title:
+      'What are the differences between topping up my retirement savings, making a Voluntary Housing Refund, topping up my MediSave Account and topping up my three CPF accounts?',
+    publisher: 'CPF Board',
+    url: 'https://www.cpf.gov.sg/service/article/what-are-the-differences-between-topping-up-my-retirement-savings-making-a-voluntary-housing-refund-topping-up-my-medisave-account-and-topping-up-my-three-cpf-accounts',
+    retrievedOn: '2026-11-18',
+  },
   housingRefund: {
     id: 'housingRefund',
     title: 'CPF refund when selling or transferring property',

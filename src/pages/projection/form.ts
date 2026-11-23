@@ -58,6 +58,10 @@ export interface FormValues {
   nextOrdinaryAccountSharePercent: number;
   nextLoanTenureYears: number | null;
   nextBankLoanRatePercent: number | null;
+  /** A voluntary housing refund: cash paid back into CPF at this age. Optional. */
+  voluntaryRefundAge: number | null;
+  /** Dollars. */
+  voluntaryRefundAmount: number | null;
 }
 
 export type FormField = keyof FormValues;
@@ -105,6 +109,8 @@ export const DEFAULT_FORM: FormValues = {
   nextOrdinaryAccountSharePercent: 100,
   nextLoanTenureYears: null,
   nextBankLoanRatePercent: null,
+  voluntaryRefundAge: null,
+  voluntaryRefundAmount: null,
 };
 
 const cents = (dollars: number | null) =>
@@ -135,6 +141,8 @@ export function toDraft(form: FormValues, startMonth: MonthStamp): ProjectionDra
     bankLoanRate: fraction(form.bankLoanRatePercent),
     ordinaryAccountRetention: cents(form.retainedOrdinaryAccount),
     housingGrant: cents(form.housingGrant),
+    voluntaryRefundAge: optional(form.voluntaryRefundAge),
+    voluntaryRefundAmount: cents(form.voluntaryRefundAmount),
     ...(form.selling && {
       saleAge: optional(form.saleAge),
       salePrice: cents(form.salePrice),
@@ -159,6 +167,8 @@ const HOUSING_FIELDS: readonly FormField[] = [
   'retainedOrdinaryAccount',
   'housingGrant',
   'selling',
+  'voluntaryRefundAge',
+  'voluntaryRefundAmount',
 ];
 
 /** Fields that only count when selling. */
@@ -232,6 +242,8 @@ const FORM_FIELD_FOR: Record<ProjectionField, FormField | undefined> = {
   nextDownpaymentShareFromOrdinaryAccount: 'nextOrdinaryAccountSharePercent',
   nextLoanTenureYears: 'nextLoanTenureYears',
   nextBankLoanRate: 'nextBankLoanRatePercent',
+  voluntaryRefundAge: 'voluntaryRefundAge',
+  voluntaryRefundAmount: 'voluntaryRefundAmount',
   // Supplied by the page from the link, which falls back before validating.
   rulesAsAt: undefined,
 };

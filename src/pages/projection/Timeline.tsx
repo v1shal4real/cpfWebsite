@@ -3,8 +3,7 @@ import { Card, CardBody, CardHeader, DefinitionList, LiveRegion, Slider } from '
 import type { ProjectionResult } from '@/engine/types';
 import { formatAgeMonths, formatMoney, formatPercent } from '@/lib/format';
 import { SERIES } from '@/theme/series';
-import { AGE_55 } from './balanceData';
-import { nextAgeInMonths, readoutAt, type TimelineReadout } from './timelineState';
+import { nextAgeInMonths, readoutAt, timelineMarks, type TimelineReadout } from './timelineState';
 
 /**
  * Scrubbable timeline with a readout of the projection's state at that age.
@@ -44,7 +43,8 @@ export function Timeline({ result, ageInMonths, onAgeChange }: TimelineProps) {
     onAgeChange(next);
   };
 
-  const shows55 = min <= AGE_55 * 12 && AGE_55 * 12 <= max;
+  // The moments the projection changes course, marked on the track.
+  const marks = timelineMarks(result).filter((mark) => mark.value >= min && mark.value <= max);
 
   return (
     <Card>
@@ -66,7 +66,7 @@ export function Timeline({ result, ageInMonths, onAgeChange }: TimelineProps) {
           readout={readout ? `Age ${formatAgeMonths(ageInMonths)} · ${readout.month}` : null}
           minLabel={result.input.startAge}
           maxLabel={result.input.endAge}
-          ticks={shows55 ? [{ value: AGE_55 * 12, label: 'Age 55: Retirement Account formed' }] : undefined}
+          ticks={marks.length > 0 ? marks : undefined}
         />
         {readout ? <ReadoutPanel readout={readout} /> : null}
         <LiveRegion>{announcement}</LiveRegion>
@@ -131,6 +131,20 @@ function ReadoutPanel({ readout }: { readout: TimelineReadout }) {
             ]}
           />
         )}
+
+        {readout.voluntaryRefund ? (
+          <>
+            <h4 className="mt-3 text-[0.8125rem] font-semibold text-ink">Voluntary refund this month</h4>
+            <DefinitionList
+              items={[
+                { term: 'Paid back into CPF', value: formatMoney(readout.voluntaryRefund.refunded) },
+                { term: 'Reduced the CPF used', value: formatMoney(readout.voluntaryRefund.toPrincipal) },
+                { term: 'Reduced accrued interest', value: formatMoney(readout.voluntaryRefund.toInterest) },
+                { term: 'Still owed on sale', value: formatMoney(readout.voluntaryRefund.refundableAfter) },
+              ]}
+            />
+          </>
+        ) : null}
 
         {readout.bonus ? (
           <>

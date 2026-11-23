@@ -98,6 +98,16 @@ describe('ProjectionEvent', () => {
       refundedToOrdinary: 0,
       cashProceeds: 0,
     },
+    {
+      kind: 'voluntary-housing-refund',
+      asked: 0,
+      refunded: 0,
+      toPrincipal: 0,
+      toInterest: 0,
+      refundedToRetirement: 0,
+      refundedToOrdinary: 0,
+      refundableAfter: 0,
+    },
   ];
 
   it('covers the events the spec names', () => {
@@ -126,6 +136,8 @@ describe('ProjectionEvent', () => {
           return 'housing loan cleared';
         case 'property-sold':
           return 'property sold';
+        case 'voluntary-housing-refund':
+          return 'voluntary housing refund';
         default: {
           const unhandled: never = event;
           return unhandled;
@@ -139,6 +151,7 @@ describe('ProjectionEvent', () => {
       'Basic Healthcare Sum reached',
       'housing loan cleared',
       'property sold',
+      'voluntary housing refund',
     ]);
   });
 });
