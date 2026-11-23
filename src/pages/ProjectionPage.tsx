@@ -23,6 +23,9 @@ import {
   type FormValues,
 } from './projection/form';
 import { encodeScenariosUrl } from './projection/urlState';
+import { DisplayControl } from './projection/DisplayControl';
+import { DEFAULT_DISPLAY, encodeDisplay, type DisplaySettings } from './projection/displayState';
+import { inRealTerms } from './projection/realTerms';
 import { ScenarioBar } from './projection/ScenarioBar';
 import {
   activeForm,
@@ -63,6 +66,8 @@ export interface ProjectionPageProps {
   initialForm?: FormValues;
   /** Both scenarios, when a shared link carries a B. Takes precedence over `initialForm`. */
   initialScenarios?: Scenarios;
+  /** Nominal or today's dollars, and the inflation rate; a shared link carries its own. */
+  initialDisplay?: DisplaySettings;
   /** The rule set id the projection is pinned to; a shared link carries its own. */
   rulesAsAt?: string;
   /** What a shared link carried that could not be used, one sentence each. */
@@ -73,10 +78,12 @@ export function ProjectionPage({
   startMonth,
   initialForm = DEFAULT_FORM,
   initialScenarios,
+  initialDisplay = DEFAULT_DISPLAY,
   rulesAsAt = CURRENT_RULE_SET.id,
   linkNotices = [],
 }: ProjectionPageProps) {
   const [scenarios, setScenarios] = useState<Scenarios>(initialScenarios ?? singleScenario(initialForm));
+  const [display, setDisplay] = useState<DisplaySettings>(initialDisplay);
   // The inputs render from `scenarios`, at full priority, so a keystroke shows
   // at once. The projection and every result render from `deferred`, which
   // React updates at lower priority and abandons if another key arrives
@@ -99,10 +106,11 @@ export function ProjectionPage({
   // replacing the history entry so Back leaves the page rather than stepping
   // through keystrokes. No storage, no cookie, no server call.
   useEffect(() => {
-    const query = encodeScenariosUrl({ scenarios, startMonth, rulesAsAt });
+    const params = new URLSearchParams(encodeScenariosUrl({ scenarios, startMonth, rulesAsAt }));
+    encodeDisplay(display, params);
     const { pathname, hash } = window.location;
-    window.history.replaceState(window.history.state, '', `${pathname}${query}${hash}`);
-  }, [scenarios, startMonth, rulesAsAt]);
+    window.history.replaceState(window.history.state, '', `${pathname}?${params.toString()}${hash}`);
+  }, [scenarios, startMonth, rulesAsAt, display]);
   // The engine is pure and well inside its 50ms budget, so the page simply
   // recomputes on every change.
   const outcome = useMemo(() => projectDraft(draft), [draft]);
@@ -116,7 +124,11 @@ export function ProjectionPage({
   // the guard stops once it matches, and React re-renders before painting.
   const [lastResult, setLastResult] = useState<ProjectionResult | null>(null);
   if (outcome.ok && lastResult !== outcome.result) setLastResult(outcome.result);
-  const shown = outcome.ok ? outcome.result : lastResult;
+  const nominalShown = outcome.ok ? outcome.result : lastResult;
+  // Every figure below renders the result as displayed: nominal, or the
+  // whole result restated in today's dollars (`realTerms.ts`).
+  const rate = display.realTerms ? display.inflationPercent / 100 : 0;
+  const shown = useMemo(() => (nominalShown ? inRealTerms(nominalShown, rate) : null), [nominalShown, rate]);
 
   // With a scenario B, the one not being edited is projected too, for the
   // side-by-side view. Its inputs were valid when last edited or decoded.
@@ -124,11 +136,12 @@ export function ProjectionPage({
   // must not re-run the engine for the other, which has not changed. On a
   // slow phone that second run is what pushed a keystroke towards 200ms.
   const otherForm = deferred.b ? (deferred.active === 'a' ? deferred.b : deferred.a) : null;
-  const other = useMemo(() => {
+  const otherNominal = useMemo(() => {
     if (!otherForm) return null;
     const result = projectDraft({ ...toDraft(otherForm, startMonth), rulesAsAt });
     return result.ok ? result.result : null;
   }, [otherForm, startMonth, rulesAsAt]);
+  const other = useMemo(() => (otherNominal ? inRealTerms(otherNominal, rate) : null), [otherNominal, rate]);
   const comparison = useMemo(
     () =>
       deferred.b && shown
@@ -158,6 +171,9 @@ export function ProjectionPage({
           projection, not advice, and suggests no course of action.
         </p>
         <CopyLinkButton label="Copy link to this projection" className="mt-1" />
+        <div className="mt-2 max-w-md">
+          <DisplayControl display={display} onChange={setDisplay} />
+        </div>
       </header>
 
       <div
@@ -193,6 +209,7 @@ export function ProjectionPage({
             result={shown}
             compare={compare}
             scenarioLabel={deferred.b ? `Scenario ${deferred.active.toUpperCase()}` : undefined}
+            display={display}
           />
         ) : null}
       </div>
@@ -302,10 +319,12 @@ const ResultsRegion = memo(function ResultsRegion({
   result,
   scenarioLabel,
   compare,
+  display,
 }: {
   result: ProjectionResult;
   scenarioLabel?: string | undefined;
   compare?: { resultA: ProjectionResult; resultB: ProjectionResult } | undefined;
+  display: DisplaySettings;
 }) {
   const { startAge, endAge } = result.input;
   const fallback = (startAge <= 55 && 55 <= endAge ? 55 : endAge) * 12;
@@ -328,9 +347,9 @@ const ResultsRegion = memo(function ResultsRegion({
         onHoverAge={(age) => setScrubbed(age * 12)}
       />
       <SaleSummary result={result} />
-      <CpfLifeCard result={result} />
+      <CpfLifeCard result={result} realTerms={display.realTerms} />
       <Timeline result={result} ageInMonths={ageInMonths} onAgeChange={setScrubbed} />
-      <AssumptionsPanel result={result} />
+      <AssumptionsPanel result={result} display={display} />
     </section>
   );
 });

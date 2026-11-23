@@ -28,13 +28,14 @@ const HDB: FormValues = {
   retainedOrdinaryAccount: 20_000,
 };
 
-const STATES: Record<string, { form: FormValues; b?: FormValues; notices?: string[] }> = {
+const STATES: Record<string, { form: FormValues; b?: FormValues; notices?: string[]; real?: boolean }> = {
   'default projection': { form: DEFAULT_FORM },
   'HDB loan': { form: HDB },
   'bank loan': {
     form: { ...HDB, housingPlan: 'bank-loan', bankLoanRatePercent: 3, retainedOrdinaryAccount: null },
   },
   'two scenarios': { form: DEFAULT_FORM, b: HDB },
+  "today's dollars": { form: HDB, real: true },
   'voluntary refund': { form: { ...HDB, voluntaryRefundAge: 40, voluntaryRefundAmount: 50_000 } },
   'sale and upgrade': {
     form: {
@@ -74,6 +75,7 @@ describe.each(Object.entries(STATES))('%s', (_, state) => {
             startMonth="2026-10"
             initialForm={state.form}
             initialScenarios={state.b ? { a: state.form, b: state.b, active: 'b' } : undefined}
+            initialDisplay={state.real ? { realTerms: true, inflationPercent: 1.7 } : undefined}
             linkNotices={state.notices}
           />
         </AppShell>

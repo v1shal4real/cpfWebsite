@@ -2,6 +2,7 @@ import { Callout, Card, CardBody, CardHeader, SourceLink } from '@/components/ui
 import type { ProjectionResult } from '@/engine/types';
 import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
 import { assumptionGroup, effectiveRange, ruleSetGroups, type AssumptionGroup } from './assumptions';
+import type { DisplaySettings } from './displayState';
 
 /**
  * Every parameter the projection used, with its effective date and source.
@@ -10,7 +11,14 @@ import { assumptionGroup, effectiveRange, ruleSetGroups, type AssumptionGroup } 
  * is not tucked behind a disclosure. A projection that crosses a rule change
  * shows one section per rule set, oldest first.
  */
-export function AssumptionsPanel({ result }: { result: ProjectionResult }) {
+export function AssumptionsPanel({
+  result,
+  display,
+}: {
+  result: ProjectionResult;
+  /** Shown in the assumptions when figures are in today's dollars. */
+  display?: DisplaySettings;
+}) {
   const ruleSets: RuleSet[] = result.ruleSetIds.map((id) => ruleSetById(id) ?? CURRENT_RULE_SET);
   const latest = ruleSets.at(-1) ?? CURRENT_RULE_SET;
 
@@ -34,7 +42,7 @@ export function AssumptionsPanel({ result }: { result: ProjectionResult }) {
           </Callout>
         ) : null}
 
-        <Group group={assumptionGroup(result.input, latest)} headingLevel={4} />
+        <Group group={assumptionGroup(result.input, latest, display)} headingLevel={4} />
 
         {ruleSets.map((rules) => (
           <section

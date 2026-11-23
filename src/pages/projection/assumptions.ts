@@ -1,4 +1,5 @@
 import type { ProjectionInput } from '@/engine/types';
+import type { DisplaySettings } from './displayState';
 import { formatEffectiveDate, formatMoney } from '@/lib/format';
 import {
   escalationAssumptions,
@@ -274,9 +275,22 @@ const MONTHS = [
 ];
 
 /** The user's own assumptions and the rule set's escalation assumptions. */
-export function assumptionGroup(input: ProjectionInput, rules: RuleSet): AssumptionGroup {
+export function assumptionGroup(
+  input: ProjectionInput,
+  rules: RuleSet,
+  display?: DisplaySettings,
+): AssumptionGroup {
   const { salaryGrowth, housing } = input;
   const rows: AssumptionRow[] = [
+    ...(display?.realTerms
+      ? [
+          {
+            label: 'Inflation (yours)',
+            value: `${display.inflationPercent}% a year: figures are in today's dollars`,
+            sourceId: 'masMacroeconomicReviewOct2026' as const,
+          },
+        ]
+      : []),
     {
       label: 'Salary growth (yours)',
       value:

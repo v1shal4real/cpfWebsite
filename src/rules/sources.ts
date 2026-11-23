@@ -215,6 +215,17 @@ export const SOURCES = {
     retrievedOn: '2026-10-08',
   },
 
+  /* Inflation ------------------------------------------------------------ */
+
+  /** "The historical mean of core inflation is about 1.7% y-o-y." */
+  masMacroeconomicReviewOct2026: {
+    id: 'masMacroeconomicReviewOct2026',
+    title: 'Macroeconomic Review Volume XXV Issue 4, Oct 2026',
+    publisher: 'MAS',
+    url: 'https://www.mas.gov.sg/-/media/mas-media-library/publications/macroeconomic-review/2026/oct/mroct26.pdf',
+    retrievedOn: '2026-11-23',
+  },
+
   /* CPF LIFE ------------------------------------------------------------ */
 
   /** The Standard Plan payout table: RA at 55 and at 65, payouts from 65 and from 70. */

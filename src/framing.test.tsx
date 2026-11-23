@@ -50,8 +50,9 @@ const HDB: FormValues = {
   retainedOrdinaryAccount: 20_000,
 };
 
-const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValues }> = {
+const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValues; real?: boolean }> = {
   'two scenarios side by side': { form: DEFAULT_FORM, b: HDB },
+  "today's dollars": { form: HDB, real: true },
   'voluntary refund': { form: { ...HDB, voluntaryRefundAge: 40, voluntaryRefundAmount: 50_000 } },
   'sale and upgrade': {
     form: {
@@ -81,7 +82,17 @@ const VIEWS: Record<string, { form: FormValues; notices?: string[]; b?: FormValu
   },
 };
 
-const render = ({ form, notices = [], b }: { form: FormValues; notices?: string[]; b?: FormValues }) =>
+const render = ({
+  form,
+  notices = [],
+  b,
+  real,
+}: {
+  form: FormValues;
+  notices?: string[];
+  b?: FormValues;
+  real?: boolean;
+}) =>
   renderToString(
     <ThemeProvider>
       <AppShell ruleSet={CURRENT_RULE_SET} startMonth="2026-10">
@@ -89,6 +100,7 @@ const render = ({ form, notices = [], b }: { form: FormValues; notices?: string[
           startMonth="2026-10"
           initialForm={form}
           initialScenarios={b ? { a: form, b, active: 'b' } : undefined}
+          initialDisplay={real ? { realTerms: true, inflationPercent: 1.7 } : undefined}
           linkNotices={notices}
         />
       </AppShell>

@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { currentMonth } from '@/lib/clock';
 import { ProjectionPage } from '@/pages/ProjectionPage';
 import { decodeScenariosUrl } from '@/pages/projection/urlState';
+import { decodeDisplay } from '@/pages/projection/displayState';
 import { ruleSetById } from '@/rules';
 import { routeFor } from '@/routes';
 
@@ -21,6 +22,7 @@ export function App() {
   // starts this month on the defaults. Read once, here: the clock is never
   // read in the engine.
   const link = useMemo(() => decodeScenariosUrl(window.location.search, { startMonth: currentMonth() }), []);
+  const display = useMemo(() => decodeDisplay(window.location.search), []);
 
   return (
     <AppShell
@@ -35,6 +37,7 @@ export function App() {
         <ProjectionPage
           startMonth={link.state.startMonth}
           initialScenarios={link.state.scenarios}
+          initialDisplay={display}
           rulesAsAt={link.state.rulesAsAt}
           linkNotices={link.notices}
         />

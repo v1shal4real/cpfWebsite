@@ -14,7 +14,14 @@ import { formatMoney, formatPercent } from '@/lib/format';
 
 const dollars = (cents: number) => cents / 100;
 
-export const CpfLifeCard = memo(function CpfLifeCard({ result }: { result: ProjectionResult }) {
+export const CpfLifeCard = memo(function CpfLifeCard({
+  result,
+  realTerms = false,
+}: {
+  result: ProjectionResult;
+  /** In today's dollars a level payout shrinks, and the 2% rise is smaller. */
+  realTerms?: boolean;
+}) {
   const estimate = result.summary.cpfLife;
   if (!estimate) return null;
   const rise = formatPercent(estimate.escalatingAnnualRise, 0);
@@ -23,12 +30,14 @@ export const CpfLifeCard = memo(function CpfLifeCard({ result }: { result: Proje
     {
       name: 'Standard Plan',
       payout: formatMoney(dollars(estimate.standardFrom65)),
-      detail: `Level for life. Started at 70 instead: about ${formatMoney(dollars(estimate.standardFrom70))} a month.`,
+      detail: realTerms
+        ? `The same amount each year for life, so in today's dollars it falls as prices rise. Started at 70 instead: about ${formatMoney(dollars(estimate.standardFrom70))} a month.`
+        : `Level for life. Started at 70 instead: about ${formatMoney(dollars(estimate.standardFrom70))} a month.`,
     },
     {
       name: 'Escalating Plan',
       payout: formatMoney(dollars(estimate.escalatingFrom65)),
-      detail: `Starts lower and rises ${rise} a year: about ${formatMoney(dollars(escalatingPayoutAt(estimate, 75)))} at 75 and ${formatMoney(dollars(escalatingPayoutAt(estimate, 85)))} at 85.`,
+      detail: `Starts lower and rises 2% a year${realTerms ? `, ${rise} after inflation` : ''}: about ${formatMoney(dollars(escalatingPayoutAt(estimate, 75)))} at 75 and ${formatMoney(dollars(escalatingPayoutAt(estimate, 85)))} at 85.`,
     },
   ];
 
