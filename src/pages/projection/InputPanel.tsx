@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import {
   Badge,
   Callout,
+  Disclosure,
   Field,
   MoneyInput,
   NumericInput,
@@ -137,44 +138,59 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
           />
         </Field>
 
-        <Field
-          label="Annual bonus"
-          hint={`Optional. In months of salary, e.g. 1 for a 13th-month payment. CPF applies to bonuses up to the Additional Wage ceiling: ${formatMoney(wageCeilings.annualSalaryCeiling)} a year, less the Ordinary Wages that attract CPF that year.`}
-          labelAside={mark(
-            'bonusMonths',
-            <SourceLink sourceId="additionalWageCeilingExamples" variant="chip" />,
-          )}
-          error={errorFor('bonusMonths')}
+        <OptionalSection
+          title="Annual bonus"
+          hasValue={values.bonusMonths !== null}
+          hasError={Boolean(errorFor('bonusMonths') || errorFor('bonusPaidInMonth'))}
         >
-          <NumericInput
-            value={values.bonusMonths}
-            onValueChange={(bonusMonths) => onChange({ bonusMonths })}
-            onBlur={markTouched('bonusMonths')}
-            min={0}
-            max={INPUT_LIMITS.maximumBonusMonths}
-            step={0.5}
-            suffix="months"
-            unitDescription="months of salary"
-          />
-        </Field>
-
-        {values.bonusMonths ? (
           <Field
-            label="Bonus paid in"
-            hint="Each year, at the salary of that month."
-            labelAside={mark('bonusPaidInMonth')}
-            error={errorFor('bonusPaidInMonth')}
+            label="Annual bonus"
+            hint={`Optional. In months of salary, e.g. 1 for a 13th-month payment. CPF applies to bonuses up to the Additional Wage ceiling: ${formatMoney(wageCeilings.annualSalaryCeiling)} a year, less the Ordinary Wages that attract CPF that year.`}
+            labelAside={mark(
+              'bonusMonths',
+              <SourceLink sourceId="additionalWageCeilingExamples" variant="chip" />,
+            )}
+            error={errorFor('bonusMonths')}
           >
-            <Select
-              value={String(values.bonusPaidInMonth)}
-              onChange={(event) => onChange({ bonusPaidInMonth: Number(event.target.value) })}
-              options={MONTH_NAMES.map((name, index) => ({ value: String(index + 1), label: name }))}
+            <NumericInput
+              value={values.bonusMonths}
+              onValueChange={(bonusMonths) => onChange({ bonusMonths })}
+              onBlur={markTouched('bonusMonths')}
+              min={0}
+              max={INPUT_LIMITS.maximumBonusMonths}
+              step={0.5}
+              suffix="months"
+              unitDescription="months of salary"
             />
           </Field>
-        ) : null}
+
+          {values.bonusMonths ? (
+            <Field
+              label="Bonus paid in"
+              hint="Each year, at the salary of that month."
+              labelAside={mark('bonusPaidInMonth')}
+              error={errorFor('bonusPaidInMonth')}
+            >
+              <Select
+                value={String(values.bonusPaidInMonth)}
+                onChange={(event) => onChange({ bonusPaidInMonth: Number(event.target.value) })}
+                options={MONTH_NAMES.map((name, index) => ({ value: String(index + 1), label: name }))}
+              />
+            </Field>
+          ) : null}
+        </OptionalSection>
       </Group>
 
-      <Group legend="Current CPF balances" description="Optional. Leave a field blank for zero.">
+      <OptionalSection
+        title="Current CPF balances"
+        description="Leave a field blank for zero."
+        hasValue={
+          values.ordinaryBalance !== null || values.specialBalance !== null || values.medisaveBalance !== null
+        }
+        hasError={Boolean(
+          errorFor('ordinaryBalance') || errorFor('specialBalance') || errorFor('medisaveBalance'),
+        )}
+      >
         <Field
           label="Ordinary Account"
           labelAside={mark('ordinaryBalance')}
@@ -207,7 +223,7 @@ export function InputPanel({ values, onChange, errors, rules, changed }: InputPa
             min={0}
           />
         </Field>
-      </Group>
+      </OptionalSection>
 
       <Group legend="Property">
         {changed?.has('housingPlan') ? (
@@ -429,6 +445,41 @@ function Group({
         {children}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * Optional inputs behind a disclosure, so the two required fields lead the
+ * panel and the optional ones do not carry the same weight.
+ *
+ * Open when it already holds a value (a shared link, or scenario B copied from
+ * A) or an error is showing, so nothing the projection is using is ever
+ * hidden. Otherwise the visitor's own choice wins. `hasValue` is passed in
+ * rather than derived because "empty" differs per field: a bonus of 0 months
+ * is a value, a blank is not.
+ */
+function OptionalSection({
+  title,
+  description,
+  hasValue,
+  hasError,
+  children,
+}: {
+  title: string;
+  description?: string;
+  hasValue: boolean;
+  hasError: boolean;
+  children: ReactNode;
+}) {
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const open = hasError || (chosen ?? hasValue);
+  return (
+    <Disclosure title={title} summary={hasValue ? 'Set' : 'Optional'} open={open} onOpenChange={setChosen}>
+      <div className="flex flex-col gap-4">
+        {description ? <p className="text-[0.8125rem] text-ink-muted">{description}</p> : null}
+        {children}
+      </div>
+    </Disclosure>
   );
 }
 
