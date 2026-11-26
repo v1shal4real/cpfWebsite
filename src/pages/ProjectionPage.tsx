@@ -11,6 +11,7 @@ import { BalanceChart } from './projection/BalanceChart';
 import { ComparisonView } from './projection/ComparisonView';
 import { HeadlineRow } from './projection/HeadlineRow';
 import { InputPanel } from './projection/InputPanel';
+import { INPUTS_ID, JumpToInputs } from './projection/JumpToInputs';
 import { CpfLifeCard } from './projection/CpfLifeCard';
 import { SaleSummary } from './projection/SaleSummary';
 import { Timeline } from './projection/Timeline';
@@ -158,6 +159,8 @@ export function ProjectionPage({
           projection, not advice, and suggests no course of action.
         </p>
         <CopyLinkButton label="Copy link to this projection" className="mt-1" />
+        {/* Above the headline tiles: below them, the inputs are already next on screen. */}
+        <JumpToInputs />
       </header>
 
       <div
@@ -278,10 +281,13 @@ function InputsRegion({
 }) {
   return (
     <aside
+      id={INPUTS_ID}
+      // Focusable only by script, for the jump link above it on narrow screens.
+      tabIndex={-1}
       aria-labelledby="inputs-heading"
       // Sticky beside the results on wide screens, scrolling on its own when
       // it is taller than the window, so no field is ever out of reach.
-      className="min-w-0 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:[grid-area:inputs]"
+      className="min-w-0 scroll-mt-24 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:[grid-area:inputs]"
     >
       <Card>
         <CardHeader
