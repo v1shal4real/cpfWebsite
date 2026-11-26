@@ -29,6 +29,7 @@ import { formatMoneyCompact } from '@/lib/format';
 import { BALANCE_SERIES, SERIES } from '@/theme/series';
 import { AGE_55, ageTicks, chartPoints, comparisonPoints, scenarioBKey, yearlyRows } from './balanceData';
 import { BalanceTable, ComparisonTable } from './BalanceTables';
+import { age55Milestone } from './milestones';
 
 /**
  * OA, SA, MA and RA balances over age, with the age-55 transition marked and
@@ -73,6 +74,9 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge, compare }:
   const endAge = Math.max(...inputs.map((input) => input.endAge));
   const shows55 = startAge <= AGE_55 && AGE_55 <= endAge;
 
+  const milestoneA = age55Milestone(compare ? compare.resultA : result);
+  const milestoneB = compare ? age55Milestone(compare.resultB) : undefined;
+
   const summary = [
     `Projected Ordinary, Special, MediSave and Retirement Account balances from age ${startAge} to ${endAge}`,
     compare ? ', scenario A as solid lines and scenario B as dashed lines in the same account colours' : '',
@@ -89,6 +93,24 @@ export function BalanceChart({ result, cursorAgeInMonths, onHoverAge, compare }:
           <Legend items={LEGEND_ITEMS} />
           {compare ? <LineStyleKey label="Scenarios" items={SCENARIO_STYLES} /> : null}
         </div>
+      }
+      notes={
+        shows55 && milestoneA ? (
+          compare ? (
+            <ul className="flex flex-col gap-1">
+              <li>
+                <span className="font-medium text-ink">Scenario A.</span> {milestoneA.text}
+              </li>
+              {milestoneB ? (
+                <li>
+                  <span className="font-medium text-ink">Scenario B.</span> {milestoneB.text}
+                </li>
+              ) : null}
+            </ul>
+          ) : (
+            <p>{milestoneA.text}</p>
+          )
+        ) : undefined
       }
       renderTable={({ visible }) =>
         compare ? (
