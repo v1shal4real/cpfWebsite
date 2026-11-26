@@ -32,6 +32,35 @@ export interface AssumptionGroup {
   rows: AssumptionRow[];
 }
 
+/** Past this many characters a value reads as prose, and goes under its label. */
+const PROSE_LENGTH = 45;
+
+export interface LaidOutRow extends AssumptionRow {
+  /** The value is too long to sit beside its label. */
+  stacked: boolean;
+  /** The source link to draw at this row, covering it and the `covers - 1` rows above. */
+  link?: { sourceId: SourceId; covers: number };
+}
+
+/**
+ * Decides how each row is drawn. Consecutive rows from the same page share one
+ * link, on the last of them, which says how many rows it covers: repeating it
+ * on every row buries the figures, and moving it to the group heading would
+ * lose which figures it vouches for.
+ */
+export function layOutRows(rows: readonly AssumptionRow[]): LaidOutRow[] {
+  let run = 0;
+  return rows.map((row, index) => {
+    run = row.sourceId && rows[index - 1]?.sourceId === row.sourceId ? run + 1 : 1;
+    const endsRun = row.sourceId && rows[index + 1]?.sourceId !== row.sourceId;
+    return {
+      ...row,
+      stacked: row.value.length > PROSE_LENGTH,
+      ...(endsRun ? { link: { sourceId: row.sourceId!, covers: run } } : {}),
+    };
+  });
+}
+
 const pct = (fraction: number, digits = 2) => `${Number((fraction * 100).toFixed(digits))}%`;
 const ageBand = (from: number | null, through: number | null) =>
   through === null ? `Above ${from}` : from === null ? `${through} and below` : `Above ${from} to ${through}`;

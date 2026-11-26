@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { projectDraft } from '@/engine/project';
 import { CURRENT_RULE_SET, source, type RuleSet, type SourceId } from '@/rules';
 import { AssumptionsPanel } from './AssumptionsPanel';
-import { assumptionGroup, ruleSetGroups } from './assumptions';
+import { assumptionGroup, layOutRows, ruleSetGroups } from './assumptions';
 import { DEFAULT_FORM, toDraft, type FormValues } from './form';
 
 const project = (form: FormValues) => {
@@ -55,6 +55,46 @@ describe('rule-set groups', () => {
       label: 'Age 55 and below',
       value: '20% employee + 17% employer',
     });
+  });
+});
+
+describe('layOutRows', () => {
+  const row = (label: string, sourceId?: SourceId, value = '1%') => ({
+    label,
+    value,
+    ...(sourceId ? { sourceId } : {}),
+  });
+
+  it('links a run of rows from one page once, on the last, saying how many it covers', () => {
+    const laid = layOutRows([
+      row('a', 'annualLimit'),
+      row('b', 'annualLimit'),
+      row('c', 'annualLimit'),
+      row('d'),
+      row('e', 'annualLimit'),
+    ]);
+    expect(laid.map((r) => r.link?.covers)).toEqual([undefined, undefined, 3, undefined, 1]);
+  });
+
+  it('loses no source, in any rule-set group', () => {
+    for (const group of ruleSetGroups(CURRENT_RULE_SET)) {
+      const laid = layOutRows(group.rows);
+      laid.forEach((r, index) => {
+        if (!r.link) return;
+        const covered = group.rows.slice(index - r.link.covers + 1, index + 1);
+        expect(covered.every((c) => c.sourceId === r.link!.sourceId)).toBe(true);
+      });
+      const coveredCount = laid.reduce((sum, r) => sum + (r.link?.covers ?? 0), 0);
+      expect(coveredCount, group.id).toBe(group.rows.filter((r) => r.sourceId).length);
+    }
+  });
+
+  it('stacks prose under its label and leaves short figures beside it', () => {
+    const laid = layOutRows([
+      row('short', undefined, '$8,000 a month'),
+      row('prose', undefined, 'Special Account first, then Ordinary Account, up to the FRS'),
+    ]);
+    expect(laid.map((r) => r.stacked)).toEqual([false, true]);
   });
 });
 

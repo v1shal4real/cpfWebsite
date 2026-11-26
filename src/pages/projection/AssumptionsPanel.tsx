@@ -1,7 +1,14 @@
 import { Callout, Card, CardBody, CardHeader, SourceLink } from '@/components/ui';
 import type { ProjectionResult } from '@/engine/types';
 import { CURRENT_RULE_SET, ruleSetById, type RuleSet } from '@/rules';
-import { assumptionGroup, effectiveRange, ruleSetGroups, type AssumptionGroup } from './assumptions';
+import { cn } from '@/lib/cn';
+import {
+  assumptionGroup,
+  effectiveRange,
+  layOutRows,
+  ruleSetGroups,
+  type AssumptionGroup,
+} from './assumptions';
 
 /**
  * Every parameter the projection used, with its effective date and source.
@@ -72,15 +79,32 @@ function Group({ group, headingLevel = 5 }: { group: AssumptionGroup; headingLev
         {group.sourceId ? <SourceLink sourceId={group.sourceId} variant="chip" /> : null}
       </div>
       <dl className="flex flex-col">
-        {group.rows.map((row) => (
+        {layOutRows(group.rows).map((row) => (
           <div
             key={row.label}
-            className="flex flex-col gap-0.5 border-b border-line py-1.5 last:border-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+            className={cn(
+              'flex flex-col gap-0.5 border-b border-line py-1.5 last:border-0',
+              !row.stacked && 'sm:flex-row sm:items-baseline sm:justify-between sm:gap-4',
+            )}
           >
             <dt className="text-[0.8125rem] text-ink-muted">{row.label}</dt>
-            <dd className="flex flex-wrap items-baseline gap-2 text-[0.8125rem] text-ink sm:justify-end sm:text-right">
+            <dd
+              className={cn(
+                'flex flex-wrap items-baseline gap-2 text-[0.8125rem] text-ink',
+                !row.stacked && 'sm:justify-end sm:text-right',
+              )}
+            >
               <span data-numeric>{row.value}</span>
-              {row.sourceId ? <SourceLink sourceId={row.sourceId} variant="chip" /> : null}
+              {row.link ? (
+                <span className="flex items-baseline gap-1.5">
+                  {row.link.covers > 1 ? (
+                    <span className="text-[0.75rem] text-ink-subtle">
+                      Source for the last {row.link.covers} rows
+                    </span>
+                  ) : null}
+                  <SourceLink sourceId={row.link.sourceId} variant="chip" />
+                </span>
+              ) : null}
             </dd>
           </div>
         ))}
