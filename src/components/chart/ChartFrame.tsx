@@ -33,6 +33,12 @@ export interface ChartFrameProps {
    * `captionHidden` to `Table`.
    */
   renderTable: (options: { visible: boolean }) => ReactNode;
+  /**
+   * Explanation of what the plot shows that is not obvious from it, such as
+   * the reason for a visible jump. Beneath the plot and visible in both views,
+   * so the chart and its table carry the same words.
+   */
+  notes?: ReactNode;
   /** Sources, rules-as-at stamp, caveats. */
   footer?: ReactNode;
   height?: number;
@@ -47,6 +53,7 @@ export function ChartFrame({
   actions,
   children,
   renderTable,
+  notes,
   footer,
   height = 320,
   className,
@@ -96,6 +103,8 @@ export function ChartFrame({
           {renderTable({ visible: true })}
         </TabPanel>
       </Tabs>
+
+      {notes ? <div className="text-[0.8125rem] leading-snug text-ink-muted">{notes}</div> : null}
 
       {footer ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line pt-3 text-[0.75rem] text-ink-subtle">
